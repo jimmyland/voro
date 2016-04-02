@@ -10,5 +10,6 @@ all: $(SOURCES) $(OUTPUT)
 $(OUTPUT): $(SOURCES) makefile_exports.txt
 	$(CC) $(SOURCES) --bind -s DEMANGLE_SUPPORT=1 -s EXPORTED_FUNCTIONS=@$(EXPORTS_FILE) -std=c++11 $(LDFLAGS) -o $(OUTPUT)
 
+.PHONY: clean all
 clean:
-	rm $(OUTPUT)
+	rm $(OUTPUT) $(OUTPUT).mem
