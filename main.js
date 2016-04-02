@@ -1,6 +1,8 @@
 // main test code for running the vorojs functions + showing results via threejs
 // currently just a chopped up version of a basic threejs example
 
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
 var scene, camera, renderer;
 var geometry, material, mesh;
 var vertices, offset;
@@ -12,6 +14,18 @@ function init() {
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
     camera.position.z = 10;
+    
+    controls = new THREE.TrackballControls( camera );
+    controls.rotateSpeed = 10.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 1.8;
+    controls.noZoom = false;
+    controls.noPan = false;
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+    controls.keys = [ 65, 83, 68 ];
+    controls.addEventListener( 'change', render );
+
     
     geometry = new THREE.BufferGeometry();
     // create a simple square shape. We duplicate the top left and bottom right
@@ -56,20 +70,35 @@ function init() {
 
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    
+    window.addEventListener( 'resize', onWindowResize, false );
 
-    document.body.appendChild( renderer.domElement );
+
+
+    container = document.getElementById( 'container' );
+    container.appendChild( renderer.domElement );
     
     animate();
-
+    render();
 }
 
-function animate() {
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    controls.handleResize();
+}
 
-    requestAnimationFrame( animate );
-    
+function render() {
     renderer.render( scene, camera );
-    //vertices.array[0] += .1;
-    //vertices.array[3] = .5
+}
+
+
+function animate() {
+    requestAnimationFrame( animate );
+    render(); // don't need this unless animation is happening independently of user input
     _randomPoints(1, offset+3*4*1);
     vertices.needsUpdate = true;
+    controls.update();
 }
