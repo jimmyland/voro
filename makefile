@@ -7,8 +7,8 @@ OUTPUT=vorowrap.js
 
 all: $(SOURCES) $(OUTPUT)
 
-$(OUTPUT): $(SOURCES)
-	$(CC) $(SOURCES) --memory-init-file 0 --bind -s DEMANGLE_SUPPORT=1 -s FULL_ES2=1 -s EXPORTED_FUNCTIONS=@$(EXPORTS_FILE) -std=c++11 $(LDFLAGS) -o $(OUTPUT)
+$(OUTPUT): $(SOURCES) makefile_exports.txt
+	$(CC) $(SOURCES) --bind -s DEMANGLE_SUPPORT=1 -s EXPORTED_FUNCTIONS=@$(EXPORTS_FILE) -std=c++11 $(LDFLAGS) -o $(OUTPUT)
 
 clean:
 	rm $(OUTPUT)

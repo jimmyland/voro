@@ -5,8 +5,6 @@ var scene, camera, renderer;
 var geometry, material, mesh;
 var vertices, offset;
 
-init();
-animate();
 
 function init() {
 
@@ -60,6 +58,8 @@ function init() {
     renderer.setSize( window.innerWidth, window.innerHeight );
 
     document.body.appendChild( renderer.domElement );
+    
+    animate();
 
 }
 

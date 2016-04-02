@@ -42,3 +42,9 @@ extern "C" int randomPoints(int maxPts, float *mem) {
     }
     return maxPts;
 }
+
+// main is called once emscripten has asynchronously loaded all it needs to call the other C functions
+// so we wait for its call to run the js init
+int main() {
+    emscripten_run_script("init();");
+}

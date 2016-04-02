@@ -1,1 +1,1 @@
-["_randomPoints"]
+["_main", "_randomPoints"]
