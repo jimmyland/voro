@@ -4,7 +4,7 @@
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
-var geometry, material, mesh;
+var geometry, material, mesh, pointset;
 var vertices, offset;
 
 
@@ -28,53 +28,28 @@ function init() {
 
     
     geometry = new THREE.BufferGeometry();
-    // create a simple square shape. We duplicate the top left and bottom right
-    // vertices because each vertex needs to appear once per triangle.
-    var vertexPositions = [
-                           [-1.0, -1.0,  1.0],
-                           [ 1.0, -1.0,  1.0],
-                           [ 1.0,  1.0,  1.0],
-                           
-                           [ 1.0,  1.0,  1.0],
-                           [-1.0,  1.0,  1.0],
-                           [-1.0, -1.0,  1.0]
-                           ];
-    offset = _malloc(6 * 4 * 3);
-    var array = Module.HEAPF32.subarray(offset/4, offset/4 + 18);
-    vertices = new THREE.BufferAttribute( array, 3 );
-    //vertices = new THREE.BufferAttribute( new Float32Array(6*3), 3 )
-    
-
-    // components of the position vector for each vertex are stored
-    // contiguously in the buffer.
-    var j=0;
-    for ( var i = 0; i < vertexPositions.length; i++ )
-    {
-       vertices.array[j++] = vertexPositions[i][0];
-       vertices.array[j++] = vertexPositions[i][1];
-       vertices.array[j++] = vertexPositions[i][2];
-    }
-    
-
-    // itemSize = 3 because there are 3 values (components) per vertex
+    var numPts = 1000;
+    offset = _malloc(numPts * 4 * 3);
+    _randomPoints(numPts, offset, -10, 10);
+    var array = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
+    vertices = new THREE.BufferAttribute(array, 3);
     geometry.addAttribute( 'position', vertices );
 
-    material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-    mesh = new THREE.Mesh( geometry, material );
+//    material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+//    mesh = new THREE.Mesh( geometry, material );
+//    mesh = new THREE.Mesh( geometry, material );
+//        scene.add( mesh );
+    
+    material = new THREE.PointsMaterial( { size: .1, color: 0xff0000 } );
+    pointset = new THREE.Points( geometry, material );
+    scene.add( pointset );
 
-    //geometry = new THREE.BoxGeometry( 200, 200, 200 );
-    //material = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true } );
-
-    //mesh = new THREE.Mesh( geometry, material );
-    scene.add( mesh );
 
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( window.innerWidth, window.innerHeight );
     renderer.setPixelRatio( window.devicePixelRatio );
     
     window.addEventListener( 'resize', onWindowResize, false );
-
-
 
     container = document.getElementById( 'container' );
     container.appendChild( renderer.domElement );
@@ -94,11 +69,13 @@ function render() {
     renderer.render( scene, camera );
 }
 
+function onChangeVertices() {
+    vertices.needsUpdate = true;
+    render();
+}
+
 
 function animate() {
     requestAnimationFrame( animate );
-    render(); // don't need this unless animation is happening independently of user input
-    _randomPoints(1, offset+3*4*1);
-    vertices.needsUpdate = true;
     controls.update();
 }

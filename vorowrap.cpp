@@ -34,11 +34,12 @@ extern "C" void testMalloc() {
 }
 
 // placeholder test of accessing+editing memory
-extern "C" int randomPoints(int maxPts, float *mem) {
+extern "C" int randomPoints(int maxPts, float *mem, float low, float high) {
+    float range = high-low;
     for (int i=0; i<maxPts; i++) {
-        mem[i*3+0] = float(rand() % RAND_MAX) / float(RAND_MAX);
-        mem[i*3+1] = float(rand() % RAND_MAX) / float(RAND_MAX);
-        mem[i*3+2] = float(rand() % RAND_MAX) / float(RAND_MAX);
+        mem[i*3+0] = range*(float(rand() % RAND_MAX) / float(RAND_MAX))+low;
+        mem[i*3+1] = range*(float(rand() % RAND_MAX) / float(RAND_MAX))+low;
+        mem[i*3+2] = range*(float(rand() % RAND_MAX) / float(RAND_MAX))+low;
     }
     return maxPts;
 }
