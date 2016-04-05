@@ -41,6 +41,7 @@ function init() {
     offset = _malloc(numPts * 4 * 3);
     _randomPoints(numPts, offset, -10, 10);
     var maxMeshVerts = 100000;
+    maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
     meshVertsPtr = _malloc(maxMeshVerts*3*4);
     var meshNumPts = _createVoro(-10, 10, -10, 10, -10, 10,
                               numPts, offset, maxMeshVerts, meshVertsPtr);
