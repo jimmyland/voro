@@ -8,7 +8,7 @@ OUTPUT=vorowrap.js
 all: $(SOURCES) $(OUTPUT)
 
 $(OUTPUT): $(SOURCES) makefile_exports.txt
-	$(CC) $(SOURCES) --bind -s DEMANGLE_SUPPORT=1 -s EXPORTED_FUNCTIONS=@$(EXPORTS_FILE) -std=c++11 $(LDFLAGS) -o $(OUTPUT)
+	$(CC) $(SOURCES) --bind -s NO_EXIT_RUNTIME=1 -s ASSERTIONS=1 -s DEMANGLE_SUPPORT=1 -s EXPORTED_FUNCTIONS=@$(EXPORTS_FILE) -std=c++11 $(LDFLAGS) -o $(OUTPUT)
 
 .PHONY: clean all
 clean:

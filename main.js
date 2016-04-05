@@ -5,8 +5,17 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
 var geometry, material, mesh, pointset;
-var vertices, offset;
+var vertices, offset, meshVertsPtr;
 
+
+function wait_for_ready() {
+    if (ready_for_emscripten_calls) {
+        init();
+    } else {
+        requestAnimationFrame( wait_for_ready );
+    }
+}
+wait_for_ready();
 
 function init() {
 
@@ -31,18 +40,30 @@ function init() {
     var numPts = 1000;
     offset = _malloc(numPts * 4 * 3);
     _randomPoints(numPts, offset, -10, 10);
-    var array = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
+    var maxMeshVerts = 100000;
+    meshVertsPtr = _malloc(maxMeshVerts*3*4);
+    var meshNumPts = _createVoro(-10, 10, -10, 10, -10, 10,
+                              numPts, offset, maxMeshVerts, meshVertsPtr);
+
+    var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
     vertices = new THREE.BufferAttribute(array, 3);
     geometry.addAttribute( 'position', vertices );
-
-//    material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-//    mesh = new THREE.Mesh( geometry, material );
-//    mesh = new THREE.Mesh( geometry, material );
-//        scene.add( mesh );
     
-    material = new THREE.PointsMaterial( { size: .1, color: 0xff0000 } );
-    pointset = new THREE.Points( geometry, material );
+    var ptsgeometry = new THREE.BufferGeometry();
+    var ptsarray = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
+    ptsverts = new THREE.BufferAttribute(ptsarray, 3);
+    ptsgeometry.addAttribute( 'position', ptsverts );
+    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
+    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
     scene.add( pointset );
+    material = new THREE.MeshBasicMaterial( { color: 0xff0000,
+                                           polygonOffset: true,
+                                           polygonOffsetFactor: 1, // positive value pushes polygon further away
+                                           polygonOffsetUnits: 1 } );
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
+
 
 
     renderer = new THREE.WebGLRenderer();
@@ -63,6 +84,7 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
     controls.handleResize();
+    render();
 }
 
 function render() {

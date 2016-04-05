@@ -1,1 +1,1 @@
-["_main", "_randomPoints"]
+["_main", "_randomPoints", "_createVoro"]
