@@ -1,0 +1,180 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 LucidaGrande;\f2\fnil\fcharset0 Menlo-Regular;
+}
+{\colortbl;\red255\green255\blue255;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid2\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid102\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{square\}}{\leveltext\leveltemplateid103\'01\uc0\u9642 ;}{\levelnumbers;}\fi-360\li2160\lin2160 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid202\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{square\}}{\leveltext\leveltemplateid203\'01\uc0\u9642 ;}{\levelnumbers;}\fi-360\li2160\lin2160 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{square\}}{\leveltext\leveltemplateid204\'01\uc0\u9642 ;}{\levelnumbers;}\fi-360\li2880\lin2880 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid301\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid302\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{square\}}{\leveltext\leveltemplateid303\'01\uc0\u9642 ;}{\levelnumbers;}\fi-360\li2160\lin2160 }{\listname ;}\listid4}
+{\list\listtemplateid5\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid401\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid5}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}{\listoverride\listid5\listoverridecount0\ls5}}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720
+
+\f0\fs26 \cf0 voro++ notes\
+\
+for a voronoi diagram overall, store \'97\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls1\ilvl0\cf0 {\listtext	\'95	}the voro++ container object\
+{\listtext	\'95	}vector<Cell> of voronoi cell info (see below)\
+{\listtext	\'95	}structure mapping the voronoi info to threejs buffer info\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls1\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}pointer to the float array of the vertex buffer\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}(same for normals buffer, color buffer, etc)\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}current length of vertex buffer (assume same length for other buffers)\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}max length of vertex buffer (assume same max len for other buffers)\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}for each tri, index of source voronoi cell\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}number of vertices currently active\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}flag for whether buffers are dirty\
+\pard\pardeftab720
+\cf0 \'a0for each voronoi cell, store \'97\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls2\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}position of particle\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}is it on/off\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}range(s) of triangles in the vertex buffer (tris = contiguous 3 verts)\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}neighboring cell indices\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}mapping into voro container object; cf container::put for more info\
+\pard\tx1660\tx2160\pardeftab720\li2160\fi-2160
+\ls2\ilvl2\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}specifically ijk and co[ijk]\
+{\listtext	
+\f1 \uc0\u9642 
+\f0 	}probably need to add a new put() that gives us those back!!\
+\pard\pardeftab720
+\cf0 \
+threejs drawing w/ toggle-able cells:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls3\ilvl0\cf0 {\listtext	\'95	}always keep vertices from 0 to currentLen as active, visible verts\
+{\listtext	\'95	}to toggle a cell OFF:\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls3\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}for ranges of vertices in the vertex buffer:\'a0\
+\pard\tx1660\tx2160\pardeftab720\li2160\fi-2160
+\ls3\ilvl2\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}if range is at the *end* of the vertex buffer, just shrink the currentLen to remove it\
+{\listtext	
+\f1 \uc0\u9642 
+\f0 	}otherwise, copy verts from the end of buffer into the current range.\
+\pard\tx2380\tx2880\pardeftab720\li2880\fi-2880
+\ls3\ilvl3\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}be sure to update the ranges of vertices for the cell that owns the moved vert\
+{\listtext	
+\f1 \uc0\u9642 
+\f0 	}be sure to update the triangle index list in the threejs buffer info struct\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls3\ilvl0\cf0 {\listtext	\'95	}to toggle a cell ON:\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls3\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}add its vertices to the end of the buffer after currentLen and update draw range\
+\pard\tx1660\tx2160\pardeftab720\li2160\fi-2160
+\ls3\ilvl2\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}if you run out of space in buffer, just don\'92t add those faces.\
+\pard\tx2380\tx2880\pardeftab720\li2880\fi-2880
+\ls3\ilvl3\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}set a flag indicating out of space; to fix user will need to regen whole structure w/ bigger buffers\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls3\ilvl0\cf0 {\listtext	\'95	}to remove a cell:\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls3\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}toggle it off\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}store all its neighbor cells\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}if it\'92s not the last cell, move the last cell into its position\
+\pard\tx1660\tx2160\pardeftab720\li2160\fi-2160
+\ls3\ilvl2\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}be sure to update cell indices for moved cell's triangles in the threejs buffer\
+{\listtext	
+\f1 \uc0\u9642 
+\f0 	}be sure to update update all neighbors of moved cell to refer to new index\
+{\listtext	
+\f1 \uc0\u9642 
+\f0 	}be sure to update stored neighbor cell inds from deleted cell if the moved cell happens to have been a neighbor\
+\pard\tx2380\tx2880\pardeftab720\li2880\fi-2880
+\ls3\ilvl3\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}ORRR cells can be referenced by pointer instead, and can have vector<Cell*>\
+\pard\tx1660\tx2160\pardeftab720\li2160\fi-2160
+\ls3\ilvl2\cf0 {\listtext	
+\f1 \uc0\u9642 
+\f0 	}remove from voro++\
+{\listtext	
+\f1 \uc0\u9642 
+\f0 	}rebuild all previous neighbor cells\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls3\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}decrement total num cells\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls3\ilvl0\cf0 {\listtext	\'95	}if we selectively enable faces only if they\'92re visible externally, we need to change rendering for neighbor cells when we toggle a cell. \'a0So e.g. when you toggle a cell OFF, neighboring cells need to go toggle their previously-invisible touching faces ON. \'a0When you toggle a cell ON, you could go toggle off some selective faces of a neighboring cell (but you don\'92t NEED to; you could just leave them on, or you could toggle everything in the neighbor OFF and ON again ...).\
+\pard\pardeftab720
+\cf0 v0: do not support OFF/removal!\
+\'a0\
+voro++ code notes:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls4\ilvl0\cf0 {\listtext	\'95	}particles are \'91put\'92 into containers; we get to specify the ID when we put\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls4\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}NOTE: IDs are not unique and mean nothing afaict; they\'92re just arbitrary tags\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls4\ilvl0\cf0 {\listtext	\'95	}CRITICAL Q: how do I remove or move a particle?\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440
+\ls4\ilvl1\cf0 {\listtext	
+\f1 \uc0\u9702 
+\f0 	}manually w/ custom fn: not supported by library!\
+{\listtext	
+\f1 \uc0\u9702 
+\f0 	}cf container::put in container.cc\
+\pard\tx1660\tx2160\pardeftab720\li2160\fi-2160
+\ls4\ilvl2
+\f2\fs22 \cf0 {\listtext	\uc0\u9642 	}co[ijk] == count of particles in ijk slot\uc0\u8232 id[ijk][] list of particles in ijk slot\u8232 p[ijk]+3*particle_num = x,y,z coordinate array\u8232 to delete:\'a0\u8232 a) swap pt at end w/ pt you want to delete\u8232 \'a0- swap the id\u8232 \'a0- swap the 3 doubles in the p[ijk][#] array\u8232 b) subtract 1 from co[ijk]\u8232 NOTE: IN CONTAINER_POLY it\'92s x,y,z,r in p[ijk][#]!\u8232 to move:\u8232 delete and re-put! b/c new particle ijk may be diff.\u8232 if actual computed cells are stored anywhere, can perhaps use neighbors to decide who to recompute:\u8232 \u8232 go for original neighbors as well as new particle\'92s neighbors
+\f0\fs26 \uc0\u8232 
+\f2\fs22 \uc0\u8232 
+\f0\fs26 \
+\pard\pardeftab720
+\cf0 todo: build own data structure that lives alongside the voro:: container and cell structures!\
+\pard\tx220\tx720\pardeftab720\li720\fi-720
+\ls5\ilvl0\cf0 {\listtext	\'95	}must know how to map from custom structure cells to voro container cells\
+{\listtext	\'95	}custom cells know their own faces and their neighbors\
+{\listtext	\'95	}this is where we put additional functionality like removing & recomputing cells\
+\pard\pardeftab720
+
+\f2\fs22 \cf0 \
+}
