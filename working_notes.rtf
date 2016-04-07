@@ -145,6 +145,10 @@ threejs drawing w/ toggle-able cells:\
 \ls3\ilvl0\cf0 {\listtext	\'95	}if we selectively enable faces only if they\'92re visible externally, we need to change rendering for neighbor cells when we toggle a cell. \'a0So e.g. when you toggle a cell OFF, neighboring cells need to go toggle their previously-invisible touching faces ON. \'a0When you toggle a cell ON, you could go toggle off some selective faces of a neighboring cell (but you don\'92t NEED to; you could just leave them on, or you could toggle everything in the neighbor OFF and ON again ...).\
 \pard\pardeftab720
 \cf0 v0: do not support OFF/removal!\
+\
+raycast notes:\
+ - {\field{\*\fldinst{HYPERLINK "http://threejs.org/examples/#webgl_interactive_buffergeometry"}}{\fldrslt http://threejs.org/examples/#webgl_interactive_buffergeometry}}\
+ raycast against the buffer geometry, then lookup in the custom vorojs structure the cell that owns the first-hit triangle.\
 \'a0\
 voro++ code notes:\
 \pard\tx220\tx720\pardeftab720\li720\fi-720
