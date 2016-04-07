@@ -18,6 +18,13 @@ function wait_for_ready() {
 wait_for_ready();
 
 function init() {
+    
+    // quick test of embind's class export stuff
+    var voro = new Module.Voro([1,2,3],[4,5,6]);
+    voro.hi();
+    console.log(voro.min[0]);
+    voro.delete();
+
 
     scene = new THREE.Scene();
 

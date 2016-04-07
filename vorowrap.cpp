@@ -4,12 +4,14 @@
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
+#include <emscripten/bind.h>
 #endif
 
 #include "voro++/voro++.hh"
 #include "glm/vec3.hpp"
 
 using namespace std;
+using namespace emscripten;
 
 // placeholder test that we can call voro++ functions
 int create_voro() {
@@ -43,11 +45,7 @@ bool output_vert_and_incr(float *output_v, int &output_i, vector<double> &input_
     return true;
 }
 
-struct Voro {
-    glm::vec3 bounds[2]; // bounds[0] = min of bounding box, bounds[1] = max of bounding box
-    
-    // etc
-};
+
 
 // helper to create a vertex buffer for a voronoi diagram given a point set and bounds
 // return num pts used in the vertex buffer
@@ -143,4 +141,32 @@ extern "C" int randomPoints(int numPts, float *mem, float low, float high) {
 // so we wait for its call to run the js init
 int main() {
     emscripten_run_script("ready_for_emscripten_calls = true;");
+}
+
+struct Voro {
+    Voro() {}
+    Voro(glm::vec3 low, glm::vec3 high) : b_min(low), b_max(high) {}
+    
+    union { // bounding box range
+        struct {glm::vec3 b_min, b_max;};
+        glm::vec3 bounds[2];
+    };
+    
+    void hi() { cout << "hi" << endl; }
+    // etc
+};
+
+EMSCRIPTEN_BINDINGS(voro) {
+    value_array<glm::vec3>("vec3")
+    .element(&glm::vec3::x)
+    .element(&glm::vec3::y)
+    .element(&glm::vec3::z)
+    ;
+    class_<Voro>("Voro")
+    .constructor<glm::vec3, glm::vec3>()
+    .property("min", &Voro::b_min)
+    .property("max", &Voro::b_max)
+    .function("hi", &Voro::hi)
+    ;
+
 }
