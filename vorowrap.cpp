@@ -6,7 +6,8 @@
 #include <emscripten.h>
 #endif
 
-#include "voro/voro++.hh"
+#include "voro++/voro++.hh"
+#include "glm/vec3.hpp"
 
 using namespace std;
 
@@ -41,6 +42,12 @@ bool output_vert_and_incr(float *output_v, int &output_i, vector<double> &input_
     output_i++;
     return true;
 }
+
+struct Voro {
+    glm::vec3 bounds[2]; // bounds[0] = min of bounding box, bounds[1] = max of bounding box
+    
+    // etc
+};
 
 // helper to create a vertex buffer for a voronoi diagram given a point set and bounds
 // return num pts used in the vertex buffer
