@@ -44,15 +44,14 @@ function init() {
 
     
     geometry = new THREE.BufferGeometry();
-    var numPts = 1000;
-    offset = _malloc(numPts * 4 * 3);
-    _randomPoints(numPts, offset, -10, 10);
+    
     var maxMeshVerts = 100000;
     maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
     meshVertsPtr = _malloc(maxMeshVerts*3*4);
 //    var meshNumPts = _createVoro(-10, 10, -10, 10, -10, 10,
 //                              numPts, offset, maxMeshVerts, meshVertsPtr);
     var voro = new Module.Voro([-10,-10,-10],[10,10,10]);
+    var numPts = 1000;
     for (var i=0; i<numPts; i++) {
         voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], Math.random()>.8);
     }
@@ -63,12 +62,12 @@ function init() {
     vertices = new THREE.BufferAttribute(array, 3);
     geometry.addAttribute( 'position', vertices );
     
-    var ptsgeometry = new THREE.BufferGeometry();
-    var ptsarray = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
-    ptsverts = new THREE.BufferAttribute(ptsarray, 3);
-    ptsgeometry.addAttribute( 'position', ptsverts );
-    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
-    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
+//    var ptsgeometry = new THREE.BufferGeometry();
+//    var ptsarray = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
+//    ptsverts = new THREE.BufferAttribute(ptsarray, 3);
+//    ptsgeometry.addAttribute( 'position', ptsverts );
+//    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
+//    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
 //    scene.add( pointset ); // no longer corresponds to voro cells, todo fix and re-add
     material = new THREE.MeshBasicMaterial( { color: 0xff0000,
                                            polygonOffset: true,
