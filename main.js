@@ -20,10 +20,10 @@ wait_for_ready();
 function init() {
     
     // quick test of embind's class export stuff
-    var voro = new Module.Voro([1,2,3],[4,5,6]);
-    voro.hi();
-    console.log(voro.min[0]);
-    voro.delete();
+    
+//    voro.hi();
+//    console.log(voro.min[0]);
+    
 
 
     scene = new THREE.Scene();
@@ -50,8 +50,14 @@ function init() {
     var maxMeshVerts = 100000;
     maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
     meshVertsPtr = _malloc(maxMeshVerts*3*4);
-    var meshNumPts = _createVoro(-10, 10, -10, 10, -10, 10,
-                              numPts, offset, maxMeshVerts, meshVertsPtr);
+//    var meshNumPts = _createVoro(-10, 10, -10, 10, -10, 10,
+//                              numPts, offset, maxMeshVerts, meshVertsPtr);
+    var voro = new Module.Voro([-10,-10,-10],[10,10,10]);
+    for (var i=0; i<numPts; i++) {
+        voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], Math.random()>.8);
+    }
+    var meshNumPts = voro.compute_whole_vertex_buffer_fresh(maxMeshVerts, meshVertsPtr);
+    voro.delete();
 
     var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
     vertices = new THREE.BufferAttribute(array, 3);
@@ -63,7 +69,7 @@ function init() {
     ptsgeometry.addAttribute( 'position', ptsverts );
     ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
     pointset = new THREE.Points( ptsgeometry, ptsmaterial );
-    scene.add( pointset );
+//    scene.add( pointset ); // no longer corresponds to voro cells, todo fix and re-add
     material = new THREE.MeshBasicMaterial( { color: 0xff0000,
                                            polygonOffset: true,
                                            polygonOffsetFactor: 1, // positive value pushes polygon further away
