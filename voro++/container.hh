@@ -288,6 +288,7 @@ class container : public container_base, public radius_mono {
 				int nx_,int ny_,int nz_,bool xperiodic_,bool yperiodic_,bool zperiodic_,int init_mem);
 		void clear();
 		void put(int n,double x,double y,double z);
+        bool put(int n,double x,double y,double z,int &ijk,int &q);
 		void put(particle_order &vo,int n,double x,double y,double z);
 		void import(FILE *fp=stdin);
 		void import(particle_order &vo,FILE *fp=stdin);

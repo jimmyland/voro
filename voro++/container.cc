@@ -95,6 +95,23 @@ void container::put(int n,double x,double y,double z) {
 
 /** Put a particle into the correct region of the container.
  * \param[in] n the numerical ID of the inserted particle.
+ * \param[in] (x,y,z) the position vector of the inserted particle. 
+ * \param[out] ijk the block where the particle was inserted
+ * \param[out] q the index of the particle within its block
+ * \return True if the particle was successfully placed; false otherwise */
+bool container::put(int n,double x,double y,double z, int &ijk, int &q) {
+    if(put_locate_block(ijk,x,y,z)) {
+        q = co[ijk];
+        id[ijk][co[ijk]]=n;
+        double *pp=p[ijk]+3*co[ijk]++;
+        *(pp++)=x;*(pp++)=y;*pp=z;
+        return true;
+    }
+    return false;
+}
+
+/** Put a particle into the correct region of the container.
+ * \param[in] n the numerical ID of the inserted particle.
  * \param[in] (x,y,z) the position vector of the inserted particle.
  * \param[in] r the radius of the particle. */
 void container_poly::put(int n,double x,double y,double z,double r) {
