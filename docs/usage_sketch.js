@@ -22,6 +22,7 @@ for (var i=0; i<numPts; i++) {
 
 // threejs helper fns
 var geometry = v3_build_geometry(voro, {settings}); // build an actual threejs buffergeometry
+// note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
 var gl_buffers = voro.build_gl_buffers(); // v3_build_geometry calls this
 
 // raycast via threejs function, but then do a lookup via voro
