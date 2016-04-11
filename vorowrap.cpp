@@ -61,15 +61,41 @@ struct CellCache { // computations from a voro++ computed cell
     }
 };
 
-struct CellGLBuffers {
-    float *vertices;
-    float *normals;
-    int len;
+struct CellToTris {
+    vector<int> tri_inds; // inds of tri
+    CellCache cache;
     
-    CellGLBuffers() : vertices(0), normals(0), len(0) {}
-    ~CellGLBuffers() {
+    // todo: also add mapping btwn tris and voronoi cell faces?
+};
+
+struct GLBufferManager {
+    float *vertices, *normals;
+    int len, maxLen;
+    int *cell_inds; // map from tri indices to cell indices
+    
+    vector<CellToTris*> info;
+    
+    GLBufferManager() : vertices(0), normals(0), len(0), maxLen(0), cell_inds(0) {}
+    GLBufferManager(int numCells, int triCapacity) : len(0) {
+        vertices = new float[triCapacity*3];
+        normals = new float[triCapacity*3];
+        cell_inds = new int[triCapacity];
+        
+        info.resize(numCells, 0);
+    }
+    
+    void clear() {
         delete [] vertices;
         delete [] normals;
+        delete [] cell_inds;
+        vertices = normals = 0;
+        cell_inds = 0;
+        len = maxLen = 0;
+        
+        for (auto *c : info) {
+            delete c;
+        }
+        info.clear();
     }
 };
 
@@ -89,20 +115,7 @@ struct Voro {
     void clear_computed() {
         delete con; con = 0;
         links.clear();
-        clear_cache();
-        clear_buffers();
-    }
-    void clear_cache() {
-        for (CellCache *cache : cell_caches) {
-            delete cache;
-        }
-        cell_caches.clear();
-    }
-    void clear_buffers() {
-        for (CellGLBuffers *buf : cell_buffers) {
-            delete buf;
-        }
-        cell_buffers.clear();
+        gl_computed.clear();
     }
     
     // assuming cells vector is already created, now create the container for holding the cells
@@ -182,8 +195,7 @@ private:
     voro::container *con;
     // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
-    vector<CellCache*> cell_caches;
-    vector<CellGLBuffers*> cell_buffers;
+    GLBufferManager gl_computed;
     
     
 
