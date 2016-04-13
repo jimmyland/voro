@@ -62,6 +62,19 @@ function init() {
     vertices = new THREE.BufferAttribute(array, 3);
     geometry.addAttribute( 'position', vertices );
     
+    var lights = [];
+    lights[0] = new THREE.PointLight( 0xffffff, 1, 0 );
+    lights[1] = new THREE.PointLight( 0xffffff, 1, 0 );
+    lights[2] = new THREE.PointLight( 0xffffff, 1, 0 );
+    
+    lights[0].position.set( 0, 200, 0 );
+    lights[1].position.set( 100, 200, 100 );
+    lights[2].position.set( -100, -200, -100 );
+    
+    scene.add( lights[0] );
+    scene.add( lights[1] );
+    scene.add( lights[2] );
+    
 //    var ptsgeometry = new THREE.BufferGeometry();
 //    var ptsarray = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
 //    ptsverts = new THREE.BufferAttribute(ptsarray, 3);
@@ -69,13 +82,10 @@ function init() {
 //    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
 //    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
 //    scene.add( pointset ); // no longer corresponds to voro cells, todo fix and re-add
-    material = new THREE.MeshBasicMaterial( { color: 0xff0000,
-                                           polygonOffset: true,
-                                           polygonOffsetFactor: 1, // positive value pushes polygon further away
-                                           polygonOffsetUnits: 1 } );
+    material = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ) ;
     mesh = new THREE.Mesh( geometry, material );
     scene.add( mesh );
-    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
+//    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
 
 
 
