@@ -68,29 +68,57 @@ struct CellToTris {
     // todo: also add mapping btwn tris and voronoi cell faces?
 };
 
+struct Voro;
+
 struct GLBufferManager {
-    float *vertices, *normals;
-    int len, maxLen;
+    float *vertices;
+    int tri_count, max_tris;
     int *cell_inds; // map from tri indices to cell indices
     
     vector<CellToTris*> info;
     
-    GLBufferManager() : vertices(0), normals(0), len(0), maxLen(0), cell_inds(0) {}
-    GLBufferManager(int numCells, int triCapacity) : len(0) {
-        vertices = new float[triCapacity*3];
-        normals = new float[triCapacity*3];
+    GLBufferManager() : vertices(0), /*normals(0),*/ tri_count(0), max_tris(0), cell_inds(0) {}
+
+    void init(int numCells, int triCapacity) {
+        clear();
+        
+        vertices = new float[triCapacity*9];
+//        normals = new float[triCapacity*9];
         cell_inds = new int[triCapacity];
+        max_tris = triCapacity;
+        tri_count = 0;
         
         info.resize(numCells, 0);
     }
     
+    void compute(Voro &src) {
+        // todo fill glbuffermanager with full cell
+    }
+    
+    uintptr_t get_vertices() { // for embind
+        return reinterpret_cast<uintptr_t>(vertices);
+    }
+    
+    int get_tri_count() {
+        return tri_count;
+    }
+    
+    void swapnpop(int cell) {
+        // todo delete via swapnpop
+    }
+    
+    void compute(int cell) {
+        // todo compute
+    }
+    
     void clear() {
         delete [] vertices;
-        delete [] normals;
+//        delete [] normals;
         delete [] cell_inds;
-        vertices = normals = 0;
+        vertices = 0;
+//        normals = 0;
         cell_inds = 0;
-        len = maxLen = 0;
+        tri_count = max_tris = 0;
         
         for (auto *c : info) {
             delete c;
