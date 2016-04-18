@@ -5,7 +5,6 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
 var geometry, material, mesh, pointset;
-var vertices, offset, meshVertsPtr;
 
 
 function wait_for_ready() {
@@ -17,15 +16,37 @@ function wait_for_ready() {
 }
 wait_for_ready();
 
+function v3_build_geometry_old(voro, settings) {
+    var geometry = new THREE.BufferGeometry();
+    var maxMeshVerts = 100000;
+    maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
+    var meshVertsPtr = _malloc(maxMeshVerts*3*4);
+    var meshNumPts = voro.compute_whole_vertex_buffer_fresh(maxMeshVerts, meshVertsPtr);
+    
+    var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
+    var vertices = new THREE.BufferAttribute(array, 3);
+    geometry.addAttribute( 'position', vertices );
+    
+    return geometry;
+}
+
+function v3_build_geometry(voro, settings) {
+    var geometry = new THREE.BufferGeometry();
+    voro.gl_build(100000 /* initial guess at num tris needed */);
+    var verts_ptr = voro.gl_vertices();
+    var num_tris = voro.gl_tri_count();
+    var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + num_tris*3*3);
+    var vertices = new THREE.BufferAttribute(array, 3);
+    geometry.addAttribute('position', vertices);
+    return geometry;
+}
+
+
+//var geometry = v3_build_geometry(voro, {settings}); // build an actual threejs buffergeometry
+// note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
+//var gl_buffers = voro.build_gl_buffers(); // v3_build_geometry calls this
+
 function init() {
-    
-    // quick test of embind's class export stuff
-    
-//    voro.hi();
-//    console.log(voro.min[0]);
-    
-
-
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -42,25 +63,18 @@ function init() {
     controls.keys = [ 65, 83, 68 ];
     controls.addEventListener( 'change', render );
 
-    
-    geometry = new THREE.BufferGeometry();
-    
-    var maxMeshVerts = 100000;
-    maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
-    meshVertsPtr = _malloc(maxMeshVerts*3*4);
-//    var meshNumPts = _createVoro(-10, 10, -10, 10, -10, 10,
-//                              numPts, offset, maxMeshVerts, meshVertsPtr);
+    // create voro structure w/ bounding box
     var voro = new Module.Voro([-10,-10,-10],[10,10,10]);
     var numPts = 1000;
     for (var i=0; i<numPts; i++) {
         voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], Math.random()>.8);
     }
-    var meshNumPts = voro.compute_whole_vertex_buffer_fresh(maxMeshVerts, meshVertsPtr);
+    
+    geometry = v3_build_geometry(voro, {});
+    
     voro.delete();
 
-    var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
-    vertices = new THREE.BufferAttribute(array, 3);
-    geometry.addAttribute( 'position', vertices );
+    
     
     var lights = [];
     lights[0] = new THREE.PointLight( 0xffffff, 1, 0 );
@@ -115,7 +129,7 @@ function render() {
 }
 
 function onChangeVertices() {
-    vertices.needsUpdate = true;
+    geometry.attributes['position'].needsUpdate = true;
     render();
 }
 

@@ -62,7 +62,8 @@ struct CellCache { // computations from a voro++ computed cell
 };
 
 struct CellToTris {
-    vector<int> tri_inds; // inds of tri
+    vector<int> tri_inds; // indices into the GLBufferManager's vertices array, indicating which triangles are from this cell
+                            // i.e. if tri_inds[0]==47, then vertices[47*3] ... vertices[47*3+2] (incl.) are from this cell
     CellCache cache;
     
     // todo: also add mapping btwn tris and voronoi cell faces?
@@ -74,6 +75,8 @@ struct GLBufferManager {
     float *vertices;
     int tri_count, max_tris;
     int *cell_inds; // map from tri indices to cell indices
+    short *cell_internal_inds; // map from tri indices to internal tri backref
+    voro::voronoicell_neighbor vorocell; // reused temp var, holds computed cell info
     
     vector<CellToTris*> info;
     
@@ -85,15 +88,60 @@ struct GLBufferManager {
         vertices = new float[triCapacity*9];
 //        normals = new float[triCapacity*9];
         cell_inds = new int[triCapacity];
+        cell_internal_inds = new short[triCapacity];
         max_tris = triCapacity;
         tri_count = 0;
         
         info.resize(numCells, 0);
     }
     
-    void compute(Voro &src) {
-        // todo fill glbuffermanager with full cell
+    inline void clear_cell(CellToTris &c2t) {
+        for (int tri : c2t.tri_inds) {
+            swapnpop_tri(tri);
+        }
+        c2t.tri_inds.clear();
+        c2t.cache.clear();
     }
+    
+    inline CellToTris& get_clean_cell(int cell) {
+        if (!info[cell]) {
+            info[cell] = new CellToTris();
+        } else {
+            clear_cell(*info[cell]);
+        }
+        return *info[cell];
+    }
+    
+    
+    inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t) {
+        if (tri_count+1 >= max_tris) {
+            return false;
+        }
+        
+        float *v = vertices + tri_count*9;
+        for (int vii=0; vii<3; vii++) {
+            int ibase = vs[vii]*3;
+            for (int ii=0; ii<3; ii++) {
+                *v = input_v[ibase+ii];
+                v++;
+            }
+        }
+        cell_inds[tri_count] = cell;
+        cell_internal_inds[tri_count] = (short)c2t.tri_inds.size();
+        c2t.tri_inds.push_back(tri_count);
+
+        
+        tri_count++;
+        
+        return true;
+    }
+    
+    void compute_cell(Voro &src, int cell); // compute caches for all cells and add tris for non-zero cells
+
+    void compute_all(Voro &src, int tricap);
+    
+    void add_cell_tris(Voro &src, int cell, CellToTris &c2t);
+    
     
     uintptr_t get_vertices() { // for embind
         return reinterpret_cast<uintptr_t>(vertices);
@@ -102,13 +150,18 @@ struct GLBufferManager {
     int get_tri_count() {
         return tri_count;
     }
-    
-    void swapnpop(int cell) {
+   
+    void swapnpop_tri(int tri) {
+        
         // todo delete via swapnpop
     }
-    
-    void compute(int cell) {
-        // todo compute
+    void swapnpop_cell(int cell) {
+        assert(info[cell]);
+        
+        // todo delete all tris via swapnpop
+        //  info[cell]->tri_inds
+        
+        // todo delete via swapnpop
     }
     
     void clear() {
@@ -202,6 +255,8 @@ struct Voro {
         int id = int(cells.size());
         cells.push_back(Cell(pt, type));
         if (con) {
+            assert(false); // not supported yet
+            
             CellConLink link;
             con->put(id, pt.x, pt.y, pt.z, link.ijk, link.q);
             links.push_back(link);
@@ -210,8 +265,22 @@ struct Voro {
             // todo: update caches + buffers too, or at least mark as dirty
         }
     }
+    
+    void gl_build(int max_tris_guess) {
+        // populate gl_computed with current whole voronoi diagram
+        gl_computed.compute_all(*this, max_tris_guess);
+        
+    }
+    uintptr_t gl_vertices() {
+        return gl_computed.get_vertices();
+    }
+    int gl_tri_count() {
+        return gl_computed.get_tri_count();
+    }
 
-private:
+protected:
+    friend class GLBufferManager;
+    
     // library user populates the bounds and the cells vector
     // these define the truth of what the voronoi diagram should be.
     union { // bounding box range
@@ -258,6 +327,52 @@ private:
 
 };
 
+void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for all cells and add tris for non-zero cells
+    CellToTris &c = get_clean_cell(cell);
+    
+    auto &link = src.links[cell];
+    if (src.con->compute_cell(vorocell, link.ijk, link.q)) {
+        c.cache.create(src.cells[cell].pos, vorocell);
+        
+        add_cell_tris(src, cell, c);
+    }
+    
+    //      src.add_to_buffer(cache, i, max_pts_output, vertices, output_i);
+}
+
+void GLBufferManager::compute_all(Voro &src, int tricap) {
+    if (!src.con) {
+        src.build_container();
+    }
+    init(src.cells.size(), tricap);
+    
+    assert(src.cells.size()==src.links.size());
+    for (size_t i=0; i < src.cells.size(); i++) {
+        compute_cell(src, i);
+    }
+}
+
+void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // assuming the cache is fine, just add the tris for it
+    CellCache &c = c2t.cache;
+    int type = src.cells[cell].type;
+    if (type == 0) return;
+    
+    for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
+        if (src.cells[c.neighbors[ni]].type != type) {
+            // make a fan of triangles to cover the face
+            int vicount = (i+c.faces[i]+1)-(i+1);
+            int vs[3] = {c.faces[i+1], 0, c.faces[i+2]};
+            for (int j = i+3; j < i+c.faces[i]+1; j++) { // facev
+                vs[1] = c.faces[j];
+                
+                add_tri(c.vertices, vs, cell, c2t);
+                
+                vs[2] = vs[1];
+            }
+        }
+    }
+}
+
 EMSCRIPTEN_BINDINGS(voro) {
     value_array<glm::vec3>("vec3")
     .element(&glm::vec3::x)
@@ -269,6 +384,9 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
     .function("compute_whole_vertex_buffer_fresh", &Voro::compute_whole_vertex_buffer_fresh_embind_is_stupid_version, allow_raw_pointers())
+    .function("gl_build", &Voro::gl_build)
+    .function("gl_vertices", &Voro::gl_vertices)
+    .function("gl_tri_count", &Voro::gl_tri_count)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
