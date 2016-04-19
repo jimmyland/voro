@@ -64,9 +64,8 @@ struct CellCache { // computations from a voro++ computed cell
 struct CellToTris {
     vector<int> tri_inds; // indices into the GLBufferManager's vertices array, indicating which triangles are from this cell
                             // i.e. if tri_inds[0]==47, then vertices[47*3] ... vertices[47*3+2] (incl.) are from this cell
+    vector<short> tri_faces;
     CellCache cache;
-    
-    // todo: also add mapping btwn tris and voronoi cell faces?
 };
 
 struct Voro;
@@ -100,6 +99,7 @@ struct GLBufferManager {
             swapnpop_tri(tri);
         }
         c2t.tri_inds.clear();
+        c2t.tri_faces.clear();
     }
     inline void clear_cell_cache(CellToTris &c2t) {
         c2t.cache.clear();
@@ -119,7 +119,7 @@ struct GLBufferManager {
     }
     
     
-    inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t) {
+    inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t, int f) {
         if (tri_count+1 >= max_tris) {
             return false;
         }
@@ -135,6 +135,7 @@ struct GLBufferManager {
         cell_inds[tri_count] = cell;
         cell_internal_inds[tri_count] = (short)c2t.tri_inds.size();
         c2t.tri_inds.push_back(tri_count);
+        c2t.tri_faces.push_back(f);
 
         
         tri_count++;
@@ -388,7 +389,7 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
             for (int j = i+3; j < i+c.faces[i]+1; j++) { // facev
                 vs[1] = c.faces[j];
                 
-                add_tri(c.vertices, vs, cell, c2t);
+                add_tri(c.vertices, vs, cell, c2t, ni);
                 
                 vs[2] = vs[1];
             }

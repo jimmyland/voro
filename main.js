@@ -52,10 +52,8 @@ function v3_update_geometry(voro, geometry) {
 }
 
 function v3_toggle_cell(voro, cell, geometry) {
-    console.log("toggling " + cell);
     voro.toggle_cell(cell);
     v3_update_geometry(voro, geometry);
-    console.log("tri count = " + voro.gl_tri_count());
 }
 
 
