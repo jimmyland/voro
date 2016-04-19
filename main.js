@@ -5,6 +5,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
 var geometry, material, mesh, pointset;
+var voro;
 
 
 function wait_for_ready() {
@@ -16,29 +17,45 @@ function wait_for_ready() {
 }
 wait_for_ready();
 
-function v3_build_geometry_old(voro, settings) {
-    var geometry = new THREE.BufferGeometry();
-    var maxMeshVerts = 100000;
-    maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
-    var meshVertsPtr = _malloc(maxMeshVerts*3*4);
-    var meshNumPts = voro.compute_whole_vertex_buffer_fresh(maxMeshVerts, meshVertsPtr);
-    
-    var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
-    var vertices = new THREE.BufferAttribute(array, 3);
-    geometry.addAttribute( 'position', vertices );
-    
-    return geometry;
-}
+//function v3_build_geometry_old(voro, settings) {
+//    var geometry = new THREE.BufferGeometry();
+//    var maxMeshVerts = 100000;
+//    maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
+//    var meshVertsPtr = _malloc(maxMeshVerts*3*4);
+//    var meshNumPts = voro.compute_whole_vertex_buffer_fresh(maxMeshVerts, meshVertsPtr);
+//    
+//    var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
+//    var vertices = new THREE.BufferAttribute(array, 3);
+//    geometry.addAttribute( 'position', vertices );
+//    
+//    return geometry;
+//}
 
 function v3_build_geometry(voro, settings) {
     var geometry = new THREE.BufferGeometry();
-    voro.gl_build(100000 /* initial guess at num tris needed */);
+    var max_tris = 100000;
+    voro.gl_build(max_tris /* initial guess at num tris needed */);
     var verts_ptr = voro.gl_vertices();
     var num_tris = voro.gl_tri_count();
-    var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + num_tris*3*3);
+    var max_tris = voro.gl_max_tris();
+    var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_tris*3*3);
     var vertices = new THREE.BufferAttribute(array, 3);
     geometry.addAttribute('position', vertices);
+    geometry.setDrawRange(0, num_tris*3);
     return geometry;
+}
+
+function v3_update_geometry(voro, geometry) {
+    var num_tris = voro.gl_tri_count();
+    geometry.setDrawRange(0, num_tris*3);
+    geometry.attributes['position'].needsUpdate = true;
+}
+
+function v3_toggle_cell(voro, cell, geometry) {
+    console.log("toggling " + cell);
+    voro.toggle_cell(cell);
+    v3_update_geometry(voro, geometry);
+    console.log("tri count = " + voro.gl_tri_count());
 }
 
 
@@ -64,7 +81,7 @@ function init() {
     controls.addEventListener( 'change', render );
 
     // create voro structure w/ bounding box
-    var voro = new Module.Voro([-10,-10,-10],[10,10,10]);
+    voro = new Module.Voro([-10,-10,-10],[10,10,10]);
     var numPts = 1000;
     for (var i=0; i<numPts; i++) {
         voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], Math.random()>.8);
@@ -72,7 +89,9 @@ function init() {
     
     geometry = v3_build_geometry(voro, {});
     
-    voro.delete();
+    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
+    
+//    voro.delete();
 
     
     
@@ -90,12 +109,12 @@ function init() {
     scene.add( lights[2] );
     
 //    var ptsgeometry = new THREE.BufferGeometry();
-//    var ptsarray = Module.HEAPF32.subarray(offset/4, offset/4 + numPts*3);
+//    var ptsarray = Module.HEAPF32.subarray(offset/4, offs  et/4 + numPts*3);
 //    ptsverts = new THREE.BufferAttribute(ptsarray, 3);
 //    ptsgeometry.addAttribute( 'position', ptsverts );
 //    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
 //    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
-//    scene.add( pointset ); // no longer corresponds to voro cells, todo fix and re-add
+//    scene.add( pointset ); // no longer corresponds to vor                                                                                                                                                                                                                                                                                                                 o cells, todo fix and re-add
     material = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ) ;
     mesh = new THREE.Mesh( geometry, material );
     scene.add( mesh );
@@ -135,6 +154,9 @@ function onChangeVertices() {
 
 
 function animate() {
-    requestAnimationFrame( animate );
+    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
     controls.update();
+    onChangeVertices();
+    requestAnimationFrame( animate );
+
 }

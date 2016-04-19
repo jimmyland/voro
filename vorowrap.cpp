@@ -95,19 +95,25 @@ struct GLBufferManager {
         info.resize(numCells, 0);
     }
     
-    inline void clear_cell(CellToTris &c2t) {
+    inline void clear_cell_tris(CellToTris &c2t) {
         for (int tri : c2t.tri_inds) {
             swapnpop_tri(tri);
         }
         c2t.tri_inds.clear();
+    }
+    inline void clear_cell_cache(CellToTris &c2t) {
         c2t.cache.clear();
+    }
+    inline void clear_cell_all(CellToTris &c2t) {
+        clear_cell_tris(c2t);
+        clear_cell_cache(c2t);
     }
     
     inline CellToTris& get_clean_cell(int cell) {
         if (!info[cell]) {
             info[cell] = new CellToTris();
         } else {
-            clear_cell(*info[cell]);
+            clear_cell_all(*info[cell]);
         }
         return *info[cell];
     }
@@ -136,27 +142,30 @@ struct GLBufferManager {
         return true;
     }
     
+    void set_cell(Voro &src, int cell, int oldtype);
+    
     void compute_cell(Voro &src, int cell); // compute caches for all cells and add tris for non-zero cells
 
     void compute_all(Voro &src, int tricap);
     
     void add_cell_tris(Voro &src, int cell, CellToTris &c2t);
-    
-    
-    uintptr_t get_vertices() { // for embind
-        return reinterpret_cast<uintptr_t>(vertices);
-    }
-    
-    int get_tri_count() {
-        return tri_count;
-    }
    
     void swapnpop_tri(int tri) {
-        
-        // todo delete via swapnpop
+        if (tri+1 != tri_count) {
+            int ts = tri_count-1;
+            assert(ts > 0);
+            for (int ii=0; ii<9; ii++) {
+                vertices[tri*9+ii] = vertices[ts*9+ii];
+            }
+            cell_inds[tri] = cell_inds[ts];
+            cell_internal_inds[tri] = cell_internal_inds[ts];
+            info[cell_inds[tri]]->tri_inds[cell_internal_inds[tri]] = tri;
+        }
+        tri_count--;
     }
     void swapnpop_cell(int cell) {
         assert(info[cell]);
+        assert(false); // not implemented yet
         
         // todo delete all tris via swapnpop
         //  info[cell]->tri_inds
@@ -272,10 +281,24 @@ struct Voro {
         
     }
     uintptr_t gl_vertices() {
-        return gl_computed.get_vertices();
+        return reinterpret_cast<uintptr_t>(gl_computed.vertices);
     }
     int gl_tri_count() {
-        return gl_computed.get_tri_count();
+        return gl_computed.tri_count;
+    }
+    int gl_max_tris() {
+        return gl_computed.max_tris;
+    }
+    int cell_count() {
+        return cells.size();
+    }
+    void toggle_cell(int cell) {
+        if (cell < 0 || cell >= cells.size())
+            return;
+        
+        int oldtype = cells[cell].type;
+        cells[cell].type = !oldtype;
+        gl_computed.set_cell(*this, cell, oldtype);
     }
 
 protected:
@@ -373,6 +396,34 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
     }
 }
 
+void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
+    if (oldtype == src.cells[cell].type) return;
+    int type = src.cells[cell].type;
+    
+    if (info[cell] && oldtype) {
+        clear_cell_tris(*info[cell]);
+        if (!type) { // recompute neighbors that may be revealed
+            for (int ni : info[cell]->cache.neighbors) {
+                if (ni >= 0 && info[ni] && src.cells[ni].type) {
+                    clear_cell_tris(*info[ni]);
+                    add_cell_tris(src, ni, *info[ni]);
+                }
+            }
+        }
+    }
+    
+    if (src.cells[cell].type == 0) {
+        return;
+    }
+    
+    if (!info[cell]) {
+        compute_cell(src, cell);
+    } else {
+        add_cell_tris(src, cell, *info[cell]);
+    }
+}
+
+
 EMSCRIPTEN_BINDINGS(voro) {
     value_array<glm::vec3>("vec3")
     .element(&glm::vec3::x)
@@ -387,6 +438,9 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_build", &Voro::gl_build)
     .function("gl_vertices", &Voro::gl_vertices)
     .function("gl_tri_count", &Voro::gl_tri_count)
+    .function("gl_max_tris", &Voro::gl_max_tris)
+    .function("cell_count", &Voro::cell_count)
+    .function("toggle_cell", &Voro::toggle_cell)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
