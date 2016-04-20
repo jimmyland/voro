@@ -6,6 +6,22 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 var scene, camera, renderer;
 var geometry, material, mesh, pointset;
 var voro;
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+
+var line;
+
+
+
+
+
+function make_line() {
+    var geometry = new THREE.BufferGeometry();
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( 4 * 3 ), 3 ) );
+    var material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2, transparent: false } );
+    line = new THREE.Line( geometry, material );
+    return line;
+}
 
 
 function wait_for_ready() {
@@ -30,6 +46,42 @@ wait_for_ready();
 //    
 //    return geometry;
 //}
+
+function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
+    caster.setFromCamera(mouse, camera);
+    var intersects = raycaster.intersectObject(mesh);
+    line.visible = true;//intersects.length > 0;
+    if (intersects.length == 0)
+        return -1;
+    
+    var intersect = intersects[0];
+    console.log("index: " + intersect.index);
+    var face = intersect.face;
+    var linePosition = line.geometry.attributes.position;
+    var meshPosition = mesh.geometry.attributes.position;
+    linePosition.copyAt( 0, meshPosition, face.a );
+    linePosition.copyAt( 1, meshPosition, face.b );
+    linePosition.copyAt( 2, meshPosition, face.c );
+    linePosition.copyAt( 3, meshPosition, face.a );
+    line.geometry.attributes.position.needsUpdate = true;
+    
+    return intersect.index;
+}
+
+function v3_raycast(voro, mesh, mouse, camera, caster) {
+    index = v3_raycast_vertex_index(voro, mesh, mouse, camera, caster)
+    if (index < 0)
+        return index;
+    
+    return voro.cell_from_vertex(index)
+}
+function v3_raycast_neighbor(voro, mesh, mouse, camera, caster) {
+    index = v3_raycast_vertex_index(voro, mesh, mouse, camera, caster)
+    if (index < 0)
+        return index;
+    
+    return voro.cell_neighbor_from_vertex(index)
+}
 
 function v3_build_geometry(voro, settings) {
     var geometry = new THREE.BufferGeometry();
@@ -115,7 +167,11 @@ function init() {
 //    scene.add( pointset ); // no longer corresponds to vor                                                                                                                                                                                                                                                                                                                 o cells, todo fix and re-add
     material = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ) ;
     mesh = new THREE.Mesh( geometry, material );
+//    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
     scene.add( mesh );
+    
+    line = make_line();
+    scene.add(line);
 //    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
 
 
@@ -125,6 +181,7 @@ function init() {
     renderer.setPixelRatio( window.devicePixelRatio );
     
     window.addEventListener( 'resize', onWindowResize, false );
+    document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 
     container = document.getElementById( 'container' );
     container.appendChild( renderer.domElement );
@@ -140,6 +197,15 @@ function onWindowResize() {
     controls.handleResize();
     render();
 }
+function onDocumentMouseMove( event ) {
+    event.preventDefault();
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+    console.log(cell);
+    v3_toggle_cell(voro, cell, geometry);
+    onChangeVertices();
+}
 
 function render() {
     renderer.render( scene, camera );
@@ -152,7 +218,7 @@ function onChangeVertices() {
 
 
 function animate() {
-    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
+//    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
     controls.update();
     onChangeVertices();
     requestAnimationFrame( animate );

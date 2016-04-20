@@ -94,6 +94,21 @@ struct GLBufferManager {
         info.resize(numCells, 0);
     }
     
+    int vert2cell(int vi) {
+        if (vi < 0 || vi >= tri_count*3)
+            return -1;
+        return cell_inds[vi/3];
+    }
+    int vert2cell_neighbor(int vi) {
+        if (vi < 0 || vi >= tri_count*3) return -1;
+        int tri = vi / 3;
+        int cell = cell_inds[tri];
+        CellToTris *in = info[cell];
+        if (!in) return -1;
+        int fi = in->tri_faces[cell_internal_inds[tri]];
+        return in->cache.neighbors[fi];
+    }
+    
     inline void clear_cell_tris(CellToTris &c2t) {
         for (int tri : c2t.tri_inds) {
             swapnpop_tri(tri);
@@ -301,6 +316,12 @@ struct Voro {
         cells[cell].type = !oldtype;
         gl_computed.set_cell(*this, cell, oldtype);
     }
+    int cell_from_vertex(int vert_ind) {
+        return gl_computed.vert2cell(vert_ind);
+    }
+    int cell_neighbor_from_vertex(int vert_ind) {
+        return gl_computed.vert2cell_neighbor(vert_ind);
+    }
 
 protected:
     friend class GLBufferManager;
@@ -442,6 +463,8 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_max_tris", &Voro::gl_max_tris)
     .function("cell_count", &Voro::cell_count)
     .function("toggle_cell", &Voro::toggle_cell)
+    .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)
+    .function("cell_from_vertex", &Voro::cell_from_vertex)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
