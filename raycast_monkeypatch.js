@@ -165,7 +165,7 @@ THREE.Mesh.prototype.raycast = ( function () {
             } else {
 
 
-                for ( var i = 0, l = positions.length; i < l; i += 9 ) {
+                for ( var i = geometry.drawRange.start*3, l = Math.min(positions.length,geometry.drawRange.count*3); i < l; i += 9 ) {
 
                     a = i / 3;
                     b = a + 1;
