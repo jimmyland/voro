@@ -11,7 +11,12 @@ var mouse = new THREE.Vector2();
 
 var line;
 
+var datgui;
+var settings;
 
+var VoroSettings = function() {
+    this.mode = 'camera';
+};
 
 
 
@@ -119,16 +124,14 @@ function init() {
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
     camera.position.z = 10;
     
-    controls = new THREE.TrackballControls( camera );
-    controls.rotateSpeed = 10.0;
-    controls.zoomSpeed = 1.2;
-    controls.panSpeed = 1.8;
-    controls.noZoom = false;
-    controls.noPan = false;
-    controls.staticMoving = true;
-    controls.dynamicDampingFactor = 0.3;
-    controls.keys = [ 65, 83, 68 ];
-    controls.addEventListener( 'change', render );
+
+    
+
+    datgui = new dat.GUI();
+    settings = new VoroSettings();
+    datgui.add(settings,'mode',['camera', 'activate', 'deactivate', 'add', 'delete']);
+    
+
 
     // create voro structure w/ bounding box
     voro = new Module.Voro([-10,-10,-10],[10,10,10]);
@@ -185,6 +188,17 @@ function init() {
 
     container = document.getElementById( 'container' );
     container.appendChild( renderer.domElement );
+    
+    controls = new THREE.TrackballControls( camera, renderer.domElement );
+    controls.rotateSpeed = 10.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 1.8;
+    controls.noZoom = false;
+    controls.noPan = false;
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+    controls.keys = [ 65, 83, 68 ];
+    controls.addEventListener( 'change', render );
     
     animate();
     render();
