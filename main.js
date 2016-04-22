@@ -8,6 +8,7 @@ var geometry, material, mesh, pointset;
 var voro;
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
+var controls;
 
 var line;
 
@@ -15,16 +16,16 @@ var datgui;
 var settings;
 
 var VoroSettings = function() {
-    this.mode = 'camera';
+    this.mode = 'toggle';
 };
 
 
 
-function make_line() {
+function make_line(len) {
     var geometry = new THREE.BufferGeometry();
-    geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( 4 * 3 ), 3 ) );
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( 4 * 3 ), len ) );
     var material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2, transparent: false } );
-    line = new THREE.Line( geometry, material );
+    var line = new THREE.Line( geometry, material );
     return line;
 }
 
@@ -38,29 +39,15 @@ function wait_for_ready() {
 }
 wait_for_ready();
 
-//function v3_build_geometry_old(voro, settings) {
-//    var geometry = new THREE.BufferGeometry();
-//    var maxMeshVerts = 100000;
-//    maxMeshVerts = Math.floor(maxMeshVerts/3)*3;
-//    var meshVertsPtr = _malloc(maxMeshVerts*3*4);
-//    var meshNumPts = voro.compute_whole_vertex_buffer_fresh(maxMeshVerts, meshVertsPtr);
-//    
-//    var array = Module.HEAPF32.subarray(meshVertsPtr/4, meshVertsPtr/4 + meshNumPts*3);
-//    var vertices = new THREE.BufferAttribute(array, 3);
-//    geometry.addAttribute( 'position', vertices );
-//    
-//    return geometry;
-//}
-
 function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
+
     var intersects = raycaster.intersectObject(mesh);
-    line.visible = true;//intersects.length > 0;
+    line.visible = intersects.length>0;
     if (intersects.length == 0)
         return -1;
     
     var intersect = intersects[0];
-    console.log("index: " + intersect.index);
     var face = intersect.face;
     var linePosition = line.geometry.attributes.position;
     var meshPosition = mesh.geometry.attributes.position;
@@ -122,14 +109,13 @@ function init() {
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
-    camera.position.z = 10;
+    camera.position.z = 30;
     
 
     
 
-    datgui = new dat.GUI();
-    settings = new VoroSettings();
-    datgui.add(settings,'mode',['camera', 'activate', 'deactivate', 'add', 'delete']);
+    
+
     
 
 
@@ -137,12 +123,12 @@ function init() {
     voro = new Module.Voro([-10,-10,-10],[10,10,10]);
     var numPts = 1000;
     for (var i=0; i<numPts; i++) {
-        voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], Math.random()>.8);
+        voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
     }
+    voro.add_cell([0,0,0], true); // add seed to click
     
     geometry = v3_build_geometry(voro, {});
     
-    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
     
 //    voro.delete();
 
@@ -173,7 +159,7 @@ function init() {
 //    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
     scene.add( mesh );
     
-    line = make_line();
+    line = make_line(3);
     scene.add(line);
 //    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
 
@@ -185,6 +171,7 @@ function init() {
     
     window.addEventListener( 'resize', onWindowResize, false );
     document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+    document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 
     container = document.getElementById( 'container' );
     container.appendChild( renderer.domElement );
@@ -200,6 +187,11 @@ function init() {
     controls.keys = [ 65, 83, 68 ];
     controls.addEventListener( 'change', render );
     
+    
+    datgui = new dat.GUI();
+    settings = new VoroSettings();
+    datgui.add(settings,'mode',['camera', 'toggle', 'add', 'delete']);
+    
     animate();
     render();
 }
@@ -211,14 +203,30 @@ function onWindowResize() {
     controls.handleResize();
     render();
 }
+function onDocumentMouseDown( event ) {
+    
+    if (settings.mode == 'toggle') {
+        if (event.button == 2) {
+            var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+            v3_toggle_cell(voro, cell, geometry);
+        } else {
+            var cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
+            v3_toggle_cell(voro, cell, geometry);
+        }
+        v3_raycast(voro, mesh, mouse, camera, raycaster);
+        onChangeVertices();
+    }
+        
+}
 function onDocumentMouseMove( event ) {
     event.preventDefault();
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
     var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-    console.log(cell);
-    v3_toggle_cell(voro, cell, geometry);
-    onChangeVertices();
+//    console.log(mouse.x +","+mouse.y +": " +cell)
+    if (!controls.isActive()) {
+        controls.dragEnabled = cell < 0 || settings.mode == 'camera';
+    }
 }
 
 function render() {

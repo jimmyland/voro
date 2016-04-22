@@ -16,6 +16,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 	// API
 
 	this.enabled = true;
+    this.dragEnabled = true;
 
 	this.screen = { left: 0, top: 0, width: 0, height: 0 };
 
@@ -77,6 +78,10 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 
 	// methods
+    
+    this.isActive = function () {
+        return _state != STATE.NONE;
+    }
 
 	this.handleResize = function () {
 
@@ -392,7 +397,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 	function mousedown( event ) {
 
-		if ( _this.enabled === false ) return;
+		if ( _this.enabled === false || _this.dragEnabled === false ) return;
 
 		event.preventDefault();
 		event.stopPropagation();
@@ -497,7 +502,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 	function touchstart( event ) {
 
-		if ( _this.enabled === false ) return;
+		if ( _this.enabled === false || _this.dragEnabled === false ) return;
 
 		switch ( event.touches.length ) {
 
