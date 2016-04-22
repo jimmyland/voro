@@ -106,14 +106,14 @@ THREE.Mesh.prototype.raycast = ( function () {
 
         // Checking boundingSphere distance to ray
 
-        if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
+//        if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
 
-        sphere.copy( geometry.boundingSphere );
-        sphere.applyMatrix4( matrixWorld );
+//        sphere.copy( geometry.boundingSphere );
+//        sphere.applyMatrix4( matrixWorld );
+                                
 
-        if ( raycaster.ray.intersectsSphere( sphere ) === false ) return;
 
-        //
+//        if ( raycaster.ray.intersectsSphere( sphere ) === false ) return;
 
         inverseMatrix.getInverse( matrixWorld );
         ray.copy( raycaster.ray ).applyMatrix4( inverseMatrix );
