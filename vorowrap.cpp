@@ -273,6 +273,31 @@ struct Voro {
         return id;
     }
     
+    void delete_cell(int cell) {
+        if (cell < 0 || cell >= cells.size()) // can't delete out of range
+            return;
+        
+        if (id+1 != cells.size()) {
+            swap_cell(cell, int(cells.size())-1);
+        }
+        pop_cell();
+    }
+    
+    // "swap" 'cell' w/ the last cell of the cells list
+    // we can actually just overwrite 'cell', since we only call swap_to_pop when we want to immediately then pop to delete 'cell'
+    // the key thing is that what used to be the last cell will now be the cell at location 'cell' in our cells list(s)
+    // and will have id 'cell' in the voro++ container
+    void swap_to_pop_cell(int cell) {
+        // todo: reach into the CellConLinks to update the container *con's ids
+        // todo: reach into gl_computed to swap the computed cell there
+        assert(false);
+    }
+    void pop_cell() {
+        // todo: reach into the container *con's structures to pop the cell
+        // todo: reach into gl_computed to remove the cell there, too
+        assert(false);
+    }
+    
     void gl_build(int max_tris_guess) {
         // populate gl_computed with current whole voronoi diagram
         gl_computed.compute_all(*this, max_tris_guess);
@@ -425,6 +450,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("toggle_cell", &Voro::toggle_cell)
     .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)
     .function("cell_from_vertex", &Voro::cell_from_vertex)
+    .function("delete_cell", &Voro::delete_cell)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
