@@ -346,7 +346,7 @@ void GLBufferManager::compute_all(Voro &src, int tricap) {
     }
 }
 
-#define ADD_ALL_FACES_ALL_THE_TIME 1
+#define ADD_ALL_FACES_ALL_THE_TIME 0
 
 void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // assuming the cache is fine, just add the tris for it
     CellCache &c = c2t.cache;

@@ -153,7 +153,6 @@ function init() {
         voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
     }
     var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
-    console.log("last cell id: " + lastcellid);
     
     geometry = v3_build_geometry(voro, {});
     
