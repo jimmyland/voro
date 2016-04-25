@@ -5,6 +5,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
 var geometry, material, mesh, pointset;
+var ptgeom, ptcloud;
 var voro;
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
@@ -16,7 +17,7 @@ var datgui;
 var settings;
 
 var VoroSettings = function() {
-    this.mode = 'toggle';
+    this.mode = 'add/delete';
 };
 
 
@@ -60,6 +61,25 @@ function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
     return intersect.index;
 }
 
+function v3_raycast_pt(mesh, mouse, camera, caster) {
+    caster.setFromCamera(mouse, camera);
+    
+    var intersects = raycaster.intersectObject(mesh);
+    line.visible = intersects.length>0;
+    if (intersects.length == 0)
+        return null;
+    
+    var intersect = intersects[0];
+    return intersect.point;
+}
+function v3_add_cell(voro, pt_3, geometry) {
+    var pt = [pt_3.x, pt_3.y, pt_3.z];
+    voro.add_cell(pt, true);
+    v3_update_geometry(voro, geometry);
+    add_pt_to_scene(pt_3);
+}
+
+
 function v3_raycast(voro, mesh, mouse, camera, caster) {
     index = v3_raycast_vertex_index(voro, mesh, mouse, camera, caster)
     if (index < 0)
@@ -100,6 +120,13 @@ function v3_toggle_cell(voro, cell, geometry) {
     v3_update_geometry(voro, geometry);
 }
 
+function add_pt_to_scene(pos) {
+    var ptgeom = new THREE.Geometry();
+    ptgeom.vertices.push(pos);
+    var ptmat = new THREE.PointsMaterial( { size: .1, color: 0x0000ff, depthTest: false } );
+    var ptcloud = new THREE.Points(ptgeom, ptmat);
+    scene.add(ptcloud);
+}
 
 //var geometry = v3_build_geometry(voro, {settings}); // build an actual threejs buffergeometry
 // note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
@@ -125,14 +152,14 @@ function init() {
     for (var i=0; i<numPts; i++) {
         voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
     }
-    voro.add_cell([0,0,0], true); // add seed to click
+    var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
     
     geometry = v3_build_geometry(voro, {});
     
     
 //    voro.delete();
 
-    
+    add_pt_to_scene(new THREE.Vector3(0,0,0));
     
     var lights = [];
     lights[0] = new THREE.PointLight( 0xffffff, 1, 0 );
@@ -155,6 +182,7 @@ function init() {
 //    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
 //    scene.add( pointset ); // no longer corresponds to vor                                                                                                                                                                                                                                                                                                                 o cells, todo fix and re-add
     material = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ) ;
+//    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
     mesh = new THREE.Mesh( geometry, material );
 //    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
     scene.add( mesh );
@@ -172,6 +200,7 @@ function init() {
     window.addEventListener( 'resize', onWindowResize, false );
     document.addEventListener( 'mousemove', onDocumentMouseMove, false );
     document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+    document.addEventListener( 'keydown', onDocumentKeyDown, false );
 
     container = document.getElementById( 'container' );
     container.appendChild( renderer.domElement );
@@ -190,10 +219,20 @@ function init() {
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
-    datgui.add(settings,'mode',['camera', 'toggle', 'add', 'delete']);
+    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete']).listen();
     
     animate();
     render();
+}
+
+function onDocumentKeyDown( event ) {
+    if (event.keyCode == 32) {
+        if (settings.mode == 'toggle') {
+            settings.mode = 'add/delete';
+        } else {
+            settings.mode = 'toggle';
+        }
+    }
 }
 
 function onWindowResize() {
@@ -216,7 +255,17 @@ function onDocumentMouseDown( event ) {
         v3_raycast(voro, mesh, mouse, camera, raycaster);
         onChangeVertices();
     }
-        
+    if (settings.mode == 'add/delete') {
+        if (event.button == 2) {
+            
+        } else {
+            var pt = v3_raycast_pt(mesh, mouse, camera, raycaster);
+            if (pt) {
+                v3_add_cell(voro, pt, geometry);
+            }
+        }
+    }
+    
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
