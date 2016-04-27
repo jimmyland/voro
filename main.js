@@ -307,21 +307,24 @@ function doChaos() {
             voro.toggle_cell(cell);
         }
         else if (Math.floor(choice) == 1) {
-            voro.delete_cell(voro.cell_count()-1);
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.delete_cell(cell);
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.delete_cell(cell);
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.delete_cell(cell);
-            voro.delete_cell(voro.cell_count()-1);
-            voro.delete_cell(voro.cell_count()-2);
             voro.delete_cell(0);
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.delete_cell(cell);
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.delete_cell(cell);
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.delete_cell(cell);
+//            voro.delete_cell(voro.cell_count()-1);
+//            voro.delete_cell(voro.cell_count()-2);
+//            voro.delete_cell(0);
         } else {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+            
+            voro.add_cell([0,Math.random()*.1-.05,0], true);
+            voro.add_cell([0,Math.random()*1000-500,0], true);
         }
         v3_update_geometry(voro, geometry);
     }

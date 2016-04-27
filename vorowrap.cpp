@@ -381,11 +381,13 @@ SANITY("after add_cell");
         if (!links.empty()) {
             assert(links.size() == cells.size()+1);
             if (con) { // swapnpop inside the container
-                int needsupdate = con->swapnpop(links[cell].ijk, links[cell].q);
-                if (needsupdate > -1) { // we updated q of this element, so we need to update external backrefs to reflect that
-                    links[needsupdate].q = links[cell].q;
+                if (links[cell].valid()) {
+                    int needsupdate = con->swapnpop(links[cell].ijk, links[cell].q);
+                    if (needsupdate > -1) { // we updated q of this element, so we need to update external backrefs to reflect that
+                        links[needsupdate].q = links[cell].q;
+                    }
                 }
-                if (end_ind != cell) {
+                if (end_ind != cell && links[end_ind].valid()) {
                     con->id[links[end_ind].ijk][links[end_ind].q] = cell; // update the id of the cell we're swapping back
                 }
             }
@@ -546,8 +548,10 @@ void GLBufferManager::recompute_neighbors(Voro &src, int cell) {
 void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
     bool valid = true;
 //    sanity("before swapnpop");
+    cout << "info? " << info[cell] << endl;
+    vector<int> to_recompute;
     if (info[cell]) {
-        auto to_recompute = info[cell]->cache.neighbors;
+        to_recompute = info[cell]->cache.neighbors;
         clear_cell_all(*info[cell]); // clears everything pointing to cell
         delete info[cell]; info[cell] = 0;
         for (int ci=0; ci<tri_count; ci++) {
@@ -556,50 +560,45 @@ void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
                 cout << "failed to delete cell " << ci << ": " << cell_inds[ci] << " vs " << info.size() << endl;
             }
         }
-        assert(valid);
-            
-        info[cell] = info[lasti]; // overwrite cell
-        if (info[cell]) {
-            for (int ni : info[cell]->cache.neighbors) { // redirect neighbor backptrs from lasti to cell
-//                cout << "ni:" << ni << "::: ";
-                if (ni >= 0) {
-                    for (int nii=0; info[ni] && nii < info[ni]->cache.neighbors.size(); nii++) {
-//                        cout <<info[ni]->cache.neighbors[nii] << ";";
-                        if (info[ni]->cache.neighbors[nii] == lasti) {
-                            info[ni]->cache.neighbors[nii] = cell;
-                        }
-                    }
-                }
-//                cout << endl;
-            }
-            if (cell != lasti) {
-                for (int ti : info[cell]->tri_inds) {
-                    cell_inds[ti] = cell;
-                }
-                for (int ci=0; ci<tri_count; ci++) {
-                    if (cell_inds[ci] == lasti) {
-                        valid = false;
-                        cout << "lasti still here? " << ci << ": " << cell_inds[ci] << " vs " << info.size() << endl;
-                    }
-                }
-                assert(valid);
-            }
-        }
-//        cout << "r:";
-        for (int ni : to_recompute) { // recompute former cell neighbors
-            if (ni >= 0) {
-                ni = ni<lasti? ni : cell;
-//                cout << " " << ni;
-                compute_cell(src, ni);
-                for (int nni : info[ni]->cache.neighbors) {
-                    if (nni == lasti) {
-                        cout << "computed " << lasti << " as a fresh neighbor!?" << endl;
-                    }
-                }
-            }
-        }
-//        cout << endl;
     }
+    
+    info[cell] = info[lasti]; // overwrite cell
+    if (info[cell]) {
+        for (int ni : info[cell]->cache.neighbors) { // redirect neighbor backptrs from lasti to cell
+//                cout << "ni:" << ni << "::: ";
+            if (ni >= 0) {
+                for (int nii=0; info[ni] && nii < info[ni]->cache.neighbors.size(); nii++) {
+//                        cout <<info[ni]->cache.neighbors[nii] << ";";
+                    if (info[ni]->cache.neighbors[nii] == lasti) {
+                        info[ni]->cache.neighbors[nii] = cell;
+                    }
+                }
+            }
+//                cout << endl;
+        }
+        if (cell != lasti) {
+            for (int ti : info[cell]->tri_inds) {
+                cell_inds[ti] = cell;
+            }
+            for (int ci=0; ci<tri_count; ci++) {
+                if (cell_inds[ci] == lasti) {
+                    valid = false;
+                    cout << "lasti still here? " << ci << ": " << cell_inds[ci] << " vs " << info.size() << endl;
+                }
+            }
+            assert(valid);
+        }
+    }
+//        cout << "r:";
+    for (int ni : to_recompute) { // recompute former cell neighbors
+        if (ni >= 0) {
+            ni = ni<lasti? ni : cell;
+//                cout << " " << ni;
+            compute_cell(src, ni);
+        }
+    }
+//        cout << endl;
+    
 
     info.pop_back();
 //    sanity("after swapnpop");
