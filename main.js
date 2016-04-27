@@ -322,6 +322,8 @@ function doChaos() {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+            voro.add_cell([1,1,1], true);
+            voro.add_cell([1+Math.random()*.001,1+Math.random()*.001,1+Math.random()*.001], true);
             
             voro.add_cell([0,Math.random()*.1-.05,0], true);
             voro.add_cell([0,Math.random()*1000-500,0], true);
@@ -332,7 +334,7 @@ function doChaos() {
 
 
 function animate() {
-    doChaos();
+//    doChaos();
 //    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
     controls.update();
     onChangeVertices();

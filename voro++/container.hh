@@ -12,6 +12,7 @@
 
 #include <cstdio>
 #include <vector>
+#include <limits>
 
 #include "config.hh"
 #include "common.hh"
@@ -271,6 +272,8 @@ class container_base : public voro_base, public wall_list {
 			for(int *cop=co+1;cop<co+nxyz;cop++) tp+=*cop;
 			return tp;
 		}
+        double distancesq(double x, double y, double z, int &closest);
+    
 	protected:
 		void add_particle_memory(int i);
 		bool put_locate_block(int &ijk,double &x,double &y,double &z);
