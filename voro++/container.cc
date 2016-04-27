@@ -9,6 +9,7 @@
 
 #include "container.hh"
 
+
 namespace voro {
 
 /** The class constructor sets up the geometry of container, initializing the
@@ -108,6 +109,27 @@ bool container::put(int n,double x,double y,double z, int &ijk, int &q) {
         return true;
     }
     return false;
+}
+
+/** Put a particle into the correct region of the container.
+ * \param[in] ijk the block of the particle to swapnpop
+ * \param[in] q index of the particle to swapnpop
+ * \return index of cell that was swapped back to q if swap was needed, else -1 */
+int container::swapnpop(int ijk, int q) {
+    assert(q >= 0 && q < co[ijk]);
+    assert(co[ijk] > 0);
+    int lasti = co[ijk]-1;
+    int toret = -1;
+    if (q != lasti) {
+        toret = id[ijk][q] = id[ijk][lasti];
+        double *ppq = p[ijk]+3*q;
+        double *ppl = p[ijk]+3*lasti;
+        *(ppq++) = *(ppl++); // x
+        *(ppq++) = *(ppl++); // y
+        *(ppq++) = *(ppl++); // z
+    }
+    co[ijk]--;
+    return toret;
 }
 
 /** Put a particle into the correct region of the container.
