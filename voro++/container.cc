@@ -226,25 +226,22 @@ inline bool container_base::put_remap(int &ijk,double &x,double &y,double &z) {
 	return true;
 }
     
-    double container_base::distancesq(double x, double y, double z, int &closest) {
-        int ijk;
-        closest = -1;
-        double min_distsq = std::numeric_limits<double>::max();
-        if(put_remap(ijk,x,y,z)) {
-            for (int i=0; i<co[ijk]; i++) {
-                double *pp = p[ijk]+i*ps;
-                double dx = *(pp++) - x;
-                double dy = *(pp++) - y;
-                double dz = *(pp++) - z;
-                double dsq = dx*dx+dy*dy+dz*dz;
-                if (dsq < min_distsq) {
-                    closest = id[ijk][i];
-                    min_distsq = dsq;
-                }
-            }
+bool container_base::already_in_block(double x, double y, double z, double threshold) {
+    int ijk;
+    
+    bool inblock = false;
+    if(put_remap(ijk,x,y,z)) {
+        for (int i=0; i<co[ijk]; i++) {
+            double *pp = p[ijk]+i*ps;
+            double dx = *(pp++) - x;
+            double dy = *(pp++) - y;
+            double dz = *(pp++) - z;
+            double dsq = dx*dx+dy*dy+dz*dz;
+            inblock = inblock || (dsq < threshold);
         }
-        return min_distsq;
     }
+    return inblock;
+}
 
 /** Takes a position vector and attempts to remap it into the primary domain.
  * \param[out] (ai,aj,ak) the periodic image displacement that the vector is in,

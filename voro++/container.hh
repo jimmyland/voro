@@ -272,7 +272,7 @@ class container_base : public voro_base, public wall_list {
 			for(int *cop=co+1;cop<co+nxyz;cop++) tp+=*cop;
 			return tp;
 		}
-        double distancesq(double x, double y, double z, int &closest);
+        bool already_in_block(double x, double y, double z, double threshold); // checks if pt w/ these coords is already in the same block
     
 	protected:
 		void add_particle_memory(int i);

@@ -349,10 +349,9 @@ struct Voro {
     
     int add_cell(glm::vec3 pt, int type) {
 //SANITY("before add_cell");
-        int closest = -1;
-        if (con && con->distancesq(pt.x, pt.y, pt.z, closest) < .00000001) {
+        if (con && con->already_in_block(pt.x, pt.y, pt.z, .00000001)) {
             cout << "not adding cell; it's too close!" << endl;
-            return closest;
+            return -1;
         }
         int id = int(cells.size());
         cout << "adding " << id << endl;
