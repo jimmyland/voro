@@ -12,7 +12,6 @@
 
 #include <cstdio>
 #include <vector>
-#include <limits>
 
 #include "config.hh"
 #include "common.hh"
