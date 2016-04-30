@@ -579,40 +579,6 @@ void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
     info.pop_back();
 }
 
-/*
- struct CellCache { // computations from a voro++ computed cell
- vector<int> faces; // faces as voro++ likes to store them -- packed as [#vs in f0, f0 v0, f0 v1, ..., #vs in f1, ...]
- vector<double> vertices; // vertex coordinates, indexed by faces array
- vector<int> neighbors; // cells neighboring each face
- 
- void clear() { faces.clear(); vertices.clear(); neighbors.clear(); }
- void create(const glm::vec3 &pos, voro::voronoicell_neighbor &c) {
- c.neighbors(neighbors);
- // fills facev w/ faces as (#verts in face 1, face vert ind 1, ind 2, ..., #vs in f 2, f v ind 1, etc)
- c.face_vertices(faces);
- // makes all the vertices for the faces to reference
- c.vertices(pos.x, pos.y, pos.z, vertices);
- }
- };
- 
- struct CellToTris {
- vector<int> tri_inds; // indices into the GLBufferManager's vertices array, indicating which triangles are from this cell
- // i.e. if tri_inds[0]==47, then vertices[47*3] ... vertices[47*3+2] (incl.) are from this cell
- vector<short> tri_faces;
- CellCache cache;
- };
- 
- struct Voro;
- 
- struct GLBufferManager {
- float *vertices;
- int tri_count, max_tris;
- int *cell_inds; // map from tri indices to cell indices
- short *cell_internal_inds; // map from tri indices to internal tri backref
- voro::voronoicell_neighbor vorocell; // reused temp var, holds computed cell info
- 
- vector<CellToTris*> info;
- */
 
 
 EMSCRIPTEN_BINDINGS(voro) {
@@ -637,12 +603,4 @@ EMSCRIPTEN_BINDINGS(voro) {
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
-//    class_<Cell>("Cell")
-//    .constructor<>()
-//    .constructor<int, glm::vec3>()
-//    .property("type", &Cell::type)
-//    .property("pos", &Cell::pos)
-//    ;
-//    register_vector<Cell>("VectorCell");
-
 }
