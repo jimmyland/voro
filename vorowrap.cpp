@@ -383,7 +383,6 @@ struct Voro {
         }
 
         int end_ind = int(cells.size())-1;
-        // bool needs_swap = (id+1 != cells.size());
         cells[cell] = cells[end_ind];
         cells.pop_back();
         if (!links.empty()) {
@@ -426,15 +425,12 @@ struct Voro {
         return cells.size();
     }
     void toggle_cell(int cell) {
-//        SANITY("before toggle_cell");
         if (cell < 0 || cell >= cells.size())
             return;
         
         int oldtype = cells[cell].type;
         cells[cell].type = !oldtype;
         gl_computed.set_cell(*this, cell, oldtype);
-//        gl_computed.sanity("after toggle");
-//        SANITY("after toggle_cell");
     }
     int cell_from_vertex(int vert_ind) {
         return gl_computed.vert2cell(vert_ind);
