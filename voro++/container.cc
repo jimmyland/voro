@@ -111,7 +111,7 @@ bool container::put(int n,double x,double y,double z, int &ijk, int &q) {
     return false;
 }
 
-/** Put a particle into the correct region of the container.
+/** Delete a particle from the container (via swapnpop in its cell block)
  * \param[in] ijk the block of the particle to swapnpop
  * \param[in] q index of the particle to swapnpop
  * \return index of cell that was swapped back to q if swap was needed, else -1 */
@@ -130,6 +130,50 @@ int container::swapnpop(int ijk, int q) {
     }
     co[ijk]--;
     return toret;
+}
+/** Put a particle into the correct region of the container.
+ * \param[in,out] ijk the block of the particle to move (will be updated if needed)
+ * \param[in,out] q index of the particle to move (will be updated if needed)
+ * \param[out] q index of the particle that needs incidental update (will always be the _input_ q, is a param just so function user will remember they need to store it and deal with it.)
+ * \return index of other cell that got an updated q index to accomplish the move,
+            or -1 if no other cell needed change */
+int container::move(int &ijk, int &q, double x, double y, double z, int &needsupdate_q) {
+    assert(q >= 0 && q < co[ijk]);
+    assert(co[ijk] > 0);
+    
+    int needsupdate = -1;
+    
+    int ijk_new;
+    if (put_remap(ijk_new, x, y, z)) {
+        if (ijk_new == ijk) { // same block, can just update position and be done
+            double *pp = p[ijk]+3*q;
+            *(pp++)=x;*(pp++)=y;*pp=z;
+        } else {
+            int n = id[ijk][q]; // save original id
+            needsupdate_q = q; // save original q
+            
+            // remove cell from old block
+            needsupdate = swapnpop(ijk, q);
+            
+            // add cell to new block
+            if(co[ijk_new]==mem[ijk_new]) add_particle_memory(ijk_new);
+            int q_new = co[ijk_new];
+            id[ijk_new][co[ijk_new]] = n;
+            double *pp=p[ijk_new]+3*co[ijk_new]++;
+            *(pp++)=x;*(pp++)=y;*pp=z;
+            
+            // update ijk and q
+            q = q_new;
+            ijk = ijk_new; // ijk is now _NEW_ ijk
+        }
+    } else { // we moved to a place we can't put particle -- e.g. outside bounding box
+        needsupdate_q = q; // save original q
+        needsupdate = swapnpop(ijk, q); // remove from block
+        
+        ijk = -1; q = -1; // link is now invalid; we can't place the cell
+    }
+    
+    return needsupdate;
 }
 
 /** Put a particle into the correct region of the container.

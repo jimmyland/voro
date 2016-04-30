@@ -295,6 +295,7 @@ class container : public container_base, public radius_mono {
         bool put(int n,double x,double y,double z,int &ijk,int &q);
 		void put(particle_order &vo,int n,double x,double y,double z);
         int swapnpop(int ijk, int q);
+        int move(int &ijk, int &q, double x, double y, double z, int &needsupdate_q);
 		void import(FILE *fp=stdin);
 		void import(particle_order &vo,FILE *fp=stdin);
 		/** Imports a list of particles from an open file stream into
