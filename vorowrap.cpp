@@ -14,7 +14,14 @@
 using namespace std;
 using namespace emscripten;
 
+#define INSANITY
+
+
+#ifdef INSANITY
+#define SANITY(WHEN) {}
+#else
 #define SANITY(WHEN) {sanity(WHEN);}
+#endif
 
 // main is called once emscripten has asynchronously loaded all it needs to call the other C functions
 // so we wait for its call to run the js init
@@ -348,17 +355,15 @@ struct Voro {
     }
     
     int add_cell(glm::vec3 pt, int type) {
-//SANITY("before add_cell");
         if (con && con->already_in_block(pt.x, pt.y, pt.z, .00000001)) {
+            // todo: implement a proper notion of shadowing, not this hack.
             cout << "not adding cell; it's too close!" << endl;
             return -1;
         }
         int id = int(cells.size());
-        cout << "adding " << id << endl;
         cells.push_back(Cell(pt, type));
         if (con) {
             CellConLink link;
-//            con->too_close(pt.x, pt.y, pt.z, threshold);
             con->put(id, pt.x, pt.y, pt.z, link.ijk, link.q);
             links.push_back(link);
             assert(cells.size() == links.size());
@@ -367,12 +372,11 @@ struct Voro {
             gl_computed.compute_cell(*this, id);
             gl_computed.recompute_neighbors(*this, id);
         }
-SANITY("after add_cell");
+        SANITY("after add_cell");
         return id;
     }
     
     bool delete_cell(int cell) { // this is a swapnpop deletion
-//        SANITY("before delete_cell");
         if (cell < 0 || cell >= cells.size()) { // can't delete out of range
             cout << "trying to delete out of range " << cell << " vs " << cells.size() << endl;
             return false;
@@ -382,7 +386,6 @@ SANITY("after add_cell");
         // bool needs_swap = (id+1 != cells.size());
         cells[cell] = cells[end_ind];
         cells.pop_back();
-        cout << "popping cell " << cell << endl;
         if (!links.empty()) {
             assert(links.size() == cells.size()+1);
             if (con) { // swapnpop inside the container
@@ -399,7 +402,6 @@ SANITY("after add_cell");
             links[cell] = links[end_ind];
             links.pop_back();
             
-            cout << "recomputing " << cell << " ' " << end_ind << endl;
             gl_computed.swapnpop_cell(*this, cell, end_ind);
         }
         SANITY("after delete_cell");
@@ -539,75 +541,46 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
 void GLBufferManager::recompute_neighbors(Voro &src, int cell) {
     assert(cell >= 0 && cell < info.size());
     if (info[cell]) {
-//        cout << "rc: ";
         for (int ni : info[cell]->cache.neighbors) {
             if (ni >= 0) {
-//                cout << ni << " ";
                 compute_cell(src, ni);
             }
         }
-//        cout << endl;
     }
 }
 
 void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
     bool valid = true;
-//    sanity("before swapnpop");
-    cout << "info? " << info[cell] << endl;
     vector<int> to_recompute;
     if (info[cell]) {
         to_recompute = info[cell]->cache.neighbors;
         clear_cell_all(*info[cell]); // clears everything pointing to cell
         delete info[cell]; info[cell] = 0;
-        for (int ci=0; ci<tri_count; ci++) {
-            if (cell_inds[ci] == cell) {
-                valid = false;
-                cout << "failed to delete cell " << ci << ": " << cell_inds[ci] << " vs " << info.size() << endl;
-            }
-        }
     }
     
     info[cell] = info[lasti]; // overwrite cell
-    if (info[cell]) {
-        for (int ni : info[cell]->cache.neighbors) { // redirect neighbor backptrs from lasti to cell
-//                cout << "ni:" << ni << "::: ";
+    if (info[cell]) { // if the swap cell exists, fix backpointers to it
+        for (int ni : info[cell]->cache.neighbors) { // redirect neighbor backptrs
             if (ni >= 0) {
                 for (int nii=0; info[ni] && nii < info[ni]->cache.neighbors.size(); nii++) {
-//                        cout <<info[ni]->cache.neighbors[nii] << ";";
                     if (info[ni]->cache.neighbors[nii] == lasti) {
                         info[ni]->cache.neighbors[nii] = cell;
                     }
                 }
             }
-//                cout << endl;
         }
-        if (cell != lasti) {
-            for (int ti : info[cell]->tri_inds) {
-                cell_inds[ti] = cell;
-            }
-            for (int ci=0; ci<tri_count; ci++) {
-                if (cell_inds[ci] == lasti) {
-                    valid = false;
-                    cout << "lasti still here? " << ci << ": " << cell_inds[ci] << " vs " << info.size() << endl;
-                }
-            }
-            assert(valid);
+        for (int ti : info[cell]->tri_inds) { // redirect tri backptrs
+            cell_inds[ti] = cell;
         }
     }
-//        cout << "r:";
     for (int ni : to_recompute) { // recompute former cell neighbors
         if (ni >= 0) {
             ni = ni<lasti? ni : cell;
-//                cout << " " << ni;
             compute_cell(src, ni);
         }
     }
-//        cout << endl;
     
-
     info.pop_back();
-//    sanity("after swapnpop");
-    
 }
 
 /*

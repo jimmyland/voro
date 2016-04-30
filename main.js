@@ -296,7 +296,7 @@ function onChangeVertices() {
     render();
 }
 
-var chaos_limit = 10000;
+var chaos_limit = 1000;
 function doChaos() {
     if (chaos_limit == null || chaos_limit-- > 0) {
         var choice = Math.random()*3;
