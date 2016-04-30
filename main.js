@@ -120,6 +120,11 @@ function v3_toggle_cell(voro, cell, geometry) {
     v3_update_geometry(voro, geometry);
 }
 
+function v3_delete_cell(voro, cell, geometry) {
+    voro.delete_cell(cell);
+    v3_update_geometry(voro, geometry);
+}
+
 function add_pt_to_scene(pos) {
     var ptgeom = new THREE.Geometry();
     ptgeom.vertices.push(pos);
@@ -133,6 +138,8 @@ function add_pt_to_scene(pos) {
 //var gl_buffers = voro.build_gl_buffers(); // v3_build_geometry calls this
 
 function init() {
+    Math.seedrandom('qq');
+    
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -257,7 +264,8 @@ function onDocumentMouseDown( event ) {
     }
     if (settings.mode == 'add/delete') {
         if (event.button == 2) {
-            
+            var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+            v3_delete_cell(voro, cell, geometry);
         } else {
             var pt = v3_raycast_pt(mesh, mouse, camera, raycaster);
             if (pt) {
@@ -272,7 +280,6 @@ function onDocumentMouseMove( event ) {
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
     var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-//    console.log(mouse.x +","+mouse.y +": " +cell)
     if (!controls.isActive()) {
         controls.dragEnabled = cell < 0 || settings.mode == 'camera';
     }
@@ -287,8 +294,45 @@ function onChangeVertices() {
     render();
 }
 
+var chaos_limit = 1000;
+function doChaos() {
+    if (chaos_limit == null || chaos_limit-- > 0) {
+        var choice = Math.random()*3;
+        if (Math.floor(choice) == 0) {
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.toggle_cell(cell);
+            voro.toggle_cell(cell);
+            voro.toggle_cell(cell);
+        }
+        else if (Math.floor(choice) == 1) {
+            voro.delete_cell(0);
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.delete_cell(cell);
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.delete_cell(cell);
+            var cell = Math.floor(Math.random()*voro.cell_count());
+            voro.delete_cell(cell);
+//            voro.delete_cell(voro.cell_count()-1);
+//            voro.delete_cell(voro.cell_count()-2);
+//            voro.delete_cell(0);
+        } else {
+            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+            voro.add_cell([1,1,1], true);
+            voro.add_cell([1+Math.random()*.001,1+Math.random()*.001,1+Math.random()*.001], true);
+            
+            voro.add_cell([0,Math.random()*.1-.05,0], true);
+            voro.add_cell([0,Math.random()*1000-500,0], true);
+        }
+        v3_update_geometry(voro, geometry);
+    }
+}
+
 
 function animate() {
+//    doChaos();
 //    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
     controls.update();
     onChangeVertices();

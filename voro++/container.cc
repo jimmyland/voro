@@ -9,6 +9,7 @@
 
 #include "container.hh"
 
+
 namespace voro {
 
 /** The class constructor sets up the geometry of container, initializing the
@@ -111,6 +112,27 @@ bool container::put(int n,double x,double y,double z, int &ijk, int &q) {
 }
 
 /** Put a particle into the correct region of the container.
+ * \param[in] ijk the block of the particle to swapnpop
+ * \param[in] q index of the particle to swapnpop
+ * \return index of cell that was swapped back to q if swap was needed, else -1 */
+int container::swapnpop(int ijk, int q) {
+    assert(q >= 0 && q < co[ijk]);
+    assert(co[ijk] > 0);
+    int lasti = co[ijk]-1;
+    int toret = -1;
+    if (q != lasti) {
+        toret = id[ijk][q] = id[ijk][lasti];
+        double *ppq = p[ijk]+3*q;
+        double *ppl = p[ijk]+3*lasti;
+        *(ppq++) = *(ppl++); // x
+        *(ppq++) = *(ppl++); // y
+        *(ppq++) = *(ppl++); // z
+    }
+    co[ijk]--;
+    return toret;
+}
+
+/** Put a particle into the correct region of the container.
  * \param[in] n the numerical ID of the inserted particle.
  * \param[in] (x,y,z) the position vector of the inserted particle.
  * \param[in] r the radius of the particle. */
@@ -202,6 +224,23 @@ inline bool container_base::put_remap(int &ijk,double &x,double &y,double &z) {
 
 	ijk+=nx*j+nxy*k;
 	return true;
+}
+    
+bool container_base::already_in_block(double x, double y, double z, double threshold) {
+    int ijk;
+    
+    bool inblock = false;
+    if(put_remap(ijk,x,y,z)) {
+        for (int i=0; i<co[ijk]; i++) {
+            double *pp = p[ijk]+i*ps;
+            double dx = *(pp++) - x;
+            double dy = *(pp++) - y;
+            double dz = *(pp++) - z;
+            double dsq = dx*dx+dy*dy+dz*dz;
+            inblock = inblock || (dsq < threshold);
+        }
+    }
+    return inblock;
 }
 
 /** Takes a position vector and attempts to remap it into the primary domain.

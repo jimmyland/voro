@@ -21,6 +21,8 @@
 #include "v_compute.hh"
 #include "rad_option.hh"
 
+#include <cassert>
+
 namespace voro {
 
 /** \brief Pure virtual class from which wall objects are derived.
@@ -269,6 +271,8 @@ class container_base : public voro_base, public wall_list {
 			for(int *cop=co+1;cop<co+nxyz;cop++) tp+=*cop;
 			return tp;
 		}
+        bool already_in_block(double x, double y, double z, double threshold); // checks if pt w/ these coords is already in the same block
+    
 	protected:
 		void add_particle_memory(int i);
 		bool put_locate_block(int &ijk,double &x,double &y,double &z);
@@ -290,6 +294,7 @@ class container : public container_base, public radius_mono {
 		void put(int n,double x,double y,double z);
         bool put(int n,double x,double y,double z,int &ijk,int &q);
 		void put(particle_order &vo,int n,double x,double y,double z);
+        int swapnpop(int ijk, int q);
 		void import(FILE *fp=stdin);
 		void import(particle_order &vo,FILE *fp=stdin);
 		/** Imports a list of particles from an open file stream into
@@ -471,6 +476,7 @@ class container : public container_base, public radius_mono {
 		 * condition, then the routine returns false. */
 		template<class v_cell>
 		inline bool compute_cell(v_cell &c,int ijk,int q) {
+            assert(q >= 0 && q < co[ijk]);
 			int k=ijk/nxy,ijkt=ijk-nxy*k,j=ijkt/nx,i=ijkt-j*nx;
 			return vc.compute_cell(c,ijk,q,i,j,k);
 		}
