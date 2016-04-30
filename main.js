@@ -121,7 +121,6 @@ function v3_toggle_cell(voro, cell, geometry) {
 }
 
 function v3_delete_cell(voro, cell, geometry) {
-    console.log("deleting " + cell);
     voro.delete_cell(cell);
     v3_update_geometry(voro, geometry);
 }
@@ -281,7 +280,6 @@ function onDocumentMouseMove( event ) {
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
     var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-    console.log(mouse.x +","+mouse.y +": " +cell)
     if (!controls.isActive()) {
         controls.dragEnabled = cell < 0 || settings.mode == 'camera';
     }
