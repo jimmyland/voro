@@ -14,7 +14,7 @@
 using namespace std;
 using namespace emscripten;
 
-#define INSANITY
+//#define INSANITY
 
 
 #ifdef INSANITY
@@ -242,6 +242,7 @@ struct GLBufferManager {
     }
     
     void swapnpop_cell(Voro &src, int cell, int lasti);
+    void move_cell(Voro &src, int cell);
     
     void clear() {
         delete [] vertices;
@@ -286,6 +287,13 @@ struct Voro {
     bool sanity(string when) {
         bool valid = gl_computed.sanity(when, false);
         
+        for (int cell=0; cell<links.size(); cell++) {
+            const auto &link = links[cell];
+            if (link.ijk >= 0 && link.q < 0) {
+                cout << "partially valid link " << cell << ": " << link.ijk << " " << link.q << endl;
+                valid = false;
+            }
+        }
         if (gl_computed.info.size() > 0) {
             if (gl_computed.info.size() != cells.size()) {
                 cout << "computed info cells mismatch voro cells: " << gl_computed.info.size() << " vs " << cells.size() << endl;
@@ -355,16 +363,24 @@ struct Voro {
     }
     
     int add_cell(glm::vec3 pt, int type) {
+        cout << "add " << pt.x << " " << pt.y << " " << pt.z << endl;
         if (con && con->already_in_block(pt.x, pt.y, pt.z, .00000001)) {
             // todo: implement a proper notion of shadowing, not this hack.
             cout << "not adding cell; it's too close!" << endl;
             return -1;
         }
         int id = int(cells.size());
+        cout << "id: " << id << endl;
+        if (links.size() > 1008) {
+            cout << "~ qq` " << links[1008].ijk << " " << links[1008].q << endl;
+        }
+        
         cells.push_back(Cell(pt, type));
         if (con) {
             CellConLink link;
-            con->put(id, pt.x, pt.y, pt.z, link.ijk, link.q);
+            bool ret = con->put(id, pt.x, pt.y, pt.z, link.ijk, link.q);
+            if (!ret) { link = CellConLink(); } // reset to invalid default when put fails
+            cout << "rewqq: " << ret << " " << link.ijk << " " << link.q << endl;
             links.push_back(link);
             assert(cells.size() == links.size());
             
@@ -374,6 +390,42 @@ struct Voro {
         }
         SANITY("after add_cell");
         return id;
+    }
+    
+    bool move_cell(int cell, glm::vec3 pt) { // similar to a delete+add, but w/ no swapping and less recomputation
+        if (cell < 0 || cell >= cells.size()) {
+            cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
+            return false;
+        }
+        if (con && con->already_in_block(pt.x, pt.y, pt.z, .00000001)) {
+            // todo: implement shadowing
+            cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
+            return false;
+        }
+        
+        cout << "move cell " << cell << ": " << pt.x << " " << pt.y << " " << pt.z << endl;
+        cells[cell].pos = pt;
+        
+        if (!links.empty()) {
+            assert(links.size() == cells.size());
+            if (con) {
+                cout << "old ijk q: " << links[cell].ijk << " " << links[cell].q << endl;
+                int needsupdate_q;
+                int needsupdate = con->move(links[cell].ijk, links[cell].q, cell, pt.x, pt.y, pt.z, needsupdate_q);
+                if (needsupdate > -1) { // we updated q of this element, so we need to update external backrefs to reflect that
+                    cout << "updating " << needsupdate << ": " << needsupdate_q << endl;
+                    links[needsupdate].q = needsupdate_q; // only updating q is ok, since the swapnpop won't change the ijk
+                }
+                cout << "new ijk q: " << links[cell].ijk << " " << links[cell].q << endl;
+            }
+
+            gl_computed.move_cell(*this, cell);
+        }
+        
+        
+        
+        SANITY("after move_cell");
+        return true;
     }
     
     bool delete_cell(int cell) { // this is a swapnpop deletion
@@ -460,7 +512,10 @@ protected:
 void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for all cells and add tris for non-zero cells
     assert(cell >= 0 && cell < info.size());
     auto &link = src.links[cell];
-    if (!link.valid()) return;
+    if (!link.valid()) {
+        if (info[cell]) { clear_cell_all(*info[cell]); }
+        return;
+    }
     CellToTris &c = get_clean_cell(cell);
     
     if (src.con->compute_cell(vorocell, link.ijk, link.q)) {
@@ -546,7 +601,6 @@ void GLBufferManager::recompute_neighbors(Voro &src, int cell) {
 }
 
 void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
-    bool valid = true;
     vector<int> to_recompute;
     if (info[cell]) {
         to_recompute = info[cell]->cache.neighbors;
@@ -579,6 +633,14 @@ void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
     info.pop_back();
 }
 
+void GLBufferManager::move_cell(Voro &src, int cell) {
+    if (info[cell]) {
+        for (int ni : info[cell]->cache.neighbors) { if (ni >= 0) { compute_cell(src, ni); } }
+        compute_cell(src, cell);
+        for (int ni : info[cell]->cache.neighbors) { if (ni >= 0) { compute_cell(src, ni); } }
+    }
+}
+
 
 
 EMSCRIPTEN_BINDINGS(voro) {
@@ -600,6 +662,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)
     .function("cell_from_vertex", &Voro::cell_from_vertex)
     .function("delete_cell", &Voro::delete_cell)
+    .function("move_cell", &Voro::move_cell)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;

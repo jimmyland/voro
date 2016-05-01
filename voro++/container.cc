@@ -137,8 +137,14 @@ int container::swapnpop(int ijk, int q) {
  * \param[out] q index of the particle that needs incidental update (will always be the _input_ q, is a param just so function user will remember they need to store it and deal with it.)
  * \return index of other cell that got an updated q index to accomplish the move,
             or -1 if no other cell needed change */
-int container::move(int &ijk, int &q, double x, double y, double z, int &needsupdate_q) {
-    assert(q >= 0 && q < co[ijk]);
+int container::move(int &ijk, int &q, int n, double x, double y, double z, int &needsupdate_q) {
+    if (q<0 || ijk<0) { // special case: it's not in the container
+        if (!put(n, x, y, z, ijk, q)) {
+            ijk = -1; q = -1;
+        }
+        return -1;
+    }
+    
     assert(co[ijk] > 0);
     
     int needsupdate = -1;
