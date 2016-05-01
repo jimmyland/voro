@@ -145,7 +145,7 @@ int container::move(int &ijk, int &q, int n, double x, double y, double z, int &
         return -1;
     }
     
-    assert(co[ijk] > 0);
+    assert(co[ijk] > q);
     
     int needsupdate = -1;
     
