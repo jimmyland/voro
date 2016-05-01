@@ -14,7 +14,7 @@
 using namespace std;
 using namespace emscripten;
 
-//#define INSANITY
+#define INSANITY
 
 
 #ifdef INSANITY
@@ -655,6 +655,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_from_vertex", &Voro::cell_from_vertex)
     .function("delete_cell", &Voro::delete_cell)
     .function("move_cell", &Voro::move_cell)
+    .function("sanity", &Voro::sanity)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;

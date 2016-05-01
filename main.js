@@ -338,6 +338,15 @@ function doChaos() {
         }
         v3_update_geometry(voro, geometry);
     }
+    doneChaos();
+}
+
+function doneChaos() {
+    if (chaos_limit !== null && chaos_limit == 0) {
+        console.log("chaos over -- checking sanity at end ...");
+        var sanity = voro.sanity("after chaos");
+        console.log("sanity = " + sanity);
+    }
 }
 
 function moveChaos() {
@@ -345,6 +354,7 @@ function moveChaos() {
         voro.move_cell(1000, [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
         v3_update_geometry(voro, geometry);
     }
+    doneChaos();
 }
 
 
