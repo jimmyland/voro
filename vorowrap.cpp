@@ -629,6 +629,7 @@ void GLBufferManager::move_cell(Voro &src, int cell) {
     }
     compute_cell(src, cell);
     if (info[cell]) {
+        // todo: possible optimization: don't recompute a neighbor here if it was already computed above.
         for (int ni : info[cell]->cache.neighbors) { if (ni >= 0) { compute_cell(src, ni); } }
     }
 }
