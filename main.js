@@ -329,6 +329,11 @@ function doChaos() {
             voro.move_cell(Math.random()*voro.cell_count(),[Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
             voro.move_cell(Math.random()*voro.cell_count(),[0,Math.random()*1000-500,0]);
             voro.move_cell(0,[0,Math.random()*40-20,0]);
+            var pos = [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
+            var cell = voro.add_cell(pos, true);
+            voro.move_cell(cell,pos);
+            pos[0] += .01;
+            voro.move_cell(cell,pos);
 //            voro.move_cell(Math.random()*voro.cell_count(),[Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
         }
         v3_update_geometry(voro, geometry);

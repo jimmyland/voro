@@ -276,12 +276,13 @@ inline bool container_base::put_remap(int &ijk,double &x,double &y,double &z) {
 	return true;
 }
     
-bool container_base::already_in_block(double x, double y, double z, double threshold) {
+bool container_base::already_in_block(double x, double y, double z, double threshold, int except_cell) {
     int ijk;
     
     bool inblock = false;
     if(put_remap(ijk,x,y,z)) {
         for (int i=0; i<co[ijk]; i++) {
+            if (id[ijk][i] == except_cell) continue;
             double *pp = p[ijk]+i*ps;
             double dx = *(pp++) - x;
             double dy = *(pp++) - y;

@@ -391,7 +391,7 @@ struct Voro {
             cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
             return false;
         }
-        if (con && con->already_in_block(pt.x, pt.y, pt.z, .00000001)) {
+        if (con && con->already_in_block(pt.x, pt.y, pt.z, .00000001, cell)) {
             // todo: implement shadowing
             cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
             return false;
