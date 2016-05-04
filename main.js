@@ -12,7 +12,7 @@ var mouse = new THREE.Vector2();
 var controls;
 var bb_geometry;
 
-var line;
+//var line;
 
 var datgui;
 var settings;
@@ -45,19 +45,19 @@ function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
 
     var intersects = raycaster.intersectObject(mesh);
-    line.visible = intersects.length>0;
+//    line.visible = intersects.length>0;
     if (intersects.length === 0)
         return -1;
     
     var intersect = intersects[0];
-    var face = intersect.face;
-    var linePosition = line.geometry.attributes.position;
-    var meshPosition = mesh.geometry.attributes.position;
-    linePosition.copyAt( 0, meshPosition, face.a );
-    linePosition.copyAt( 1, meshPosition, face.b );
-    linePosition.copyAt( 2, meshPosition, face.c );
-    linePosition.copyAt( 3, meshPosition, face.a );
-    line.geometry.attributes.position.needsUpdate = true;
+//    var face = intersect.face;
+//    var linePosition = line.geometry.attributes.position;
+//    var meshPosition = mesh.geometry.attributes.position;
+//    linePosition.copyAt( 0, meshPosition, face.a );
+//    linePosition.copyAt( 1, meshPosition, face.b );
+//    linePosition.copyAt( 2, meshPosition, face.c );
+//    linePosition.copyAt( 3, meshPosition, face.a );
+//    line.geometry.attributes.position.needsUpdate = true;
     
     return intersect.index;
 }
@@ -66,7 +66,7 @@ function v3_raycast_pt(mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
     
     var intersects = raycaster.intersectObject(mesh);
-    line.visible = intersects.length>0;
+//    line.visible = intersects.length>0;
     if (intersects.length === 0)
         return null;
     
@@ -77,7 +77,7 @@ function v3_add_cell(voro, pt_3, geometry) {
     var pt = [pt_3.x, pt_3.y, pt_3.z];
     voro.add_cell(pt, true);
     v3_update_geometry(voro, geometry);
-    add_pt_to_scene(pt_3);
+//    add_pt_to_scene(pt_3);
 }
 
 
@@ -126,13 +126,13 @@ function v3_delete_cell(voro, cell, geometry) {
     v3_update_geometry(voro, geometry);
 }
 
-function add_pt_to_scene(pos) {
-    var ptgeom = new THREE.Geometry();
-    ptgeom.vertices.push(pos);
-    var ptmat = new THREE.PointsMaterial( { size: .1, color: 0x0000ff, depthTest: false } );
-    var ptcloud = new THREE.Points(ptgeom, ptmat);
-    scene.add(ptcloud);
-}
+//function add_pt_to_scene(pos) {
+//    var ptgeom = new THREE.Geometry();
+//    ptgeom.vertices.push(pos);
+//    var ptmat = new THREE.PointsMaterial( { size: .1, color: 0x0000ff, depthTest: false } );
+//    var ptcloud = new THREE.Points(ptgeom, ptmat);
+//    scene.add(ptcloud);
+//}
 
 //var geometry = v3_build_geometry(voro, {settings}); // build an actual threejs buffergeometry
 // note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
@@ -166,7 +166,7 @@ function init() {
     
 //    voro.delete();
 
-    add_pt_to_scene(new THREE.Vector3(0,0,0));
+//    add_pt_to_scene(new THREE.Vector3(0,0,0));
     
     var lights = [];
     lights[0] = new THREE.DirectionalLight( 0xcc9999 );
@@ -206,8 +206,8 @@ function init() {
 //    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
     scene.add( mesh );
     
-    line = make_line(3);
-    scene.add(line);
+//    line = make_line(3);
+//    scene.add(line);
 //    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
 
     
