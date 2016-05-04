@@ -169,17 +169,29 @@ function init() {
     add_pt_to_scene(new THREE.Vector3(0,0,0));
     
     var lights = [];
-    lights[0] = new THREE.PointLight( 0xffffff, 1, 0 );
-    lights[1] = new THREE.PointLight( 0xffffff, 1, 0 );
-    lights[2] = new THREE.PointLight( 0xffffff, 1, 0 );
+    lights[0] = new THREE.DirectionalLight( 0xcc9999 );
+    lights[1] = new THREE.DirectionalLight( 0x99cc99 );
+    lights[2] = new THREE.DirectionalLight( 0x9999cc );
     
-    lights[0].position.set( 0, 200, 0 );
-    lights[1].position.set( 100, 200, 100 );
-    lights[2].position.set( -100, -200, -100 );
+    lights[3] = new THREE.DirectionalLight( 0xff9999 );
+    lights[4] = new THREE.DirectionalLight( 0x99ff99 );
+    lights[5] = new THREE.DirectionalLight( 0x9999ff );
+    
+    lights[0].position.set( 0, 1, 0 );
+    lights[1].position.set( 1, 0, 0 );
+    lights[2].position.set( 0, 0, 1 );
+    lights[3].position.set( 0,-1, 0 );
+    lights[4].position.set(-1, 0, 0 );
+    lights[5].position.set( 0, 0,-1 );
     
     scene.add( lights[0] );
     scene.add( lights[1] );
     scene.add( lights[2] );
+    scene.add( lights[3] );
+    scene.add( lights[4] );
+    scene.add( lights[5] );
+
+    
     
 //    var ptsgeometry = new THREE.BufferGeometry();
 //    var ptsarray = Module.HEAPF32.subarray(offset/4, offs  et/4 + numPts*3);
@@ -188,7 +200,7 @@ function init() {
 //    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
 //    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
 //    scene.add( pointset ); // no longer corresponds to vor                                                                                                                                                                                                                                                                                                                 o cells, todo fix and re-add
-    material = new THREE.MeshPhongMaterial( { color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ) ;
+    material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
 //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
     mesh = new THREE.Mesh( geometry, material );
 //    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
