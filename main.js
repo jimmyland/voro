@@ -10,6 +10,7 @@ var voro;
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
 var controls;
+var bb_geometry;
 
 var line;
 
@@ -45,7 +46,7 @@ function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
 
     var intersects = raycaster.intersectObject(mesh);
     line.visible = intersects.length>0;
-    if (intersects.length == 0)
+    if (intersects.length === 0)
         return -1;
     
     var intersect = intersects[0];
@@ -66,7 +67,7 @@ function v3_raycast_pt(mesh, mouse, camera, caster) {
     
     var intersects = raycaster.intersectObject(mesh);
     line.visible = intersects.length>0;
-    if (intersects.length == 0)
+    if (intersects.length === 0)
         return null;
     
     var intersect = intersects[0];
@@ -149,7 +150,6 @@ function init() {
     
 
     
-
     
 
 
@@ -198,6 +198,12 @@ function init() {
     scene.add(line);
 //    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
 
+    
+    var bb_geom = new THREE.BoxGeometry( 20, 20, 20 );
+    var bb_mat = new THREE.MeshBasicMaterial( { wireframe: true } );
+    bounding_box_mesh = new THREE.Mesh( bb_geom, bb_mat );
+    var bb_edges = new THREE.EdgesHelper(bounding_box_mesh);
+    scene.add(bb_edges);
 
 
     renderer = new THREE.WebGLRenderer();
@@ -226,16 +232,16 @@ function init() {
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
-    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete']).listen();
+    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']).listen();
     
     animate();
     render();
 }
 
 function onDocumentKeyDown( event ) {
-    if (event.keyCode == 32) {
-        if (settings.mode == 'toggle') {
-            settings.mode = 'add/delete';
+    if (event.keyCode === 32) {
+        if (settings.mode === 'toggle') {
+            settings.mode = 'move';
         } else {
             settings.mode = 'toggle';
         }
@@ -249,10 +255,20 @@ function onWindowResize() {
     controls.handleResize();
     render();
 }
+
+// these globals hold the state of the cell the user is actively moving in move-cell mode.
+// todo: refactor this sort of thing into a v3 manager class?
+var moving_cell = -1;
+var moving_plane; // plane in which movements will happen -- three.js has a plane.intersectLine() we can use (need to translate ray to line)
+var moving_mouse_offset;
+var moving_cell_geom;
+var moving_cell_mat;
+
+
 function onDocumentMouseDown( event ) {
     
-    if (settings.mode == 'toggle') {
-        if (event.button == 2) {
+    if (settings.mode === 'toggle') {
+        if (event.button === 2) {
             var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
             v3_toggle_cell(voro, cell, geometry);
         } else {
@@ -262,8 +278,8 @@ function onDocumentMouseDown( event ) {
         v3_raycast(voro, mesh, mouse, camera, raycaster);
         onChangeVertices();
     }
-    if (settings.mode == 'add/delete') {
-        if (event.button == 2) {
+    if (settings.mode === 'add/delete') {
+        if (event.button === 2) {
             var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
             v3_delete_cell(voro, cell, geometry);
         } else {
@@ -273,15 +289,87 @@ function onDocumentMouseDown( event ) {
             }
         }
     }
+    if (settings.mode === 'move') {
+        if (moving_cell === -1) {
+            document.addEventListener('mouseup', stopMoving, false);
+            moving_cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+            if (moving_cell > -1) {
+                var n = camera.getWorldDirection();
+                var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
+                moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+                v3_set_moving_cell_geom(p);
+                render();
+                var p_on_screen = p.project(camera);
+                moving_mouse_offset = p_on_screen.sub(mouse);
+                
+            }
+        }
+    }
+}
+function v3_set_moving_cell_geom(p) {
+    if (!p) {
+        moving_cell_mat.visible = false;
+        return;
+    }
+    if (!moving_cell_geom) {
+        moving_cell_geom = new THREE.Geometry();
+        moving_cell_geom.vertices.push(p);
+        moving_cell_mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
+        var ptcloud = new THREE.Points(moving_cell_geom, moving_cell_mat);
+        scene.add(ptcloud);
+    } else {
+        moving_cell_mat.visible = true;
+        moving_cell_geom.vertices[0] = p;
+        moving_cell_geom.verticesNeedUpdate = true;
+    }
     
+    
+}
+function movePerpToCam(camera, cell, dx, dy) {
+    var raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+    camera.up;
+    raycaster.ray.direction;
+}
+function stopMoving() {
+    moving_cell = -1;
+    v3_set_moving_cell_geom(undefined);
+    // todo: this is where we'd push to the undo stack, etc.
+    document.removeEventListener( 'mouseup', stopMoving );
+}
+function logv2(s,v){
+    console.log(s + ": " + v.x + ", " + v.y);
+}
+function logv3(s,v){
+    console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    if (moving_cell>-1) {
+        var n = moving_plane.normal;
+        
+        var pos = mouse.add(moving_mouse_offset);
+        var caster = new THREE.Raycaster();
+        caster.setFromCamera(pos, camera);
+        
+        var endpt = new THREE.Vector3();
+        endpt.copy(caster.ray.direction);
+        endpt.multiplyScalar(1000);
+        endpt.add(caster.ray.origin);
+        
+        rayline = new THREE.Line3(caster.ray.origin, endpt);
+        var newpos = moving_plane.intersectLine(rayline);
+        if (newpos) {
+            voro.move_cell(moving_cell, newpos.toArray());
+            v3_update_geometry(voro, geometry);
+            v3_set_moving_cell_geom(newpos);
+        }
+    }
     var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
     if (!controls.isActive()) {
-        controls.dragEnabled = cell < 0 || settings.mode == 'camera';
+        controls.dragEnabled = cell < 0 || settings.mode === 'camera';
     }
 }
 
@@ -298,13 +386,13 @@ var chaos_limit = 1000;
 function doChaos() {
     if (chaos_limit == null || chaos_limit-- > 0) {
         var choice = Math.random()*4;
-        if (Math.floor(choice) == 0) {
+        if (Math.floor(choice) === 0) {
             var cell = Math.floor(Math.random()*voro.cell_count());
             voro.toggle_cell(cell);
             voro.toggle_cell(cell);
             voro.toggle_cell(cell);
         }
-        else if (Math.floor(choice) == 1) {
+        else if (Math.floor(choice) === 1) {
             voro.delete_cell(0);
             var cell = Math.floor(Math.random()*voro.cell_count());
             voro.delete_cell(cell);
@@ -315,7 +403,7 @@ function doChaos() {
 //            voro.delete_cell(voro.cell_count()-1);
 //            voro.delete_cell(voro.cell_count()-2);
 //            voro.delete_cell(0);
-        } else if (Math.floor(choice) == 2) {
+        } else if (Math.floor(choice) === 2) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
@@ -342,7 +430,7 @@ function doChaos() {
 }
 
 function doneChaos() {
-    if (chaos_limit !== null && chaos_limit == 0) {
+    if (chaos_limit !== null && chaos_limit === 0) {
         console.log("chaos over -- checking sanity at end ...");
         var sanity = voro.sanity("after chaos");
         console.log("sanity = " + sanity);
@@ -359,7 +447,7 @@ function moveChaos() {
 
 
 function animate() {
-    doChaos();
+//    doChaos();
 //    moveChaos();
 //    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
     controls.update();

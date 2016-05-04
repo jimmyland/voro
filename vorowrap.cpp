@@ -480,6 +480,10 @@ struct Voro {
     int cell_neighbor_from_vertex(int vert_ind) {
         return gl_computed.vert2cell_neighbor(vert_ind);
     }
+    glm::vec3 cell_pos(int cell) {
+        assert(cell>=0 && cell<cells.size());
+        return cells[cell].pos;
+    }
 
 protected:
     friend class GLBufferManager;
@@ -644,6 +648,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     ;
     class_<Voro>("Voro")
     .constructor<glm::vec3, glm::vec3>()
+    .function("cell_pos", &Voro::cell_pos)
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
     .function("gl_build", &Voro::gl_build)
