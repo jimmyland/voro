@@ -17,8 +17,51 @@ var bb_geometry;
 var datgui;
 var settings;
 
+Generators = {
+    "uniform random": function(numpts, voro) {
+        for (var i=0; i<numpts; i++) {
+            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
+        }
+        var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
+    },
+    "regular grid": function(numpts, voro) {
+        w = 9.9;
+        n = Math.floor(Math.cbrt(numpts));
+        for (var i=0; i<n+1; i++) {
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
+                }
+            }
+        }
+//        var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
+    },
+    "degenerating grid": function(numpts, voro) {
+        var w = 9.9;
+        
+        var n = Math.floor(Math.cbrt(numpts));
+        var rfac = 1.0/n;
+        for (var i=0; i<n+1; i++) {
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    var r = rfac*j;
+                    voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2==1);
+                }
+            }
+        }
+    }
+};
+
 var VoroSettings = function() {
     this.mode = 'add/delete';
+    this.generator = 'uniform random';
+    this.numpts = 1000;
+    this.seed = 'qq';
+    this.fill_level = 0; // todo add a fill level from [0,1], w/ 0==>one cell on, 1==>all cells on
+    
+    this.regenerate = function() {
+        generate(this.generator, this.numpts, this.seed);
+    };
 };
 
 
@@ -106,6 +149,7 @@ function v3_build_geometry(voro, settings) {
     var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_tris*3*3);
     var vertices = new THREE.BufferAttribute(array, 3);
     geometry.addAttribute('position', vertices);
+    geometry.name = 'v3_voro';
     geometry.setDrawRange(0, num_tris*3);
     return geometry;
 }
@@ -138,6 +182,30 @@ function v3_delete_cell(voro, cell, geometry) {
 // note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
 //var gl_buffers = voro.build_gl_buffers(); // v3_build_geometry calls this
 
+function generate(generator, numPts, seed) {
+    reset_moving();
+    
+    Math.seedrandom(seed);
+    if (voro) {
+        voro.delete();
+    }
+    voro = new Module.Voro([-10,-10,-10],[10,10,10]);
+    Generators[generator](numPts, voro);
+    
+    geometry = v3_build_geometry(voro, {});
+    
+    
+    
+    material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
+    //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
+    if (mesh) {
+        scene.remove(mesh);
+    }
+    mesh = new THREE.Mesh( geometry, material );
+    //    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
+    scene.add( mesh );
+}
+
 function init() {
     Math.seedrandom('qq');
     
@@ -154,14 +222,7 @@ function init() {
 
 
     // create voro structure w/ bounding box
-    voro = new Module.Voro([-10,-10,-10],[10,10,10]);
-    var numPts = 1000;
-    for (var i=0; i<numPts; i++) {
-        voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
-    }
-    var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
     
-    geometry = v3_build_geometry(voro, {});
     
     
 //    voro.delete();
@@ -200,11 +261,7 @@ function init() {
 //    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
 //    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
 //    scene.add( pointset ); // no longer corresponds to vor                                                                                                                                                                                                                                                                                                                 o cells, todo fix and re-add
-    material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
-//    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
-    mesh = new THREE.Mesh( geometry, material );
-//    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
-    scene.add( mesh );
+
     
 //    line = make_line(3);
 //    scene.add(line);
@@ -246,6 +303,13 @@ function init() {
     settings = new VoroSettings();
     datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']).listen();
     
+    datgui.add(settings,'seed');
+    datgui.add(settings,'numpts');
+    datgui.add(settings,'generator',Object.keys(Generators)).listen();
+    datgui.add(settings,'regenerate');
+    
+    settings.regenerate();
+    
     animate();
     render();
 }
@@ -275,6 +339,14 @@ var moving_plane; // plane in which movements will happen -- three.js has a plan
 var moving_mouse_offset;
 var moving_cell_geom;
 var moving_cell_mat;
+
+function reset_moving() {
+    moving_cell = -1;
+    moving_plane = undefined;
+    moving_mouse_offset = undefined;
+    moving_cell_geom = undefined;
+    moving_cell_mat = undefined;
+}
 
 
 function onDocumentMouseDown( event ) {
@@ -320,7 +392,9 @@ function onDocumentMouseDown( event ) {
 }
 function v3_set_moving_cell_geom(p) {
     if (!p) {
-        moving_cell_mat.visible = false;
+        if (moving_cell_mat) {
+            moving_cell_mat.visible = false;
+        }
         return;
     }
     if (!moving_cell_geom) {
