@@ -19,10 +19,11 @@ var settings;
 
 Generators = {
     "uniform random": function(numpts, voro) {
+        var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
         for (var i=0; i<numpts; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
         }
-        var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
+        
     },
     "regular grid": function(numpts, voro) {
         w = 9.9;
@@ -531,11 +532,22 @@ function moveChaos() {
     doneChaos();
 }
 
+function demoAnimation() {
+    var d = new Date();
+    var n = d.getTime();
+    var t=n*.002;
+    voro.move_cell(0, [0,Math.sin(t)*5,Math.cos(t)*5]);
+    v3_update_geometry(voro, geometry);
+}
+
 
 function animate() {
 //    doChaos();
 //    moveChaos();
 //    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
+    
+//    demoAnimation();
+    
     controls.update();
     onChangeVertices();
     requestAnimationFrame( animate );
