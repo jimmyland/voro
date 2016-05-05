@@ -8,7 +8,7 @@ OUTPUT=vorowrap.js
 all: $(SOURCES) $(OUTPUT)
 
 $(OUTPUT): $(SOURCES)
-	$(CC) $(SOURCES) --bind -s NO_EXIT_RUNTIME=1 -s ASSERTIONS=1 -s DEMANGLE_SUPPORT=1 -std=c++11 $(O2_LDFLAGS) -o $(OUTPUT)
+	$(CC) $(SOURCES) --bind -s ALLOW_MEMORY_GROWTH=1 -s NO_EXIT_RUNTIME=1 -s ASSERTIONS=1 -s DEMANGLE_SUPPORT=1 -std=c++11 $(O2_LDFLAGS) -o $(OUTPUT)
 
 .PHONY: clean all
 clean:
