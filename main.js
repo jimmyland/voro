@@ -58,10 +58,10 @@ var VoroSettings = function() {
     this.generator = 'uniform random';
     this.numpts = 1000;
     this.seed = 'qq';
-    this.fill_level = 0; // todo add a fill level from [0,1], w/ 0==>one cell on, 1==>all cells on
+    this.fill_level = 0.0;
     
     this.regenerate = function() {
-        generate(this.generator, this.numpts, this.seed);
+        generate(this.generator, this.numpts, this.seed, this.fill_level);
     };
 };
 
@@ -183,7 +183,7 @@ function v3_delete_cell(voro, cell, geometry) {
 // note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
 //var gl_buffers = voro.build_gl_buffers(); // v3_build_geometry calls this
 
-function generate(generator, numPts, seed) {
+function generate(generator, numPts, seed, fill_level) {
     reset_moving();
     
     Math.seedrandom(seed);
@@ -192,6 +192,11 @@ function generate(generator, numPts, seed) {
     }
     voro = new Module.Voro([-10,-10,-10],[10,10,10]);
     Generators[generator](numPts, voro);
+    if (fill_level == 0) {
+        voro.set_only_centermost(1,0);
+    } else {
+        voro.set_fill(fill_level/100.0, Math.random()*2147483648);
+    }
     
     geometry = v3_build_geometry(voro, {});
     
@@ -304,10 +309,20 @@ function init() {
     settings = new VoroSettings();
     datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']).listen();
     
-    datgui.add(settings,'seed');
-    datgui.add(settings,'numpts');
-    datgui.add(settings,'generator',Object.keys(Generators)).listen();
-    datgui.add(settings,'regenerate');
+    var procgen = datgui.addFolder('Proc. Gen. Settings');
+    
+    procgen.add(settings,'seed');
+    procgen.add(settings,'numpts').min(1);
+    procgen.add(settings,'generator',Object.keys(Generators)).listen();
+    var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
+    fill_controller.onChange(function(value)
+    {
+        if (value==0) voro.set_only_centermost(1,0);
+        else voro.set_fill(value/100.0, Math.random()*100000);
+        v3_update_geometry(voro, geometry);
+    });
+
+    procgen.add(settings,'regenerate');
     
     settings.regenerate();
     

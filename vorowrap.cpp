@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <stdlib.h>
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -10,6 +11,7 @@
 
 #include "voro++/voro++.hh"
 #include "glm/vec3.hpp"
+#include "glm/gtx/norm.hpp"
 
 using namespace std;
 using namespace emscripten;
@@ -335,6 +337,58 @@ struct Voro {
         gl_computed.clear();
     }
     
+    void set_only_centermost(int centermost_type, int other_type) {
+        if (cells.empty()) return;
+        int minc = 0;
+        double minl = glm::length2(cells[0].pos);
+        set_cell(0, other_type);
+        for (size_t i=1; i<cells.size(); i++) {
+            double pl = glm::length2(cells[i].pos);
+            if (pl < minl) {
+                minc = i;
+                minl = pl;
+            }
+            set_cell(i, other_type);
+        }
+        set_cell(minc, centermost_type);
+    }
+    
+    void set_all(int type) {
+        for (size_t i=0; i<cells.size(); i++) {
+            set_cell(i, type);
+        }
+    }
+    
+    void set_fill(double target_fill, int rand_seed) {
+        if (cells.empty()) return;
+        srand(rand_seed);
+        
+        if (target_fill <= 0 || target_fill >= 1) {
+            set_all(target_fill >= 1);
+            return;
+        }
+        
+        float fill = get_fill();
+        float newfill = fill;
+        const float one_cell_fill = (1.0/float(cells.size()));
+        int needs_more_fill = fill < target_fill;
+        while (needs_more_fill == (newfill < target_fill)) {
+            int ci = rand() % cells.size();
+            if ((!cells[ci].type) == needs_more_fill) {
+                set_cell(ci, needs_more_fill);
+                newfill = newfill + (2*needs_more_fill-1)*one_cell_fill;
+            }
+        }
+    }
+    
+    float get_fill() {
+        int nonz = 0;
+        for (size_t i=0; i<cells.size(); i++) {
+            nonz += !!cells[i].type;
+        }
+        return float(nonz) / float(cells.size());
+    }
+    
     // assuming cells vector is already created, now create the container for holding the cells
     void build_container() {
         clear_computed(); // clear out any existing computation
@@ -473,6 +527,16 @@ struct Voro {
         int oldtype = cells[cell].type;
         cells[cell].type = !oldtype;
         gl_computed.set_cell(*this, cell, oldtype);
+    }
+    void set_cell(int cell, int type) {
+        if (cell < 0 || cell >= cells.size() || type==cells[cell].type)
+            return;
+        
+        int oldtype = cells[cell].type;
+        cells[cell].type = type;
+        if (cell < gl_computed.info.size()) {
+            gl_computed.set_cell(*this, cell, oldtype);
+        }
     }
     int cell_from_vertex(int vert_ind) {
         return gl_computed.vert2cell(vert_ind);
@@ -662,6 +726,8 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("delete_cell", &Voro::delete_cell)
     .function("move_cell", &Voro::move_cell)
     .function("sanity", &Voro::sanity)
+    .function("set_fill", &Voro::set_fill)
+    .function("set_only_centermost", &Voro::set_only_centermost)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
