@@ -19,7 +19,7 @@ var settings;
 
 Generators = {
     "uniform random": function(numpts, voro) {
-        var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
+        voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
         }
@@ -47,6 +47,22 @@ Generators = {
                 for (var k=0; k<n+1; k++) {
                     var r = rfac*j;
                     voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "cylindrical columns": function(numpts, voro) {
+        var n = Math.floor(Math.cbrt(numpts));
+        var jitter = .1; // expose jitter as param
+        var w =9.99;
+        voro.add_cell([0,0,0], true);
+        for (var zi=0; zi<2*n+1; zi++) { // z
+            var z = zi*w/n-w;
+            for (var ri=0; ri<n*.5+1; ri++) { // radius
+                var r = ri*(w-4)/(n*.5) + 4;
+                for (var ti=0; ti<n+1; ti++) { // angle
+                    var theta = ti*2*Math.PI/n;
+                    voro.add_cell([r*Math.cos(theta)+Math.random()*jitter, r*Math.sin(theta)+Math.random()*jitter, z+Math.random()*jitter], ((zi%n)-ti)==0);
                 }
             }
         }
