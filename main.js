@@ -66,6 +66,23 @@ Generators = {
                 }
             }
         }
+    },
+    "spherical spikes": function(numpts, voro) {
+        for (var i = 0; i < numpts; i++) {
+            var pt = [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
+            var radtrue = Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]+pt[2]*pt[2]);
+            var rad = .55;//+rndn()*.002;
+            if (i > numpts/2) {
+                rad = .3+.25*(pt[2]+1)*(pt[2]+1)*.1+Math.random()*.05;
+            }
+            if (radtrue > .00000001) {
+                for (var ii=0; ii<3; ii++) {
+                    pt[ii]*=5*rad/radtrue;
+                }
+            }
+            var radfinal = Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]+pt[2]*pt[2]);
+            voro.add_cell(pt, radfinal < 4);
+        }
     }
 };
 
