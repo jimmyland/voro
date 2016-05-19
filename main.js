@@ -53,7 +53,7 @@ Generators = {
     },
     "cylindrical columns": function(numpts, voro) {
         var n = Math.floor(Math.cbrt(numpts));
-        var jitter = .1; // expose jitter as param
+        var jitter = .1; // todo: expose jitter as param
         var w =9.99;
         voro.add_cell([0,0,0], true);
         for (var zi=0; zi<2*n+1; zi++) { // z
