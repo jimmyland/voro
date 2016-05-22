@@ -149,6 +149,25 @@ THREE.TrackballControls = function ( object, domElement ) {
 		};
 
 	}() );
+    
+    this.alignToAxis = function(axis) {
+        var eye_old = new THREE.Vector3();
+        eye_old.copy( _this.object.position ).sub( _this.target );
+        var d = eye_old.length();
+        _eye.set(0,0,0);
+        _eye.setComponent(axis, 1);
+        if (eye_old.angleTo(_eye) < .001) {
+            _eye.setComponent(axis, -1);
+        }
+        _this.object.position.copy(_this.target).addScaledVector(_eye, d);
+        var up = 1;
+        if (axis == up) {
+            up = 0;
+        }
+        this.object.up.set(0,0,0);
+        this.object.up.setComponent(up, 1);
+        
+    };
 
 	this.rotateCamera = ( function() {
 
