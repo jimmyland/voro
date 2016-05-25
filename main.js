@@ -370,6 +370,12 @@ function onDocumentKeyDown( event ) {
             settings.mode = 'toggle';
         }
     }
+    if (event.keyCode === 27) {
+        reset_moving();
+        if (moving_controls) {
+            moving_controls.detach();
+        }
+    }
     if (event.keyCode >= 'X'.charCodeAt() && event.keyCode <= 'Z'.charCodeAt()) {
         var axis = event.keyCode - 'X'.charCodeAt();
         controls.alignToAxis(axis);
