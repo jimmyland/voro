@@ -430,10 +430,12 @@ function onDocumentMouseDown( event ) {
         }
     }
     if (settings.mode === 'move') {
-        if (moving_cell === -1) {
+        if (moving_cell === -1 || !moving_cell_mat || !moving_cell_mat.visible) {
+            
             document.addEventListener('mouseup', stopMoving, false);
-            moving_cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-            if (moving_cell > -1) {
+            moving_cell_new = v3_raycast(voro, mesh, mouse, camera, raycaster);
+            if (moving_cell_new > -1) {
+                moving_cell = moving_cell_new;
                 var n = camera.getWorldDirection();
                 var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
                 moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
@@ -516,9 +518,11 @@ function onDocumentMouseMove( event ) {
             v3_set_moving_cell_geom(newpos);
         }
     }
-    var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-    if (!controls.isActive()) {
-        controls.dragEnabled = cell < 0 || settings.mode === 'camera';
+    if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
+        var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+        if (!controls.isActive()) {
+            controls.dragEnabled = cell < 0 || settings.mode === 'camera';
+        }
     }
 }
 
