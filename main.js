@@ -252,12 +252,7 @@ function init() {
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
     camera.position.z = 30;
-    
 
-    
-
-    
-    
 
 
     // create voro structure w/ bounding box
@@ -336,6 +331,9 @@ function init() {
     controls.dynamicDampingFactor = 0.3;
     controls.keys = [ 65, 83, 68 ];
     controls.addEventListener( 'change', render );
+    
+    moving_controls = new THREE.TransformControls( camera, renderer.domElement );
+    moving_controls.addEventListener( 'change', render );
     
     
     datgui = new dat.GUI();
