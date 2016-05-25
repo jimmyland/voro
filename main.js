@@ -393,7 +393,9 @@ var moving_cell = -1;
 var moving_plane; // plane in which movements will happen -- three.js has a plane.intersectLine() we can use (need to translate ray to line)
 var moving_mouse_offset;
 var moving_cell_geom;
+var moving_cell_points;
 var moving_cell_mat;
+var moving_controls;
 
 function reset_moving() {
     moving_cell = -1;
@@ -454,14 +456,14 @@ function v3_set_moving_cell_geom(p) {
     }
     if (!moving_cell_geom) {
         moving_cell_geom = new THREE.Geometry();
-        moving_cell_geom.vertices.push(p);
+        moving_cell_geom.vertices.push(new THREE.Vector3());
         moving_cell_mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
-        var ptcloud = new THREE.Points(moving_cell_geom, moving_cell_mat);
-        scene.add(ptcloud);
+        moving_cell_points = new THREE.Points(moving_cell_geom, moving_cell_mat);
+        moving_cell_points.position.set(p.x,p.y,p.z);
+        scene.add(moving_cell_points);
     } else {
         moving_cell_mat.visible = true;
-        moving_cell_geom.vertices[0] = p;
-        moving_cell_geom.verticesNeedUpdate = true;
+        moving_cell_points.position.set(p.x,p.y,p.z);
     }
     
     
