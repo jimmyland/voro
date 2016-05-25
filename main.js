@@ -333,7 +333,8 @@ function init() {
     controls.addEventListener( 'change', render );
     
     moving_controls = new THREE.TransformControls( camera, renderer.domElement );
-    moving_controls.addEventListener( 'change', render );
+    moving_controls.addEventListener( 'objectChange', moved_control );
+    scene.add(moving_controls);
     
     
     datgui = new dat.GUI();
@@ -445,6 +446,12 @@ function onDocumentMouseDown( event ) {
         }
     }
 }
+
+function moved_control() {
+    voro.move_cell(moving_cell, moving_cell_points.position.toArray());
+    v3_update_geometry(voro, geometry);
+    render();
+}
 function v3_set_moving_cell_geom(p) {
     if (!p) {
         if (moving_cell_mat) {
@@ -459,7 +466,9 @@ function v3_set_moving_cell_geom(p) {
         moving_cell_points = new THREE.Points(moving_cell_geom, moving_cell_mat);
         moving_cell_points.position.set(p.x,p.y,p.z);
         scene.add(moving_cell_points);
+        moving_controls.attach(moving_cell_points);
     } else {
+        moving_controls.attach(moving_cell_points);
         moving_cell_mat.visible = true;
         moving_cell_points.position.set(p.x,p.y,p.z);
     }
@@ -473,7 +482,6 @@ function movePerpToCam(camera, cell, dx, dy) {
     raycaster.ray.direction;
 }
 function stopMoving() {
-    moving_cell = -1;
     v3_set_moving_cell_geom(undefined);
     // todo: this is where we'd push to the undo stack, etc.
     document.removeEventListener( 'mouseup', stopMoving );
@@ -488,7 +496,7 @@ function onDocumentMouseMove( event ) {
     event.preventDefault();
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-    if (moving_cell>-1) {
+    if (moving_cell_mat && moving_cell_mat.visible) {
         var n = moving_plane.normal;
         
         var pos = mouse.add(moving_mouse_offset);
@@ -515,6 +523,7 @@ function onDocumentMouseMove( event ) {
 }
 
 function render() {
+    moving_controls.update();
     renderer.render( scene, camera );
 }
 
