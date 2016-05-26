@@ -122,20 +122,10 @@ function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
 
     var intersects = raycaster.intersectObject(mesh);
-//    line.visible = intersects.length>0;
     if (intersects.length === 0)
         return -1;
     
     var intersect = intersects[0];
-//    var face = intersect.face;
-//    var linePosition = line.geometry.attributes.position;
-//    var meshPosition = mesh.geometry.attributes.position;
-//    linePosition.copyAt( 0, meshPosition, face.a );
-//    linePosition.copyAt( 1, meshPosition, face.b );
-//    linePosition.copyAt( 2, meshPosition, face.c );
-//    linePosition.copyAt( 3, meshPosition, face.a );
-//    line.geometry.attributes.position.needsUpdate = true;
-    
     return intersect.index;
 }
 
@@ -143,7 +133,6 @@ function v3_raycast_pt(mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
     
     var intersects = raycaster.intersectObject(mesh);
-//    line.visible = intersects.length>0;
     if (intersects.length === 0)
         return null;
     
@@ -152,9 +141,9 @@ function v3_raycast_pt(mesh, mouse, camera, caster) {
 }
 function v3_add_cell(voro, pt_3, geometry) {
     var pt = [pt_3.x, pt_3.y, pt_3.z];
-    voro.add_cell(pt, true);
+    var cell = voro.add_cell(pt, true);
     v3_update_geometry(voro, geometry);
-//    add_pt_to_scene(pt_3);
+    return cell;
 }
 
 
@@ -362,6 +351,13 @@ function init() {
     render();
 }
 
+function deselect_moving() {
+    stop_moving();
+    if (moving_controls) {
+        moving_controls.detach();
+    }
+}
+
 function onDocumentKeyDown( event ) {
     if (event.keyCode === 32) {
         if (settings.mode === 'toggle') {
@@ -371,7 +367,7 @@ function onDocumentKeyDown( event ) {
         }
     }
     if (event.keyCode === 27) {
-        reset_moving();
+        deselect_moving();
         if (moving_controls) {
             moving_controls.detach();
         }
@@ -407,13 +403,16 @@ function reset_moving() {
     moving_plane = undefined;
     moving_mouse_offset = undefined;
     moving_cell_geom = undefined;
+    moving_cell_points = undefined;
     moving_cell_mat = undefined;
+    moving_controls.detach();
 }
 
 
 function onDocumentMouseDown( event ) {
     
     if (settings.mode === 'toggle') {
+        deselect_moving();
         if (event.button === 2) {
             var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
             v3_toggle_cell(voro, cell, geometry);
@@ -428,30 +427,38 @@ function onDocumentMouseDown( event ) {
         if (event.button === 2) {
             var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
             v3_delete_cell(voro, cell, geometry);
+            deselect_moving();
         } else {
             var pt = v3_raycast_pt(mesh, mouse, camera, raycaster);
             if (pt) {
-                v3_add_cell(voro, pt, geometry);
+                moving_cell = v3_add_cell(voro, pt, geometry);
+                start_moving_cell(moving_cell);
+                render();
             }
         }
     }
     if (settings.mode === 'move') {
         if (moving_cell === -1 || !moving_cell_mat || !moving_cell_mat.visible) {
             
-            document.addEventListener('mouseup', stopMoving, false);
+            
             moving_cell_new = v3_raycast(voro, mesh, mouse, camera, raycaster);
-            if (moving_cell_new > -1) {
-                moving_cell = moving_cell_new;
-                var n = camera.getWorldDirection();
-                var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
-                moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
-                v3_set_moving_cell_geom(p);
-                render();
-                var p_on_screen = p.project(camera);
-                moving_mouse_offset = p_on_screen.sub(mouse);
-                
-            }
+            start_moving_cell(moving_cell_new);
         }
+    }
+}
+
+function start_moving_cell(moving_cell_new) {
+    if (moving_cell_new > -1) {
+        document.addEventListener('mouseup', stop_moving, false);
+        
+        moving_cell = moving_cell_new;
+        var n = camera.getWorldDirection();
+        var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
+        moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+        v3_set_moving_cell_geom(p);
+        render();
+        var p_on_screen = p.project(camera);
+        moving_mouse_offset = p_on_screen.sub(mouse);
     }
 }
 
@@ -489,10 +496,10 @@ function movePerpToCam(camera, cell, dx, dy) {
     camera.up;
     raycaster.ray.direction;
 }
-function stopMoving() {
+function stop_moving() {
     v3_set_moving_cell_geom(undefined);
     // todo: this is where we'd push to the undo stack, etc.
-    document.removeEventListener( 'mouseup', stopMoving );
+    document.removeEventListener( 'mouseup', stop_moving );
 }
 function logv2(s,v){
     console.log(s + ": " + v.x + ", " + v.y);
@@ -504,7 +511,7 @@ function onDocumentMouseMove( event ) {
     event.preventDefault();
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-    if (moving_cell_mat && moving_cell_mat.visible) {
+    if (moving_cell_mat && moving_cell_mat.visible && moving_plane) {
         var n = moving_plane.normal;
         
         var pos = mouse.add(moving_mouse_offset);
@@ -524,10 +531,11 @@ function onDocumentMouseMove( event ) {
             v3_set_moving_cell_geom(newpos);
         }
     }
+    
     if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
         var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
         if (!controls.isActive()) {
-            controls.dragEnabled = cell < 0 || settings.mode === 'camera';
+            controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && (!moving_controls || !moving_controls.axis);
         }
     }
 }
