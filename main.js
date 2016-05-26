@@ -122,20 +122,10 @@ function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
 
     var intersects = raycaster.intersectObject(mesh);
-//    line.visible = intersects.length>0;
     if (intersects.length === 0)
         return -1;
     
     var intersect = intersects[0];
-//    var face = intersect.face;
-//    var linePosition = line.geometry.attributes.position;
-//    var meshPosition = mesh.geometry.attributes.position;
-//    linePosition.copyAt( 0, meshPosition, face.a );
-//    linePosition.copyAt( 1, meshPosition, face.b );
-//    linePosition.copyAt( 2, meshPosition, face.c );
-//    linePosition.copyAt( 3, meshPosition, face.a );
-//    line.geometry.attributes.position.needsUpdate = true;
-    
     return intersect.index;
 }
 
@@ -143,7 +133,6 @@ function v3_raycast_pt(mesh, mouse, camera, caster) {
     caster.setFromCamera(mouse, camera);
     
     var intersects = raycaster.intersectObject(mesh);
-//    line.visible = intersects.length>0;
     if (intersects.length === 0)
         return null;
     
@@ -152,9 +141,9 @@ function v3_raycast_pt(mesh, mouse, camera, caster) {
 }
 function v3_add_cell(voro, pt_3, geometry) {
     var pt = [pt_3.x, pt_3.y, pt_3.z];
-    voro.add_cell(pt, true);
+    var cell = voro.add_cell(pt, true);
     v3_update_geometry(voro, geometry);
-//    add_pt_to_scene(pt_3);
+    return cell;
 }
 
 
@@ -252,12 +241,7 @@ function init() {
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
     camera.position.z = 30;
-    
 
-    
-
-    
-    
 
 
     // create voro structure w/ bounding box
@@ -337,6 +321,10 @@ function init() {
     controls.keys = [ 65, 83, 68 ];
     controls.addEventListener( 'change', render );
     
+    moving_controls = new THREE.TransformControls( camera, renderer.domElement );
+    moving_controls.addEventListener( 'objectChange', moved_control );
+    scene.add(moving_controls);
+    
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
@@ -363,12 +351,25 @@ function init() {
     render();
 }
 
+function deselect_moving() {
+    stop_moving();
+    if (moving_controls) {
+        moving_controls.detach();
+    }
+}
+
 function onDocumentKeyDown( event ) {
     if (event.keyCode === 32) {
         if (settings.mode === 'toggle') {
             settings.mode = 'move';
         } else {
             settings.mode = 'toggle';
+        }
+    }
+    if (event.keyCode === 27) {
+        deselect_moving();
+        if (moving_controls) {
+            moving_controls.detach();
         }
     }
     if (event.keyCode >= 'X'.charCodeAt() && event.keyCode <= 'Z'.charCodeAt()) {
@@ -393,20 +394,25 @@ var moving_cell = -1;
 var moving_plane; // plane in which movements will happen -- three.js has a plane.intersectLine() we can use (need to translate ray to line)
 var moving_mouse_offset;
 var moving_cell_geom;
+var moving_cell_points;
 var moving_cell_mat;
+var moving_controls;
 
 function reset_moving() {
     moving_cell = -1;
     moving_plane = undefined;
     moving_mouse_offset = undefined;
     moving_cell_geom = undefined;
+    moving_cell_points = undefined;
     moving_cell_mat = undefined;
+    moving_controls.detach();
 }
 
 
 function onDocumentMouseDown( event ) {
     
     if (settings.mode === 'toggle') {
+        deselect_moving();
         if (event.button === 2) {
             var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
             v3_toggle_cell(voro, cell, geometry);
@@ -421,29 +427,45 @@ function onDocumentMouseDown( event ) {
         if (event.button === 2) {
             var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
             v3_delete_cell(voro, cell, geometry);
+            deselect_moving();
         } else {
             var pt = v3_raycast_pt(mesh, mouse, camera, raycaster);
             if (pt) {
-                v3_add_cell(voro, pt, geometry);
+                moving_cell = v3_add_cell(voro, pt, geometry);
+                start_moving_cell(moving_cell);
+                render();
             }
         }
     }
     if (settings.mode === 'move') {
-        if (moving_cell === -1) {
-            document.addEventListener('mouseup', stopMoving, false);
-            moving_cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-            if (moving_cell > -1) {
-                var n = camera.getWorldDirection();
-                var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
-                moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
-                v3_set_moving_cell_geom(p);
-                render();
-                var p_on_screen = p.project(camera);
-                moving_mouse_offset = p_on_screen.sub(mouse);
-                
-            }
+        if (moving_cell === -1 || !moving_cell_mat || !moving_cell_mat.visible) {
+            
+            
+            moving_cell_new = v3_raycast(voro, mesh, mouse, camera, raycaster);
+            start_moving_cell(moving_cell_new);
         }
     }
+}
+
+function start_moving_cell(moving_cell_new) {
+    if (moving_cell_new > -1) {
+        document.addEventListener('mouseup', stop_moving, false);
+        
+        moving_cell = moving_cell_new;
+        var n = camera.getWorldDirection();
+        var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
+        moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+        v3_set_moving_cell_geom(p);
+        render();
+        var p_on_screen = p.project(camera);
+        moving_mouse_offset = p_on_screen.sub(mouse);
+    }
+}
+
+function moved_control() {
+    voro.move_cell(moving_cell, moving_cell_points.position.toArray());
+    v3_update_geometry(voro, geometry);
+    render();
 }
 function v3_set_moving_cell_geom(p) {
     if (!p) {
@@ -454,14 +476,16 @@ function v3_set_moving_cell_geom(p) {
     }
     if (!moving_cell_geom) {
         moving_cell_geom = new THREE.Geometry();
-        moving_cell_geom.vertices.push(p);
+        moving_cell_geom.vertices.push(new THREE.Vector3());
         moving_cell_mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
-        var ptcloud = new THREE.Points(moving_cell_geom, moving_cell_mat);
-        scene.add(ptcloud);
+        moving_cell_points = new THREE.Points(moving_cell_geom, moving_cell_mat);
+        moving_cell_points.position.set(p.x,p.y,p.z);
+        scene.add(moving_cell_points);
+        moving_controls.attach(moving_cell_points);
     } else {
+        moving_controls.attach(moving_cell_points);
         moving_cell_mat.visible = true;
-        moving_cell_geom.vertices[0] = p;
-        moving_cell_geom.verticesNeedUpdate = true;
+        moving_cell_points.position.set(p.x,p.y,p.z);
     }
     
     
@@ -472,11 +496,10 @@ function movePerpToCam(camera, cell, dx, dy) {
     camera.up;
     raycaster.ray.direction;
 }
-function stopMoving() {
-    moving_cell = -1;
+function stop_moving() {
     v3_set_moving_cell_geom(undefined);
     // todo: this is where we'd push to the undo stack, etc.
-    document.removeEventListener( 'mouseup', stopMoving );
+    document.removeEventListener( 'mouseup', stop_moving );
 }
 function logv2(s,v){
     console.log(s + ": " + v.x + ", " + v.y);
@@ -488,7 +511,7 @@ function onDocumentMouseMove( event ) {
     event.preventDefault();
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-    if (moving_cell>-1) {
+    if (moving_cell_mat && moving_cell_mat.visible && moving_plane) {
         var n = moving_plane.normal;
         
         var pos = mouse.add(moving_mouse_offset);
@@ -508,13 +531,17 @@ function onDocumentMouseMove( event ) {
             v3_set_moving_cell_geom(newpos);
         }
     }
-    var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-    if (!controls.isActive()) {
-        controls.dragEnabled = cell < 0 || settings.mode === 'camera';
+    
+    if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
+        var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+        if (!controls.isActive()) {
+            controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && (!moving_controls || !moving_controls.axis);
+        }
     }
 }
 
 function render() {
+    moving_controls.update();
     renderer.render( scene, camera );
 }
 
