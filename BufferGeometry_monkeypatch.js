@@ -26,7 +26,7 @@ THREE.BufferGeometry.prototype.computeBoundingSphere = ( function () {
             var maxRadiusSq = 0;
 
             var drawRangeFac = 1;
-            if (material.wireframe) {
+            if (material && material.wireframe) {
                 drawRangeFac = .5;
             }
             for ( var i = geometry.drawRange.start*3*drawRangeFac, il = Math.min(positions.length,(geometry.drawRange.count*drawRangeFac)*3); i < il; i += 3 ) {

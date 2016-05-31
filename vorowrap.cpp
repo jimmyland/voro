@@ -82,6 +82,64 @@ struct CellToTris {
 
 struct Voro;
 
+struct SingleCellBufferManager {
+    voro::voronoicell vorocell; // reused temp var, holds computed cell info
+    vector<int> faces; // faces as voro++ likes to store them -- packed as [#vs in f0, f0 v0, f0 v1, ..., #vs in f1, ...]
+    vector<double> vertices; // vertex coordinates, indexed by faces array
+    int computed_cell;
+    
+    float *vert_buf;
+    int vert_count;
+    int max_verts;
+    
+    SingleCellBufferManager() : computed_cell(-1), vert_buf(0), vert_count(0), max_verts(0) {}
+    
+    void init(int vert_capacity) {
+        clear();
+        
+        max_verts = vert_capacity;
+        vert_buf = new float[3*vert_capacity];
+    }
+    void clear() {
+        delete [] vert_buf;
+        vert_count = max_verts = 0;
+        faces.clear();
+        vertices.clear();
+        computed_cell = -1;
+    }
+    void clean() {
+        vert_count = 0;
+    }
+    
+    void compute_from_cache(const vector<int> &faces, const vector<double> &vertices) {
+        this->faces.clear(); this->vertices.clear();
+        computed_cell = -1;
+        size_t skip = 0;
+        int last = 0;
+        clean();
+        for (int i=0; i<faces.size(); i+=faces[i]+1) {
+            int len = faces[i];
+            for (int fi=0; fi<len; fi++) {
+                add_vert(vertices, faces[i+1+fi]);
+                add_vert(vertices, faces[i+1+((fi+1)%len)]);
+            }
+        }
+    }
+    inline void add_vert(const vector<double> &vertices, int vi) {
+        if (vert_count >= max_verts)
+            return;
+        float *buf = vert_buf + (vert_count*3);
+        
+        *buf = vertices[vi*3]; buf++;
+        *buf = vertices[vi*3+1]; buf++;
+        *buf = vertices[vi*3+2]; buf++;
+        vert_count++;
+    }
+    void compute_cell(Voro &src, int cell);
+//    void compute_potential_cell(Voro &src, glm::vec3 pos);
+
+};
+
 struct GLBufferManager {
     float *vertices;
     int tri_count, max_tris;
@@ -195,6 +253,13 @@ struct GLBufferManager {
     }
     
     void recompute_neighbors(Voro &src, int cell);
+    
+    CellCache *get_cache(int cell) {
+        if (cell < 0 || cell >= info.size() || !info[cell]) {
+            return 0;
+        }
+        return &info[cell]->cache;
+    }
     
     
     inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t, int f) {
@@ -511,6 +576,27 @@ struct Voro {
     uintptr_t gl_vertices() {
         return reinterpret_cast<uintptr_t>(gl_computed.vertices);
     }
+    void gl_single_build(int max_verts_guess) {
+        gl_single_cell.init(max_verts_guess);
+    }
+    void gl_compute_single_cell(int cell) {
+        gl_single_cell.computed_cell = cell;
+        CellCache *cache = gl_computed.get_cache(cell);
+        if (cache) {
+            gl_single_cell.compute_from_cache(cache->faces, cache->vertices);
+        } else {
+            gl_single_cell.compute_cell(*this, cell);
+        }
+    }
+    uintptr_t gl_single_cell_vertices() {
+        return reinterpret_cast<uintptr_t>(gl_single_cell.vert_buf);
+    }
+    int gl_single_cell_vert_count() {
+        return gl_single_cell.vert_count;
+    }
+    int gl_single_cell_max_verts() {
+        return gl_single_cell.max_verts;
+    }
     int gl_tri_count() {
         return gl_computed.tri_count;
     }
@@ -551,6 +637,7 @@ struct Voro {
 
 protected:
     friend class GLBufferManager;
+    friend class SingleCellBufferManager;
     
     // library user populates the bounds and the cells vector
     // these define the truth of what the voronoi diagram should be.
@@ -564,8 +651,24 @@ protected:
     // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
     GLBufferManager gl_computed;
+    SingleCellBufferManager gl_single_cell;
 
 };
+    
+void SingleCellBufferManager::compute_cell(Voro &src, int cell) {
+    assert(cell >= 0 && cell < src.cell_count());
+    auto &link = src.links[cell];
+    if (!link.valid()) {
+        clean();
+        return;
+    }
+    if (src.con->compute_cell(vorocell, link.ijk, link.q)) {
+        vorocell.face_vertices(faces);
+        const auto &pos = src.cells[cell].pos;
+        vorocell.vertices(pos.x, pos.y, pos.z, vertices);
+        compute_from_cache(faces, vertices);
+    }
+}
 
 void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for all cells and add tris for non-zero cells
     assert(cell >= 0 && cell < info.size());
@@ -728,6 +831,11 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("sanity", &Voro::sanity)
     .function("set_fill", &Voro::set_fill)
     .function("set_only_centermost", &Voro::set_only_centermost)
+    .function("gl_compute_single_cell", &Voro::gl_compute_single_cell)
+    .function("gl_single_cell_vert_count", &Voro::gl_single_cell_vert_count)
+    .function("gl_single_build", &Voro::gl_single_build)
+    .function("gl_single_cell_vertices", &Voro::gl_single_cell_vertices)
+    .function("gl_single_cell_max_verts", &Voro::gl_single_cell_max_verts)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;

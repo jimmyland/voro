@@ -12,6 +12,8 @@ var mouse = new THREE.Vector2();
 var controls;
 var bb_geometry;
 
+var preview_geometry, preview_material, preview_lines;
+
 //var line;
 
 var datgui;
@@ -177,6 +179,35 @@ function v3_build_geometry(voro, settings) {
     return geometry;
 }
 
+function v3_build_preview(voro, settings) {
+    var geometry = new THREE.BufferGeometry();
+    var max_verts = 10000;
+    voro.gl_single_build(max_verts);
+    var verts_ptr = voro.gl_single_cell_vertices();
+    var num_verts = voro.gl_single_cell_vert_count();
+    var max_verts = voro.gl_single_cell_max_verts();
+    var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_verts*3);
+    var vertices = new THREE.BufferAttribute(array, 3);
+    geometry.addAttribute('position', vertices);
+    geometry.name = 'v3_voro_single';
+    geometry.setDrawRange(0, num_verts);
+    return geometry;
+}
+function v3_set_preview(voro, cell, geometry) {
+    if (cell < 0) {
+        preview_lines.visible = false;
+        return;
+    }
+    voro.gl_compute_single_cell(cell);
+    v3_update_preview(voro, geometry);
+    preview_lines.visible = true;
+}
+function v3_update_preview(voro, geometry) {
+    var num_verts = voro.gl_single_cell_vert_count();
+    geometry.setDrawRange(0, num_verts);
+    geometry.attributes['position'].needsUpdate = true;
+}
+
 function v3_update_geometry(voro, geometry) {
     var num_tris = voro.gl_tri_count();
     geometry.setDrawRange(0, num_tris*3);
@@ -222,6 +253,11 @@ function generate(generator, numPts, seed, fill_level) {
     
     geometry = v3_build_geometry(voro, {});
     
+    preview_geometry = v3_build_preview(voro, {});
+    preview_material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: .5, transparent: false } );
+    preview_lines = new THREE.LineSegments(preview_geometry, preview_material);
+    preview_lines.visible = false;
+    scene.add( preview_lines );
     
     
     material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
@@ -420,7 +456,10 @@ function onDocumentMouseDown( event ) {
             var cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
             v3_toggle_cell(voro, cell, geometry);
         }
-        v3_raycast(voro, mesh, mouse, camera, raycaster);
+        preview_lines.visible = false;
+        var nbr_cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
+        v3_set_preview(voro, nbr_cell, preview_geometry);
+        
         onChangeVertices();
     }
     if (settings.mode === 'add/delete') {
@@ -532,11 +571,17 @@ function onDocumentMouseMove( event ) {
         }
     }
     
+    preview_lines.visible = false;
     if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
         var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
         if (!controls.isActive()) {
             controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && (!moving_controls || !moving_controls.axis);
+            if (!controls.dragEnabled && settings.mode === 'toggle') {
+                var nbr_cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
+                v3_set_preview(voro, nbr_cell, preview_geometry);
+            }
         }
+        
     }
 }
 
