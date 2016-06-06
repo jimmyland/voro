@@ -4,20 +4,37 @@
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
-var geometry, material, mesh, pointset;
-var ptgeom, ptcloud;
-var voro;
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
 var controls;
 var bb_geometry;
 
-var preview_geometry, preview_material, preview_lines;
 
-//var line;
+var v3;
 
 var datgui;
 var settings;
+
+
+// these globals hold the state of the cell the user is actively moving in move-cell mode.
+// todo: refactor this sort of thing into a v3 manager class?
+var moving_cell = -1;
+var moving_plane; // plane in which movements will happen -- three.js has a plane.intersectLine() we can use (need to translate ray to line)
+var moving_mouse_offset;
+var moving_cell_geom;
+var moving_cell_points;
+var moving_cell_mat;
+var moving_controls;
+
+function reset_moving() {
+    moving_cell = -1;
+    moving_plane = undefined;
+    moving_mouse_offset = undefined;
+    moving_cell_geom = undefined;
+    moving_cell_points = undefined;
+    moving_cell_mat = undefined;
+    moving_controls.detach();
+}
 
 Generators = {
     "uniform random": function(numpts, voro) {
@@ -96,19 +113,12 @@ var VoroSettings = function() {
     this.fill_level = 0.0;
     
     this.regenerate = function() {
-        generate(this.generator, this.numpts, this.seed, this.fill_level);
+        reset_moving();
+        v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
+        render();
+        
     };
 };
-
-
-
-function make_line(len) {
-    var geometry = new THREE.BufferGeometry();
-    geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( 4 * 3 ), len ) );
-    var material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2, transparent: false } );
-    var line = new THREE.Line( geometry, material );
-    return line;
-}
 
 
 function wait_for_ready() {
@@ -120,155 +130,7 @@ function wait_for_ready() {
 }
 wait_for_ready();
 
-function v3_raycast_vertex_index(voro, mesh, mouse, camera, caster) {
-    caster.setFromCamera(mouse, camera);
 
-    var intersects = raycaster.intersectObject(mesh);
-    if (intersects.length === 0)
-        return -1;
-    
-    var intersect = intersects[0];
-    return intersect.index;
-}
-
-function v3_raycast_pt(mesh, mouse, camera, caster) {
-    caster.setFromCamera(mouse, camera);
-    
-    var intersects = raycaster.intersectObject(mesh);
-    if (intersects.length === 0)
-        return null;
-    
-    var intersect = intersects[0];
-    return intersect.point;
-}
-function v3_add_cell(voro, pt_3, geometry) {
-    var pt = [pt_3.x, pt_3.y, pt_3.z];
-    var cell = voro.add_cell(pt, true);
-    v3_update_geometry(voro, geometry);
-    return cell;
-}
-
-
-function v3_raycast(voro, mesh, mouse, camera, caster) {
-    index = v3_raycast_vertex_index(voro, mesh, mouse, camera, caster)
-    if (index < 0)
-        return index;
-    
-    return voro.cell_from_vertex(index)
-}
-function v3_raycast_neighbor(voro, mesh, mouse, camera, caster) {
-    index = v3_raycast_vertex_index(voro, mesh, mouse, camera, caster)
-    if (index < 0)
-        return index;
-    
-    return voro.cell_neighbor_from_vertex(index)
-}
-
-function v3_build_geometry(voro, settings) {
-    var geometry = new THREE.BufferGeometry();
-    var max_tris = 100000;
-    voro.gl_build(max_tris /* initial guess at num tris needed */);
-    var verts_ptr = voro.gl_vertices();
-    var num_tris = voro.gl_tri_count();
-    var max_tris = voro.gl_max_tris();
-    var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_tris*3*3);
-    var vertices = new THREE.BufferAttribute(array, 3);
-    geometry.addAttribute('position', vertices);
-    geometry.name = 'v3_voro';
-    geometry.setDrawRange(0, num_tris*3);
-    return geometry;
-}
-
-function v3_build_preview(voro, settings) {
-    var geometry = new THREE.BufferGeometry();
-    var max_verts = 10000;
-    voro.gl_single_build(max_verts);
-    var verts_ptr = voro.gl_single_cell_vertices();
-    var num_verts = voro.gl_single_cell_vert_count();
-    var max_verts = voro.gl_single_cell_max_verts();
-    var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_verts*3);
-    var vertices = new THREE.BufferAttribute(array, 3);
-    geometry.addAttribute('position', vertices);
-    geometry.name = 'v3_voro_single';
-    geometry.setDrawRange(0, num_verts);
-    return geometry;
-}
-function v3_set_preview(voro, cell, geometry) {
-    if (cell < 0) {
-        preview_lines.visible = false;
-        return;
-    }
-    voro.gl_compute_single_cell(cell);
-    v3_update_preview(voro, geometry);
-    preview_lines.visible = true;
-}
-function v3_update_preview(voro, geometry) {
-    var num_verts = voro.gl_single_cell_vert_count();
-    geometry.setDrawRange(0, num_verts);
-    geometry.attributes['position'].needsUpdate = true;
-}
-
-function v3_update_geometry(voro, geometry) {
-    var num_tris = voro.gl_tri_count();
-    geometry.setDrawRange(0, num_tris*3);
-    geometry.attributes['position'].needsUpdate = true;
-}
-
-function v3_toggle_cell(voro, cell, geometry) {
-    voro.toggle_cell(cell);
-    v3_update_geometry(voro, geometry);
-}
-
-function v3_delete_cell(voro, cell, geometry) {
-    voro.delete_cell(cell);
-    v3_update_geometry(voro, geometry);
-}
-
-//function add_pt_to_scene(pos) {
-//    var ptgeom = new THREE.Geometry();
-//    ptgeom.vertices.push(pos);
-//    var ptmat = new THREE.PointsMaterial( { size: .1, color: 0x0000ff, depthTest: false } );
-//    var ptcloud = new THREE.Points(ptgeom, ptmat);
-//    scene.add(ptcloud);
-//}
-
-//var geometry = v3_build_geometry(voro, {settings}); // build an actual threejs buffergeometry
-// note: "geometry" object returned might not be a threejs geometry; might be an object that has a threejs buffergeometry and some extra info
-//var gl_buffers = voro.build_gl_buffers(); // v3_build_geometry calls this
-
-function generate(generator, numPts, seed, fill_level) {
-    reset_moving();
-    
-    Math.seedrandom(seed);
-    if (voro) {
-        voro.delete();
-    }
-    voro = new Module.Voro([-10,-10,-10],[10,10,10]);
-    Generators[generator](numPts, voro);
-    if (fill_level == 0) {
-        voro.set_only_centermost(1,0);
-    } else {
-        voro.set_fill(fill_level/100.0, Math.random()*2147483648);
-    }
-    
-    geometry = v3_build_geometry(voro, {});
-    
-    preview_geometry = v3_build_preview(voro, {});
-    preview_material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: .5, transparent: false } );
-    preview_lines = new THREE.LineSegments(preview_geometry, preview_material);
-    preview_lines.visible = false;
-    scene.add( preview_lines );
-    
-    
-    material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
-    //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
-    if (mesh) {
-        scene.remove(mesh);
-    }
-    mesh = new THREE.Mesh( geometry, material );
-    //    mesh.raycast = THREE.Mesh.prototype.raycast_fixed;
-    scene.add( mesh );
-}
 
 function init() {
     Math.seedrandom('qq');
@@ -281,12 +143,7 @@ function init() {
 
 
     // create voro structure w/ bounding box
-    
-    
-    
-//    voro.delete();
-
-//    add_pt_to_scene(new THREE.Vector3(0,0,0));
+    v3 = new Voro3();
     
     var lights = [];
     lights[0] = new THREE.DirectionalLight( 0xcc9999 );
@@ -310,22 +167,6 @@ function init() {
     scene.add( lights[3] );
     scene.add( lights[4] );
     scene.add( lights[5] );
-
-    
-    
-//    var ptsgeometry = new THREE.BufferGeometry();
-//    var ptsarray = Module.HEAPF32.subarray(offset/4, offs  et/4 + numPts*3);
-//    ptsverts = new THREE.BufferAttribute(ptsarray, 3);
-//    ptsgeometry.addAttribute( 'position', ptsverts );
-//    ptsmaterial = new THREE.PointsMaterial( { size: .1, color: 0x0000ff } );
-//    pointset = new THREE.Points( ptsgeometry, ptsmaterial );
-//    scene.add( pointset ); // no longer corresponds to vor                                                                                                                                                                                                                                                                                                                 o cells, todo fix and re-add
-
-    
-//    line = make_line(3);
-//    scene.add(line);
-//    edges = new THREE.EdgesHelper( mesh, 0x00ff00 ); scene.add( edges );
-
     
     var bb_geom = new THREE.BoxGeometry( 20, 20, 20 );
     var bb_mat = new THREE.MeshBasicMaterial( { wireframe: true } );
@@ -374,9 +215,9 @@ function init() {
     var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
     fill_controller.onChange(function(value)
     {
-        if (value==0) voro.set_only_centermost(1,0);
-        else voro.set_fill(value/100.0, Math.random()*100000);
-        v3_update_geometry(voro, geometry);
+        if (value==0) v3.voro.set_only_centermost(1,0);
+        else v3.voro.set_fill(value/100.0, Math.random()*100000);
+        v3.update_geometry();
     });
 
     procgen.add(settings,'regenerate');
@@ -424,25 +265,7 @@ function onWindowResize() {
     render();
 }
 
-// these globals hold the state of the cell the user is actively moving in move-cell mode.
-// todo: refactor this sort of thing into a v3 manager class?
-var moving_cell = -1;
-var moving_plane; // plane in which movements will happen -- three.js has a plane.intersectLine() we can use (need to translate ray to line)
-var moving_mouse_offset;
-var moving_cell_geom;
-var moving_cell_points;
-var moving_cell_mat;
-var moving_controls;
 
-function reset_moving() {
-    moving_cell = -1;
-    moving_plane = undefined;
-    moving_mouse_offset = undefined;
-    moving_cell_geom = undefined;
-    moving_cell_points = undefined;
-    moving_cell_mat = undefined;
-    moving_controls.detach();
-}
 
 
 function onDocumentMouseDown( event ) {
@@ -450,29 +273,26 @@ function onDocumentMouseDown( event ) {
     if (settings.mode === 'toggle') {
         deselect_moving();
         if (event.button === 2) {
-            var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-            v3_toggle_cell(voro, cell, geometry);
+            var cell = v3.raycast(mouse, camera, raycaster);
+            v3.toggle_cell(cell);
         } else {
-            var cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
-            v3_toggle_cell(voro, cell, geometry);
+            var cell = v3.raycast_neighbor(mouse, camera, raycaster);
+            v3.toggle_cell(cell);
         }
-        preview_lines.visible = false;
-        var nbr_cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
-        v3_set_preview(voro, nbr_cell, preview_geometry);
-        
-        onChangeVertices();
+        v3.preview_lines.visible = false;
+        var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+        // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
     }
     if (settings.mode === 'add/delete') {
         if (event.button === 2) {
-            var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
-            v3_delete_cell(voro, cell, geometry);
+            var cell = v3.raycast(mouse, camera, raycaster);
+            v3.delete_cell(cell);
             deselect_moving();
         } else {
-            var pt = v3_raycast_pt(mesh, mouse, camera, raycaster);
+            var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
-                moving_cell = v3_add_cell(voro, pt, geometry);
+                moving_cell = v3.add_cell(pt);
                 start_moving_cell(moving_cell);
-                render();
             }
         }
     }
@@ -480,10 +300,11 @@ function onDocumentMouseDown( event ) {
         if (moving_cell === -1 || !moving_cell_mat || !moving_cell_mat.visible) {
             
             
-            moving_cell_new = v3_raycast(voro, mesh, mouse, camera, raycaster);
+            moving_cell_new = v3.raycast(mouse, camera, raycaster);
             start_moving_cell(moving_cell_new);
         }
     }
+    render();
 }
 
 function start_moving_cell(moving_cell_new) {
@@ -492,7 +313,7 @@ function start_moving_cell(moving_cell_new) {
         
         moving_cell = moving_cell_new;
         var n = camera.getWorldDirection();
-        var p = new THREE.Vector3().fromArray(voro.cell_pos(moving_cell));
+        var p = new THREE.Vector3().fromArray(v3.cell_pos(moving_cell));
         moving_plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
         v3_set_moving_cell_geom(p);
         render();
@@ -502,8 +323,7 @@ function start_moving_cell(moving_cell_new) {
 }
 
 function moved_control() {
-    voro.move_cell(moving_cell, moving_cell_points.position.toArray());
-    v3_update_geometry(voro, geometry);
+    v3.move_cell(moving_cell, moving_cell_points.position.toArray());
     render();
 }
 function v3_set_moving_cell_geom(p) {
@@ -565,24 +385,23 @@ function onDocumentMouseMove( event ) {
         rayline = new THREE.Line3(caster.ray.origin, endpt);
         var newpos = moving_plane.intersectLine(rayline);
         if (newpos) {
-            voro.move_cell(moving_cell, newpos.toArray());
-            v3_update_geometry(voro, geometry);
+            v3.move_cell(moving_cell, newpos.toArray());
             v3_set_moving_cell_geom(newpos);
         }
     }
     
-    preview_lines.visible = false;
+    v3.preview_lines.visible = false; // todo: pull out of here
     if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
-        var cell = v3_raycast(voro, mesh, mouse, camera, raycaster);
+        var cell = v3.raycast(mouse, camera, raycaster);
         if (!controls.isActive()) {
             controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && (!moving_controls || !moving_controls.axis);
             if (!controls.dragEnabled && settings.mode === 'toggle') {
-                var nbr_cell = v3_raycast_neighbor(voro, mesh, mouse, camera, raycaster);
-                v3_set_preview(voro, nbr_cell, preview_geometry);
+                var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+                v3.set_preview(nbr_cell);
             }
         }
-        
     }
+    render();
 }
 
 function render() {
@@ -590,92 +409,11 @@ function render() {
     renderer.render( scene, camera );
 }
 
-function onChangeVertices() {
-    geometry.attributes['position'].needsUpdate = true;
-    render();
-}
-
-var chaos_limit = 1000;
-function doChaos() {
-    if (chaos_limit == null || chaos_limit-- > 0) {
-        var choice = Math.random()*4;
-        if (Math.floor(choice) === 0) {
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.toggle_cell(cell);
-            voro.toggle_cell(cell);
-            voro.toggle_cell(cell);
-        }
-        else if (Math.floor(choice) === 1) {
-            voro.delete_cell(0);
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.delete_cell(cell);
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.delete_cell(cell);
-            var cell = Math.floor(Math.random()*voro.cell_count());
-            voro.delete_cell(cell);
-//            voro.delete_cell(voro.cell_count()-1);
-//            voro.delete_cell(voro.cell_count()-2);
-//            voro.delete_cell(0);
-        } else if (Math.floor(choice) === 2) {
-            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-            voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-            voro.add_cell([1,1,1], true);
-            voro.add_cell([1+Math.random()*.001,1+Math.random()*.001,1+Math.random()*.001], true);
-            
-            voro.add_cell([0,Math.random()*.1-.05,0], true);
-            voro.add_cell([0,Math.random()*1000-500,0], true);
-        } else {
-            voro.move_cell(Math.random()*voro.cell_count(),[Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
-            voro.move_cell(Math.random()*voro.cell_count(),[0,Math.random()*1000-500,0]);
-            voro.move_cell(0,[0,Math.random()*40-20,0]);
-            var pos = [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
-            var cell = voro.add_cell(pos, true);
-            voro.move_cell(cell,pos);
-            pos[0] += .01;
-            voro.move_cell(cell,pos);
-//            voro.move_cell(Math.random()*voro.cell_count(),[Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
-        }
-        v3_update_geometry(voro, geometry);
-    }
-    doneChaos();
-}
-
-function doneChaos() {
-    if (chaos_limit !== null && chaos_limit === 0) {
-        console.log("chaos over -- checking sanity at end ...");
-        var sanity = voro.sanity("after chaos");
-        console.log("sanity = " + sanity);
-    }
-}
-
-function moveChaos() {
-    if (chaos_limit == null || chaos_limit-- > 0) {
-        voro.move_cell(1000, [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
-        v3_update_geometry(voro, geometry);
-    }
-    doneChaos();
-}
-
-function demoAnimation() {
-    var d = new Date();
-    var n = d.getTime();
-    var t=n*.002;
-    voro.move_cell(0, [0,Math.sin(t)*5,Math.cos(t)*5]);
-    v3_update_geometry(voro, geometry);
-}
-
-
-function animate() {
-//    doChaos();
-//    moveChaos();
-//    v3_toggle_cell(voro, Math.floor(Math.random()*voro.cell_count()), geometry);
-    
-//    demoAnimation();
-    
+function animate() {    
     controls.update();
-    onChangeVertices();
-    requestAnimationFrame( animate );
 
+    requestAnimationFrame( animate );
 }
+
+
+
