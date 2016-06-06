@@ -279,8 +279,9 @@ function onDocumentMouseDown( event ) {
             var cell = v3.raycast_neighbor(mouse, camera, raycaster);
             v3.toggle_cell(cell);
         }
-        v3.preview_lines.visible = false;
+        
         var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+        v3.set_preview(-1);
         // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
     }
     if (settings.mode === 'add/delete') {
@@ -390,7 +391,7 @@ function onDocumentMouseMove( event ) {
         }
     }
     
-    v3.preview_lines.visible = false; // todo: pull out of here
+    v3.set_preview(-1);
     if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
         var cell = v3.raycast(mouse, camera, raycaster);
         if (!controls.isActive()) {
