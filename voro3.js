@@ -193,8 +193,8 @@ Voro3 = function (min_point, max_point) {
     this.cell_pos = function(cell) {
         return this.voro.cell_pos(cell);
     };
-    this.sanity = function(name = "unlabelled sanity check") {
-        return this.voro.sanity(name)
+    this.sanity = function(name) {
+        return this.voro.sanity(name||"unlabelled sanity check");
     };
 
     this.delete = function() {
