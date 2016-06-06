@@ -13,8 +13,8 @@ Voro3 = function (min_point, max_point) {
     var _this = this;
     
     
-    this.est_max_preview_verts = 1000;
-    this.est_max_tris = 100000;
+    this.est_max_preview_verts = 1024;
+    this.est_max_tris = 32768;
     
     this.add_to_scene = function(scene) {
         if (this.preview_lines) {
@@ -58,37 +58,50 @@ Voro3 = function (min_point, max_point) {
         this.add_to_scene(scene);
     };
     
-    
+    this.alloc_geometry = function(geometry) {
+        this.verts_ptr = this.voro.gl_vertices();
+        var max_tris = this.voro.gl_max_tris();
+        var array = Module.HEAPF32.subarray(this.verts_ptr/4, this.verts_ptr/4 + max_tris*3*3);
+        var vertices = new THREE.BufferAttribute(array, 3);
+        geometry.addAttribute('position', vertices);
+    }
     this.init_geometry = function(est_max_tris) {
         var geometry = new THREE.BufferGeometry();
         var max_tris = est_max_tris;
         this.voro.gl_build(max_tris /* initial guess at num tris needed */);
-        var verts_ptr = this.voro.gl_vertices();
-        var num_tris = this.voro.gl_tri_count();
-        var max_tris = this.voro.gl_max_tris();
-        var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_tris*3*3);
-        var vertices = new THREE.BufferAttribute(array, 3);
-        geometry.addAttribute('position', vertices);
+        this.alloc_geometry(geometry);
         geometry.name = 'voro3';
+        var num_tris = this.voro.gl_tri_count();
         geometry.setDrawRange(0, num_tris*3);
         return geometry;
     };
-        
-    this.init_preview = function(est_max_preview_verts) {
-        var geometry = new THREE.BufferGeometry();
-        var max_verts = est_max_preview_verts;
-        this.voro.gl_single_build(max_verts);
-        var verts_ptr = this.voro.gl_single_cell_vertices();
-        var num_verts = this.voro.gl_single_cell_vert_count();
+    this.realloc_geometry = function() {
+        this.geometry.removeAttribute('position');
+        this.alloc_geometry(this.geometry);
+    }
+    
+    this.alloc_preview = function(geometry) {
+        this.preview_verts_ptr = this.voro.gl_single_cell_vertices();
+        var verts_ptr = this.preview_verts_ptr; // just to give it a shorter name
         var max_verts = this.voro.gl_single_cell_max_verts();
         var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_verts*3);
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
+    }
+    this.init_preview = function(est_max_preview_verts) {
+        var geometry = new THREE.BufferGeometry();
+        var max_verts = est_max_preview_verts;
+        this.voro.gl_single_build(max_verts);
+        this.alloc_preview(geometry);
         geometry.name = 'voro3_preview';
+        var num_verts = this.voro.gl_single_cell_vert_count();
         geometry.setDrawRange(0, num_verts);
         return geometry;
     };
-    
+    this.realloc_preview = function() {
+        this.preview_geometry.removeAttribute('position');
+        this.alloc_preview(this.preview_geometry);
+    }
     
     this.add_cell = function (pt_3, state=true) {
         var pt = [pt_3.x, pt_3.y, pt_3.z];
@@ -102,8 +115,21 @@ Voro3 = function (min_point, max_point) {
     };
     this.update_geometry = function () {
         var num_tris = this.voro.gl_tri_count();
+        var current_verts_ptr = this.voro.gl_vertices();
+        if (current_verts_ptr != this.verts_ptr) {
+            this.realloc_geometry();
+        }
         this.geometry.setDrawRange(0, num_tris*3);
         this.geometry.attributes['position'].needsUpdate = true;
+    };
+    this.update_preview = function() {
+        var num_verts = this.voro.gl_single_cell_vert_count();
+        var current_verts_ptr = this.voro.gl_single_cell_vertices();
+        if (current_verts_ptr != this.preview_verts_ptr) {
+            this.realloc_preview();
+        }
+        this.preview_geometry.setDrawRange(0, num_verts);
+        this.preview_geometry.attributes['position'].needsUpdate = true;
     };
     this.raycast_vertex_index = function(mouse, camera, caster) {
         caster.setFromCamera(mouse, camera);
@@ -150,16 +176,7 @@ Voro3 = function (min_point, max_point) {
         this.update_preview();
         this.preview_lines.visible = true;
     };
-    this.update_preview = function() {
-        var num_verts = this.voro.gl_single_cell_vert_count();
-        this.preview_geometry.setDrawRange(0, num_verts);
-        this.preview_geometry.attributes['position'].needsUpdate = true;
-    };
-    this.update_geometry = function() {
-        var num_tris = this.voro.gl_tri_count();
-        this.geometry.setDrawRange(0, num_tris*3);
-        this.geometry.attributes['position'].needsUpdate = true;
-    };
+    
 
     this.toggle_cell = function(cell) {
         this.voro.toggle_cell(cell);

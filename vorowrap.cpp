@@ -88,20 +88,23 @@ struct SingleCellBufferManager {
     vector<double> vertices; // vertex coordinates, indexed by faces array
     int computed_cell;
     
-    float *vert_buf;
+    vector<float> vert_buf;
     int vert_count;
     int max_verts;
     
-    SingleCellBufferManager() : computed_cell(-1), vert_buf(0), vert_count(0), max_verts(0) {}
+    SingleCellBufferManager() : computed_cell(-1), vert_count(0), max_verts(0) {}
     
     void init(int vert_capacity) {
         clear();
         
         max_verts = vert_capacity;
-        vert_buf = new float[3*vert_capacity];
+        resize_buffers();
+    }
+    void resize_buffers() {
+        vert_buf.resize(max_verts);
     }
     void clear() {
-        delete [] vert_buf;
+        vert_buf.clear();
         vert_count = max_verts = 0;
         faces.clear();
         vertices.clear();
@@ -126,9 +129,11 @@ struct SingleCellBufferManager {
         }
     }
     inline void add_vert(const vector<double> &vertices, int vi) {
-        if (vert_count >= max_verts)
-            return;
-        float *buf = vert_buf + (vert_count*3);
+        if (vert_count >= max_verts) {
+            max_verts *= 2;
+            resize_buffers();
+        }
+        float *buf = &vert_buf[0] + (vert_count*3);
         
         *buf = vertices[vi*3]; buf++;
         *buf = vertices[vi*3+1]; buf++;
@@ -141,10 +146,10 @@ struct SingleCellBufferManager {
 };
 
 struct GLBufferManager {
-    float *vertices;
+    vector<float> vertices;
     int tri_count, max_tris;
-    int *cell_inds; // map from tri indices to cell indices
-    short *cell_internal_inds; // map from tri indices to internal tri backref
+    vector<int> cell_inds; // map from tri indices to cell indices
+    vector<short> cell_internal_inds; // map from tri indices to internal tri backref
     voro::voronoicell_neighbor vorocell; // reused temp var, holds computed cell info
     
     vector<CellToTris*> info;
@@ -195,15 +200,18 @@ struct GLBufferManager {
         
         return valid;
     }
+    
+    void resize_buffers() {
+        vertices.resize(max_tris*9);
+        cell_inds.resize(max_tris);
+        cell_internal_inds.resize(max_tris);
+    }
 
     void init(int numCells, int triCapacity) {
         clear();
         
-        vertices = new float[triCapacity*9];
-//        normals = new float[triCapacity*9];
-        cell_inds = new int[triCapacity];
-        cell_internal_inds = new short[triCapacity];
         max_tris = triCapacity;
+        resize_buffers();
         tri_count = 0;
         
         info.resize(numCells, 0);
@@ -264,10 +272,11 @@ struct GLBufferManager {
     
     inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t, int f) {
         if (tri_count+1 >= max_tris) {
-            return false;
+            max_tris *= 2;
+            resize_buffers();
         }
         
-        float *v = vertices + tri_count*9;
+        float *v = &vertices[0] + tri_count*9;
         for (int vii=0; vii<3; vii++) {
             int ibase = vs[vii]*3;
             for (int ii=0; ii<3; ii++) {
@@ -312,12 +321,9 @@ struct GLBufferManager {
     void move_cell(Voro &src, int cell);
     
     void clear() {
-        delete [] vertices;
-//        delete [] normals;
-        delete [] cell_inds;
-        vertices = 0;
-//        normals = 0;
-        cell_inds = 0;
+        vertices.clear();
+        //normals.clear();
+        cell_inds.clear();
         tri_count = max_tris = 0;
         
         for (auto *c : info) {
@@ -574,7 +580,7 @@ struct Voro {
         
     }
     uintptr_t gl_vertices() {
-        return reinterpret_cast<uintptr_t>(gl_computed.vertices);
+        return reinterpret_cast<uintptr_t>(&gl_computed.vertices[0]);
     }
     void gl_single_build(int max_verts_guess) {
         gl_single_cell.init(max_verts_guess);
@@ -589,7 +595,7 @@ struct Voro {
         }
     }
     uintptr_t gl_single_cell_vertices() {
-        return reinterpret_cast<uintptr_t>(gl_single_cell.vert_buf);
+        return reinterpret_cast<uintptr_t>(&gl_single_cell.vert_buf[0]);
     }
     int gl_single_cell_vert_count() {
         return gl_single_cell.vert_count;
