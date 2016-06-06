@@ -14,7 +14,7 @@ Voro3 = function (min_point, max_point) {
     
     
     this.est_max_preview_verts = 1000;
-    this.est_max_tris = 10000;
+    this.est_max_tris = 100000;
     
     this.add_to_scene = function(scene) {
         if (this.preview_lines) {
