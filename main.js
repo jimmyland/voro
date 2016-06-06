@@ -213,12 +213,6 @@ function init() {
     procgen.add(settings,'numpts').min(1);
     procgen.add(settings,'generator',Object.keys(Generators)).listen();
     var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
-    fill_controller.onChange(function(value)
-    {
-        if (value==0) v3.voro.set_only_centermost(1,0);
-        else v3.voro.set_fill(value/100.0, Math.random()*100000);
-        v3.update_geometry();
-    });
 
     procgen.add(settings,'regenerate');
     
