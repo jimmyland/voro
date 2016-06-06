@@ -103,7 +103,10 @@ Voro3 = function (min_point, max_point) {
         this.alloc_preview(this.preview_geometry);
     }
     
-    this.add_cell = function (pt_3, state=true) {
+    this.add_cell = function (pt_3, state) {
+        if (state === undefined) {
+            state = true;
+        }
         var pt = [pt_3.x, pt_3.y, pt_3.z];
         var cell = this.voro.add_cell(pt, state);
         this.update_geometry();
@@ -116,7 +119,7 @@ Voro3 = function (min_point, max_point) {
     this.update_geometry = function () {
         var num_tris = this.voro.gl_tri_count();
         var current_verts_ptr = this.voro.gl_vertices();
-        if (current_verts_ptr != this.verts_ptr) {
+        if (current_verts_ptr !== this.verts_ptr) {
             this.realloc_geometry();
         }
         this.geometry.setDrawRange(0, num_tris*3);
@@ -125,7 +128,7 @@ Voro3 = function (min_point, max_point) {
     this.update_preview = function() {
         var num_verts = this.voro.gl_single_cell_vert_count();
         var current_verts_ptr = this.voro.gl_single_cell_vertices();
-        if (current_verts_ptr != this.preview_verts_ptr) {
+        if (current_verts_ptr !== this.preview_verts_ptr) {
             this.realloc_preview();
         }
         this.preview_geometry.setDrawRange(0, num_verts);
