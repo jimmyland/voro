@@ -204,6 +204,28 @@ Voro3 = function (min_point, max_point) {
 
 
 
+    // export functions
+
+    this.get_binary_stl_buffer = function() {
+        this.verts_ptr = this.voro.gl_vertices();
+        var num_tris = this.voro.gl_tri_count();
+        var array = Module.HEAPF32.subarray(this.verts_ptr/4, this.verts_ptr/4 + num_tris*3*3);
+        var buffer = new ArrayBuffer(80+4+num_tris*(4*4*3+2)); // buffer w/ space for whole stl
+        var view = new DataView(buffer);
+        view.setInt32(80, num_tris, true);
+        for (var i=0; i<num_tris; i++) {
+            for (var vi=0; vi<3; vi++) {
+                for (var di=0; di<3; di++) {
+                    view.setFloat32(80+4+i*(4*4*3+2)+4*3*(vi+1)+4*di, array[i*3*3+vi*3+di], true);
+                }
+            }
+        }
+        return buffer;
+    }
+
+
+
+
 
     // Chaos functions are part of sanity checking / debugging code
     
