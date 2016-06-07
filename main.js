@@ -118,6 +118,13 @@ var VoroSettings = function() {
         render();
         
     };
+
+    this.filename = 'filename';
+    this.export = function() {
+        var binstl = v3.get_binary_stl_buffer();
+        var blob = new Blob([binstl], {type: 'application/octet-binary'});
+        saveAs(blob, this.filename + ".stl");
+    }
 };
 
 
@@ -205,6 +212,8 @@ function init() {
     datgui = new dat.GUI();
     settings = new VoroSettings();
     datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']);
+    datgui.add(settings,'filename');
+    datgui.add(settings,'export');
     
     var procgen = datgui.addFolder('Proc. Gen. Settings');
     
@@ -235,7 +244,9 @@ function onDocumentKeyDown( event ) {
         } else {
             settings.mode = 'toggle';
         }
-        datgui.updateDisplays();
+        for (var i in datgui.__controllers) {
+            datgui.__controllers[i].updateDisplay();
+        }
     }
     if (event.keyCode === 27) {
         deselect_moving();
