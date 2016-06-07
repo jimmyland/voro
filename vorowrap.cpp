@@ -711,7 +711,6 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
     CellCache &c = c2t.cache;
     int type = src.cells[cell].type;
     if (type == 0) return;
-    cout << "tris for " << cell << " (" << type << ")" << endl;
     
     for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
         if ((src.cells[c.neighbors[ni]].type != type) || ADD_ALL_FACES_ALL_THE_TIME) {
