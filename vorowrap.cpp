@@ -17,7 +17,7 @@ using namespace std;
 using namespace emscripten;
 
 #define INSANITY
-
+#define ADD_ALL_FACES_ALL_THE_TIME 0
 
 #ifdef INSANITY
 #define SANITY(WHEN) {}
@@ -704,13 +704,14 @@ void GLBufferManager::compute_all(Voro &src, int tricap) {
     }
 }
 
-#define ADD_ALL_FACES_ALL_THE_TIME 0
+
 
 void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // assuming the cache is fine, just add the tris for it
     assert(cell >= 0 && cell < info.size());
     CellCache &c = c2t.cache;
     int type = src.cells[cell].type;
     if (type == 0) return;
+    cout << "tris for " << cell << " (" << type << ")" << endl;
     
     for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
         if ((src.cells[c.neighbors[ni]].type != type) || ADD_ALL_FACES_ALL_THE_TIME) {
@@ -733,9 +734,10 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
     if (oldtype == src.cells[cell].type) return;
     int type = src.cells[cell].type;
     
-    if (info[cell] && oldtype) {
-        clear_cell_tris(*info[cell]);
-        if (!type) { // recompute neighbors that may be revealed
+    if (info[cell]) {
+        if (oldtype) clear_cell_tris(*info[cell]);
+        if (!ADD_ALL_FACES_ALL_THE_TIME) { // re-add neighbors faces to manage internal faces
+            // (we could try to optimize this to just look at shared faces but this seems 'fast enough' for me now)
             for (int ni : info[cell]->cache.neighbors) {
                 if (ni >= 0 && info[ni] && src.cells[ni].type) {
                     clear_cell_tris(*info[ni]);
