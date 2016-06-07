@@ -202,16 +202,15 @@ function init() {
     moving_controls.addEventListener( 'objectChange', moved_control );
     scene.add(moving_controls);
     
-    
     datgui = new dat.GUI();
     settings = new VoroSettings();
-    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']).listen();
+    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']);
     
     var procgen = datgui.addFolder('Proc. Gen. Settings');
     
     procgen.add(settings,'seed');
     procgen.add(settings,'numpts').min(1);
-    procgen.add(settings,'generator',Object.keys(Generators)).listen();
+    procgen.add(settings,'generator',Object.keys(Generators));
     var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
 
     procgen.add(settings,'regenerate');
@@ -236,6 +235,7 @@ function onDocumentKeyDown( event ) {
         } else {
             settings.mode = 'toggle';
         }
+        datgui.updateDisplays();
     }
     if (event.keyCode === 27) {
         deselect_moving();
