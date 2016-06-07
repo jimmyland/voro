@@ -211,7 +211,7 @@ function init() {
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
-    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move']);
+    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move', 'move neighbor']);
     datgui.add(settings,'filename');
     datgui.add(settings,'export');
     
@@ -310,6 +310,15 @@ function onDocumentMouseDown( event ) {
             start_moving_cell(moving_cell_new);
         }
     }
+    if (settings.mode === 'move neighbor') {
+        if (moving_cell === -1 || !moving_cell_mat || !moving_cell_mat.visible) {
+            
+            
+            moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
+            v3.set_preview(moving_cell_new);
+            start_moving_cell(moving_cell_new);
+        }
+    }
     render();
 }
 
@@ -330,6 +339,9 @@ function start_moving_cell(moving_cell_new) {
 
 function moved_control() {
     v3.move_cell(moving_cell, moving_cell_points.position.toArray());
+    if (settings.mode === 'move neighbor') {
+        v3.set_preview(moving_cell);
+    }
     render();
 }
 function v3_set_moving_cell_geom(p) {
@@ -374,6 +386,8 @@ function logv3(s,v){
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
+    v3.set_preview(-1);
+    
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
     if (moving_cell_mat && moving_cell_mat.visible && moving_plane) {
@@ -393,10 +407,13 @@ function onDocumentMouseMove( event ) {
         if (newpos) {
             v3.move_cell(moving_cell, newpos.toArray());
             v3_set_moving_cell_geom(newpos);
+            if (settings.mode === 'move neighbor') {
+                v3.set_preview(moving_cell);
+            }
         }
     }
     
-    v3.set_preview(-1);
+    
     if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
         var cell = v3.raycast(mouse, camera, raycaster);
         if (!controls.isActive()) {
