@@ -106,6 +106,21 @@ Generators = {
 };
 
 var VoroSettings = function() {
+    this.all_modes = ['camera', 'toggle', 'add/delete', 'move', 'move neighbor'];
+    this.mode_index = function(name) {
+        for (var i=0; i<this.all_modes.length; i++) {
+            if (name === this.all_modes[i])
+                return i;
+        }
+        return null;
+    }
+    this.next_mode = function() {
+        var i = this.mode_index(this.mode);
+        if (i != null) {
+            this.mode = this.all_modes[(i+1)%this.all_modes.length];
+            return;
+        }
+    }
     this.mode = 'toggle';
     this.generator = 'uniform random';
     this.numpts = 1000;
@@ -211,7 +226,8 @@ function init() {
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
-    datgui.add(settings,'mode',['camera', 'toggle', 'add/delete', 'move', 'move neighbor']);
+    
+    datgui.add(settings,'mode',settings.all_modes);
     datgui.add(settings,'filename');
     datgui.add(settings,'export');
     
@@ -240,12 +256,8 @@ function deselect_moving() {
 }
 
 function onDocumentKeyDown( event ) {
-    if (event.keyCode === 32) {
-        if (settings.mode === 'toggle') {
-            settings.mode = 'move';
-        } else {
-            settings.mode = 'toggle';
-        }
+    if (event.keyCode === " ".charCodeAt()) {
+        settings.next_mode();
         for (var i in datgui.__controllers) {
             datgui.__controllers[i].updateDisplay();
         }
