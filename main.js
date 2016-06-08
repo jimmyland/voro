@@ -260,8 +260,8 @@ function onDocumentKeyDown( event ) {
         var axis = event.keyCode - 'X'.charCodeAt();
         controls.alignToAxis(axis);
         moving_cell = -1; // just disable any active moves; o.w. would need to recompute movement plane or movement would explode
-        render();
     }
+    render();
 }
 
 function onWindowResize() {
