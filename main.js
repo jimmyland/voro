@@ -223,6 +223,8 @@ function init() {
     var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
 
     procgen.add(settings,'regenerate');
+
+    procgen.open();
     
     settings.regenerate();
     
