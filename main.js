@@ -106,7 +106,7 @@ Generators = {
 };
 
 var VoroSettings = function() {
-    this.mode = 'add/delete';
+    this.mode = 'toggle';
     this.generator = 'uniform random';
     this.numpts = 1000;
     this.seed = 'qq';
