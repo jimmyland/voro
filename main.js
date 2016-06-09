@@ -45,8 +45,8 @@ Generators = {
         
     },
     "regular grid": function(numpts, voro) {
-        w = 9.9;
-        n = Math.floor(Math.cbrt(numpts));
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
@@ -101,6 +101,104 @@ Generators = {
             }
             var radfinal = Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]+pt[2]*pt[2]);
             voro.add_cell(pt, radfinal < 4);
+        }
+    },
+    "hexagonal prisms": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts));
+        for (var i=0; i<n+1; i++) {
+            for (var j=0; j<n+1; j++) {
+                offset = (j%2)*(w/n);
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+offset], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "triangular prisms": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts/2));
+        var o = (w/n);
+        for (var i=0; i<2*n+1; i++) {
+            var s = i%4;
+            var ox = (s==0||s==1)?0:o;
+            var oz = (i%2)*o*.5-o*.25;
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "truncated octahedrons": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts/2));
+        var o = (w/n);
+        for (var i=0; i<n+1; i++) {
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "gyrobifastigia": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts/2));
+        var o = (w/n);
+        for (var i=0; i<2*n+1; i++) {
+            var s = i%4;
+            var ox = (s==0||s==1)?0:o;
+            var oy = (s==0||s==3)?0:o;
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "rhombic dodecahedra": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts/4));
+        var o = (w/n);
+        for (var i=0; i<n+1; i++) {
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w,k*2*w/n-w+o], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "elongated dodecahedra": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts/4));
+        var o = (w/n);
+        for (var i=0; i<n+1; i++) {
+            var oxy = (i%2)*o;
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w+oxy,k*2*w/n-w+oxy], (i+j+k)%2==1);
+                }
+            }
+        }
+    },
+    "cubes with pillows": function(numpts, voro) {
+        var w = 9.9;
+        var n = Math.floor(Math.cbrt(numpts/4));
+        var o = (w/n);
+        for (var i=0; i<n+1; i++) {
+            for (var j=0; j<n+1; j++) {
+                for (var k=0; k<n+1; k++) {
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w+o,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+o], (i+j+k)%2==1);
+                }
+            }
         }
     }
 };
