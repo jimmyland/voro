@@ -130,7 +130,7 @@ Generators = {
             }
         }
     },
-    "truncated octahedrons": function(numpts, voro) {
+    "truncated octahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -300,11 +300,16 @@ function init() {
     renderer.setPixelRatio( window.devicePixelRatio );
     
     window.addEventListener( 'resize', onWindowResize, false );
-    document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-    document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-    document.addEventListener( 'keydown', onDocumentKeyDown, false );
-
     container = document.getElementById( 'container' );
+    container.addEventListener( 'mousemove', onDocumentMouseMove, false );
+    container.addEventListener( 'touchstart', onDocumentTouchStart, false );
+    container.addEventListener( 'touchmove', onDocumentTouchMove, false );
+    container.addEventListener( 'touchend', onDocumentTouchEnd, false );
+    container.addEventListener( 'mousedown', onDocumentMouseDown, false );
+    document.addEventListener( 'keydown', onDocumentKeyDown, false );
+    container.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+    
     container.appendChild( renderer.domElement );
     
     controls = new THREE.TrackballControls( camera, renderer.domElement );
@@ -320,11 +325,17 @@ function init() {
     
     moving_controls = new THREE.TransformControls( camera, renderer.domElement );
     moving_controls.addEventListener( 'objectChange', moved_control );
+    moving_controls.addEventListener( 'mouseDown', moving_controls_down );
     scene.add(moving_controls);
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
     
+    var hasTouch = ('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+    if (hasTouch) {
+        settings.all_modes.push("toggle off");
+        settings.all_modes.push("delete");
+    }
     datgui.add(settings,'mode',settings.all_modes);
     datgui.add(settings,'filename');
     datgui.add(settings,'export');
@@ -345,6 +356,8 @@ function init() {
     animate();
     render();
 }
+
+
 
 function deselect_moving() {
     stop_moving();
@@ -384,12 +397,10 @@ function onWindowResize() {
 
 
 
-
-function onDocumentMouseDown( event ) {
-    
-    if (settings.mode === 'toggle') {
+function doToggleClick(button, mouse) {
+    if (settings.mode === 'toggle' || settings.mode === 'toggle off') {
         deselect_moving();
-        if (event.button === 2) {
+        if (button === 2 || settings.mode === 'toggle off') {
             var cell = v3.raycast(mouse, camera, raycaster);
             v3.toggle_cell(cell);
         } else {
@@ -401,8 +412,11 @@ function onDocumentMouseDown( event ) {
         v3.set_preview(-1);
         // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
     }
-    if (settings.mode === 'add/delete') {
-        if (event.button === 2) {
+}
+
+function doAddDelClick(button, mouse) {
+    if (settings.mode === 'add/delete' || settings.mode === 'delete') {
+        if (button === 2 || settings.mode === 'delete') {
             var cell = v3.raycast(mouse, camera, raycaster);
             v3.delete_cell(cell);
             deselect_moving();
@@ -414,11 +428,15 @@ function onDocumentMouseDown( event ) {
             }
         }
     }
+}
+
+function startMove(mouse) {
     if (settings.mode === 'move') {
         if (moving_cell === -1 || !moving_cell_mat || !moving_cell_mat.visible) {
             
             
             moving_cell_new = v3.raycast(mouse, camera, raycaster);
+            console.log("moving_cell_new = " + moving_cell_new);
             start_moving_cell(moving_cell_new);
         }
     }
@@ -431,12 +449,23 @@ function onDocumentMouseDown( event ) {
             start_moving_cell(moving_cell_new);
         }
     }
+}
+
+function onDocumentMouseDown(event) {
+    console.log("mouse down; button = " + event.button);
+    
+    doToggleClick(event.button, mouse);
+    
+    doAddDelClick(event.button, mouse);
+
+    startMove(mouse);
+    
     render();
 }
 
 function start_moving_cell(moving_cell_new) {
     if (moving_cell_new > -1) {
-        document.addEventListener('mouseup', stop_moving, false);
+        // document.addEventListener('mouseup', stop_moving, false);
         
         moving_cell = moving_cell_new;
         var n = camera.getWorldDirection();
@@ -485,10 +514,14 @@ function movePerpToCam(camera, cell, dx, dy) {
     camera.up;
     raycaster.ray.direction;
 }
+function onDocumentMouseUp(event) {
+    console.log("up");
+    stop_moving();
+}
 function stop_moving() {
     v3_set_moving_cell_geom(undefined);
     // todo: this is where we'd push to the undo stack, etc.
-    document.removeEventListener( 'mouseup', stop_moving );
+    // document.removeEventListener( 'mouseup', stop_moving );
 }
 function logv2(s,v){
     console.log(s + ": " + v.x + ", " + v.y);
@@ -497,11 +530,33 @@ function logv3(s,v){
     console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
 }
 function onDocumentMouseMove( event ) {
+    console.log('mouse move');
     event.preventDefault();
+    doCursorMove(event.clientX, event.clientY);
+    check_allow_trackball();
+}
+function check_allow_trackball(over_moving_controls) {
+    console.log('checking allowed');
+    if (over_moving_controls===undefined) over_moving_controls = moving_controls && moving_controls.axis;
+    if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
+        var cell = v3.raycast(mouse, camera, raycaster);
+        if (!controls.isActive() || controls.isTouch()) {
+            controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && !over_moving_controls;
+            console.log("cell = " + cell + "; controls.dragEnabled = " + controls.dragEnabled + "; moving_controls.axis = " + moving_controls.axis);
+            if (!controls.dragEnabled && settings.mode === 'toggle') {
+                var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+                v3.set_preview(nbr_cell);
+            }
+        }
+    }
+    return controls.dragEnabled;
+}
+function doCursorMove(cur_x, cur_y) {
+    console.log("doCursorMove");
     v3.set_preview(-1);
     
-    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    mouse.x = ( cur_x / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( cur_y / window.innerHeight ) * 2 + 1;
     if (moving_cell_mat && moving_cell_mat.visible && moving_plane) {
         var n = moving_plane.normal;
         
@@ -526,17 +581,61 @@ function onDocumentMouseMove( event ) {
     }
     
     
-    if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
-        var cell = v3.raycast(mouse, camera, raycaster);
-        if (!controls.isActive()) {
-            controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && (!moving_controls || !moving_controls.axis);
-            if (!controls.dragEnabled && settings.mode === 'toggle') {
-                var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
-                v3.set_preview(nbr_cell);
-            }
-        }
-    }
+    
     render();
+}
+
+function mouse_from_touch(event) {
+    var cur_x = event.touches[0].clientX, cur_y = event.touches[0].clientY;
+    mouse.x = ( cur_x / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( cur_y / window.innerHeight ) * 2 + 1;
+}
+
+
+function moving_controls_down(event) {
+    // moving_controls active -- disable trackball controls
+    controls.overrideState();
+    controls.dragEnabled = false;
+}
+function onDocumentTouchStart( event ) {
+    console.log("touch start");
+    console.log("moving_controls = " + moving_controls);
+    event.preventDefault();
+
+    mouse_from_touch(event);
+
+    var moving_controls_check = moving_controls && moving_controls.checkHover(event);
+    var allowed = check_allow_trackball(moving_controls_check);
+    console.log("trackball allowed = " + allowed + "; moving_controls_check = " + moving_controls_check);
+    if (!allowed) { // todo rm checkhover / fix!!!!!!!
+        controls.overrideState();
+        controls.dragEnabled = false;
+    }
+    
+    startMove(mouse);
+
+}
+function onDocumentTouchMove( event ) {
+    console.log("touch move");
+    event.preventDefault();
+    mouse_from_touch(event);
+    doCursorMove(event.touches[0].clientX, event.touches[0].clientY);
+
+    if (!controls.dragEnabled && settings.mode === 'toggle') {
+        var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+        v3.set_preview(nbr_cell);
+    }
+}
+function onDocumentTouchEnd( event ) {
+    console.log("touch end");
+    stop_moving();
+
+    doToggleClick(event.button, mouse);
+    
+    doAddDelClick(event.button, mouse);
+
+    event.preventDefault();
+
 }
 
 function render() {
@@ -544,7 +643,8 @@ function render() {
     renderer.render( scene, camera );
 }
 
-function animate() {    
+function animate() {  
+    render();  
     controls.update();
 
     requestAnimationFrame( animate );

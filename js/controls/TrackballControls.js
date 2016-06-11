@@ -80,7 +80,18 @@ THREE.TrackballControls = function ( object, domElement ) {
 	// methods
     
     this.isActive = function () {
+    	console.log("_state = " + _state);
         return _state != STATE.NONE;
+    }
+
+    this.isTouch = function() {
+    	console.log("_state = " + _state);
+    	return _state == STATE.TOUCH_ROTATE || _state == STATE.TOUCH_ZOOM_PAN;
+    }
+
+    this.overrideState = function () {
+    	_state = STATE.NONE;
+    	console.log("trackball overriden!  now _state = " + _state);
     }
 
 	this.handleResize = function () {
@@ -520,8 +531,9 @@ THREE.TrackballControls = function ( object, domElement ) {
 	}
 
 	function touchstart( event ) {
+		console.log("trackball touch start; " + _this.enabled);
 
-		if ( _this.enabled === false || _this.dragEnabled === false ) return;
+		if ( _this.enabled === false ) return;
 
 		switch ( event.touches.length ) {
 
@@ -550,8 +562,9 @@ THREE.TrackballControls = function ( object, domElement ) {
 	}
 
 	function touchmove( event ) {
+		console.log("trackball touch move; " + _this.dragEnabled);
 
-		if ( _this.enabled === false ) return;
+		if ( _this.enabled === false || _this.dragEnabled === false ) return;
 
 		event.preventDefault();
 		event.stopPropagation();
