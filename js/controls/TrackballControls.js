@@ -83,6 +83,14 @@ THREE.TrackballControls = function ( object, domElement ) {
         return _state != STATE.NONE;
     }
 
+    this.isTouch = function() {
+    	return _state == STATE.TOUCH_ROTATE || _state == STATE.TOUCH_ZOOM_PAN;
+    }
+
+    this.overrideState = function () {
+    	_state = STATE.NONE;
+    }
+
 	this.handleResize = function () {
 
 		if ( this.domElement === document ) {
@@ -521,7 +529,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 	function touchstart( event ) {
 
-		if ( _this.enabled === false || _this.dragEnabled === false ) return;
+		if ( _this.enabled === false ) return;
 
 		switch ( event.touches.length ) {
 
@@ -550,8 +558,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 	}
 
 	function touchmove( event ) {
-
-		if ( _this.enabled === false ) return;
+		if ( _this.enabled === false || _this.dragEnabled === false ) return;
 
 		event.preventDefault();
 		event.stopPropagation();

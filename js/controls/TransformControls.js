@@ -816,8 +816,14 @@
 
 		};
 
-		function onPointerHover( event ) {
+		this.checkHover = function(event) {
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+			var intersect = intersectObjects( pointer, _gizmo[ _mode ].pickers.children );
 
+			return intersect;
+		}
+
+		function onPointerHover( event ) {
 			if ( scope.object === undefined || _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
 
 			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;

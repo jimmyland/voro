@@ -26,9 +26,18 @@
         <script type="text/javascript" src="vorowrap.js"></script>
         <script type="text/javascript" src="voro3.js"></script>
         <script type="text/javascript" src="main.js"></script>
-        <div id="float" style="color:#FFFFFF; position: absolute; top: 0px; width: 23%; padding: 0px;">
+        <div id="notmobile_instrutions" style="color:#FFFFFF; position: absolute; top: 0px; width: 23%; padding: 0px;">
             vorojs testbed<br>Click+drag to rotate.  Hold d and drag to pan.<br>In toggle or add/delete modes, right click to toggle-off or delete.<br>
             spacebar to cycle mode
         </div>
+        <script>
+            $( document ).ready(function() {      
+                var isMobile = window.matchMedia("only screen and (max-width: 760px)");
+
+                if (isMobile.matches) {
+                    $('#notmobile_instrutions').html('');
+                }
+             });
+        </script>
     </body>
 </html>
