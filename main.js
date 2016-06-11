@@ -461,9 +461,7 @@ function onDocumentMouseDown(event) {
 }
 
 function start_moving_cell(moving_cell_new) {
-    if (moving_cell_new > -1) {
-        // document.addEventListener('mouseup', stop_moving, false);
-        
+    if (moving_cell_new > -1) {        
         moving_cell = moving_cell_new;
         var n = camera.getWorldDirection();
         var p = new THREE.Vector3().fromArray(v3.cell_pos(moving_cell));
@@ -516,8 +514,6 @@ function onDocumentMouseUp(event) {
 }
 function stop_moving() {
     v3_set_moving_cell_geom(undefined);
-    // todo: this is where we'd push to the undo stack, etc.
-    // document.removeEventListener( 'mouseup', stop_moving );
 }
 function logv2(s,v){
     console.log(s + ": " + v.x + ", " + v.y);
