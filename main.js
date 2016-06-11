@@ -436,7 +436,6 @@ function startMove(mouse) {
             
             
             moving_cell_new = v3.raycast(mouse, camera, raycaster);
-            console.log("moving_cell_new = " + moving_cell_new);
             start_moving_cell(moving_cell_new);
         }
     }
@@ -452,8 +451,6 @@ function startMove(mouse) {
 }
 
 function onDocumentMouseDown(event) {
-    console.log("mouse down; button = " + event.button);
-    
     doToggleClick(event.button, mouse);
     
     doAddDelClick(event.button, mouse);
@@ -515,7 +512,6 @@ function movePerpToCam(camera, cell, dx, dy) {
     raycaster.ray.direction;
 }
 function onDocumentMouseUp(event) {
-    console.log("up");
     stop_moving();
 }
 function stop_moving() {
@@ -530,19 +526,16 @@ function logv3(s,v){
     console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
 }
 function onDocumentMouseMove( event ) {
-    console.log('mouse move');
     event.preventDefault();
     doCursorMove(event.clientX, event.clientY);
     check_allow_trackball();
 }
 function check_allow_trackball(over_moving_controls) {
-    console.log('checking allowed');
     if (over_moving_controls===undefined) over_moving_controls = moving_controls && moving_controls.axis;
     if (!moving_controls || !moving_controls.visible || !moving_controls._dragging) {
         var cell = v3.raycast(mouse, camera, raycaster);
         if (!controls.isActive() || controls.isTouch()) {
             controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && !over_moving_controls;
-            console.log("cell = " + cell + "; controls.dragEnabled = " + controls.dragEnabled + "; moving_controls.axis = " + moving_controls.axis);
             if (!controls.dragEnabled && settings.mode === 'toggle') {
                 var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
                 v3.set_preview(nbr_cell);
@@ -552,7 +545,6 @@ function check_allow_trackball(over_moving_controls) {
     return controls.dragEnabled;
 }
 function doCursorMove(cur_x, cur_y) {
-    console.log("doCursorMove");
     v3.set_preview(-1);
     
     mouse.x = ( cur_x / window.innerWidth ) * 2 - 1;
@@ -598,16 +590,13 @@ function moving_controls_down(event) {
     controls.dragEnabled = false;
 }
 function onDocumentTouchStart( event ) {
-    console.log("touch start");
-    console.log("moving_controls = " + moving_controls);
     event.preventDefault();
 
     mouse_from_touch(event);
 
     var moving_controls_check = moving_controls && moving_controls.checkHover(event);
     var allowed = check_allow_trackball(moving_controls_check);
-    console.log("trackball allowed = " + allowed + "; moving_controls_check = " + moving_controls_check);
-    if (!allowed) { // todo rm checkhover / fix!!!!!!!
+    if (!allowed) {
         controls.overrideState();
         controls.dragEnabled = false;
     }
@@ -616,7 +605,6 @@ function onDocumentTouchStart( event ) {
 
 }
 function onDocumentTouchMove( event ) {
-    console.log("touch move");
     event.preventDefault();
     mouse_from_touch(event);
     doCursorMove(event.touches[0].clientX, event.touches[0].clientY);
@@ -627,7 +615,6 @@ function onDocumentTouchMove( event ) {
     }
 }
 function onDocumentTouchEnd( event ) {
-    console.log("touch end");
     stop_moving();
 
     doToggleClick(event.button, mouse);
