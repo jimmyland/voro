@@ -824,8 +824,6 @@
 		}
 
 		function onPointerHover( event ) {
-			console.log("xf hover");
-
 			if ( scope.object === undefined || _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
 
 			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
@@ -853,7 +851,6 @@
 		}
 
 		function onPointerDown( event ) {
-			console.log("xf pdown");
 
 			if ( scope.object === undefined || _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
 
@@ -904,7 +901,6 @@
 		}
 
 		function onPointerMove( event ) {
-			console.log("xf pmov");
 
 			if ( scope.object === undefined || scope.axis === null || _dragging === false || ( event.button !== undefined && event.button !== 0 ) ) return;
 
@@ -1110,7 +1106,6 @@
 		}
 
 		function onPointerUp( event ) {
-			console.log("ptr up");
 
 			if ( event.button !== undefined && event.button !== 0 ) return;
 
@@ -1121,7 +1116,6 @@
 
 			}
 
-console.log("ptr up worked");
 			_dragging = false;
 			onPointerHover( event );
 
