@@ -584,7 +584,9 @@ function moving_controls_down(event) {
     // moving_controls active -- disable trackball controls
     controls.overrideState();
     controls.dragEnabled = false;
+    last_touch_for_camera = controls.dragEnabled;
 }
+var last_touch_for_camera = false;
 function onDocumentTouchStart( event ) {
     event.preventDefault();
 
@@ -596,6 +598,7 @@ function onDocumentTouchStart( event ) {
         controls.overrideState();
         controls.dragEnabled = false;
     }
+    last_touch_for_camera = controls.dragEnabled;
     
     startMove(mouse);
 
@@ -613,9 +616,11 @@ function onDocumentTouchMove( event ) {
 function onDocumentTouchEnd( event ) {
     stop_moving();
 
-    doToggleClick(event.button, mouse);
-    
-    doAddDelClick(event.button, mouse);
+    if (!last_touch_for_camera) {
+        doToggleClick(event.button, mouse);
+        
+        doAddDelClick(event.button, mouse);
+    }
 
     event.preventDefault();
 
