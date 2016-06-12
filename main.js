@@ -546,6 +546,9 @@ function doCursorMove(cur_x, cur_y) {
     mouse.x = ( cur_x / window.innerWidth ) * 2 - 1;
     mouse.y = - ( cur_y / window.innerHeight ) * 2 + 1;
     if (moving_cell_mat && moving_cell_mat.visible && moving_plane) {
+        if (moving_controls) {
+            moving_controls.axis = null; // make sure the transformcontrols are not active when the custom drag controls are active
+        }
         var n = moving_plane.normal;
         
         var pos = mouse.add(moving_mouse_offset);
