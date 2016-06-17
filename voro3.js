@@ -247,7 +247,10 @@ Voro3 = function (min_point, max_point) {
         return buffer;
     }
 
-    // v1: [int32 ver=1] [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
+    // custom binary file format
+    // v1: [int32 file_type_id_number=1619149277] [int32 ver=1]
+    //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
+    //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
     this.get_binary_raw_buffer = function() {
         var num_cells = this.voro.cell_count();
         var type_counts = {};
