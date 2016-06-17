@@ -233,12 +233,57 @@ var VoroSettings = function() {
     };
 
     this.filename = 'filename';
-    this.export = function() {
+    this.exportAsSTL = function() {
         var binstl = v3.get_binary_stl_buffer();
         var blob = new Blob([binstl], {type: 'application/octet-binary'});
         saveAs(blob, this.filename + ".stl");
     }
+    this.downloadRaw = function() {
+        var bin = v3.get_binary_raw_buffer();
+        var blob = new Blob([bin], {type: 'application/octet-binary'});
+        saveAs(blob, this.filename + ".vor");
+    }
+    this.uploadRaw = function() {
+        document.getElementById('upload_raw').addEventListener('change', loadRawVoroFile, false);
+        $("#upload_raw").trigger('click');
+        return false;
+    }
+    this.save = function() {
+        var bin = v3.get_binary_raw_buffer();
+        var binstr = fromByteArray(new Uint8Array(bin));
+        localStorage.setItem("saved_cells", binstr);
+    }
+    this.load = function() {
+        var binstr = localStorage.getItem("saved_cells");
+        if (binstr != null) {
+            bin = toByteArray(binstr).buffer;
+            var valid = v3.generate_from_buffer(scene, bin);
+            if (!valid) {
+                alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
+            }
+        }
+    }
+
 };
+
+  function loadRawVoroFile(evt) {
+    var files = evt.target.files;
+
+    for (var i = 0, f; f = files[i]; i++) {
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            var valid = v3.generate_from_buffer(scene, event.target.result);
+            if (!valid) {
+                alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
+            }
+        };
+        reader.readAsArrayBuffer(f);
+        
+        break;
+    }
+    document.getElementById('upload_raw').value = null;
+  }
+
 
 
 function wait_for_ready() {
@@ -338,7 +383,11 @@ function init() {
     }
     datgui.add(settings,'mode',settings.all_modes);
     datgui.add(settings,'filename');
-    datgui.add(settings,'export');
+    datgui.add(settings,'exportAsSTL');
+    datgui.add(settings,'downloadRaw');
+    datgui.add(settings,'uploadRaw');
+    datgui.add(settings,'save');
+    datgui.add(settings,'load');
     
     var procgen = datgui.addFolder('Proc. Gen. Settings');
     
@@ -377,7 +426,7 @@ function onDocumentKeyDown( event ) {
         if (save_buffer != null) {
             save_buffer = toByteArray(save_buffer);
             save_buffer = save_buffer.buffer;
-            v3.generate_from_buffer(scene, [-10,-10,-10],[10,10,10], save_buffer);
+            v3.generate_from_buffer(scene, save_buffer);
         }
     }
 
