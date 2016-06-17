@@ -416,20 +416,6 @@ function deselect_moving() {
 }
 
 function onDocumentKeyDown( event ) {
-    if (event.keyCode === "S".charCodeAt()) {
-        var save_buffer = v3.get_binary_raw_buffer();
-        var str = fromByteArray(new Uint8Array(save_buffer));
-        localStorage.setItem("saved_cells", str);
-    }
-    if (event.keyCode === "D".charCodeAt()) {
-        var save_buffer = localStorage.getItem("saved_cells")
-        if (save_buffer != null) {
-            save_buffer = toByteArray(save_buffer);
-            save_buffer = save_buffer.buffer;
-            v3.generate_from_buffer(scene, save_buffer);
-        }
-    }
-
     if (event.keyCode === " ".charCodeAt()) {
         settings.next_mode();
         for (var i in datgui.__controllers) {
