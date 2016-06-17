@@ -640,6 +640,10 @@ struct Voro {
         assert(cell>=0 && cell<cells.size());
         return cells[cell].pos;
     }
+    Cell cell(int c) {
+        assert(c>=0 && c<cells.size());
+        return cells[c];
+    }
 
 protected:
     friend class GLBufferManager;
@@ -816,13 +820,18 @@ void GLBufferManager::move_cell(Voro &src, int cell) {
 
 EMSCRIPTEN_BINDINGS(voro) {
     value_array<glm::vec3>("vec3")
-    .element(&glm::vec3::x)
-    .element(&glm::vec3::y)
-    .element(&glm::vec3::z)
-    ;
+        .element(&glm::vec3::x)
+        .element(&glm::vec3::y)
+        .element(&glm::vec3::z)
+        ;
+    value_object<Cell>("Cell")
+        .field("pos", &Cell::pos)
+        .field("type", &Cell::type)
+        ;
     class_<Voro>("Voro")
     .constructor<glm::vec3, glm::vec3>()
     .function("cell_pos", &Voro::cell_pos)
+    .function("cell", &Voro::cell)
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
     .function("gl_build", &Voro::gl_build)

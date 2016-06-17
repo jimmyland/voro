@@ -25,16 +25,20 @@ Voro3 = function (min_point, max_point) {
         }
     };
     
-    
-    this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level) {
+    this.create_voro = function(min_point, max_point) {
         this.min_point = min_point;
         this.max_point = max_point;
-        
-        Math.seedrandom(seed);
         if (this.voro) {
             this.voro.delete();
         }
         this.voro = new Module.Voro(this.min_point,this.max_point);
+    }
+    
+    this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level) {
+        this.create_voro(min_point, max_point);
+        
+        Math.seedrandom(seed);
+        
         generator_fn(numPts, this.voro);
         if (fill_level == 0) {
             this.voro.set_only_centermost(1,0);
@@ -42,6 +46,25 @@ Voro3 = function (min_point, max_point) {
             this.voro.set_fill(fill_level/100.0, Math.random()*2147483648);
         }
         
+        this.create_gl_objects();
+        
+        this.add_to_scene(scene);
+    };
+
+    this.generate_from_buffer = function(scene, buffer) {
+        var valid = this.create_from_raw_buffer(buffer);
+        if (!valid) {
+            return false;
+        }
+        
+        this.create_gl_objects();
+        
+        this.add_to_scene(scene);
+
+        return true;
+    };
+
+    this.create_gl_objects = function() {
         this.geometry = this.init_geometry(this.est_max_tris);
         this.material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
         //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
@@ -52,11 +75,12 @@ Voro3 = function (min_point, max_point) {
         
         this.preview_geometry = this.init_preview(this.est_max_preview_verts);
         this.preview_material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: .5, transparent: false } );
+        if (this.preview_lines) {
+            scene.remove(this.preview_lines);
+        }
         this.preview_lines = new THREE.LineSegments(this.preview_geometry, this.preview_material);
         this.preview_lines.visible = false;
-        
-        this.add_to_scene(scene);
-    };
+    }
     
     this.alloc_geometry = function(geometry) {
         this.verts_ptr = this.voro.gl_vertices();
@@ -221,6 +245,114 @@ Voro3 = function (min_point, max_point) {
             }
         }
         return buffer;
+    }
+
+    // custom binary file format
+    // v1: [int32 file_type_id_number=1619149277] [int32 ver=1]
+    //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
+    //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
+    this.get_binary_raw_buffer = function() {
+        var num_cells = this.voro.cell_count();
+        var type_counts = {};
+        for (var i=0; i<num_cells; i++) {
+            var t = this.voro.cell(i).type;
+            type_counts[t] = type_counts[t] || 0;
+            type_counts[t] += 1;
+        }
+        var sorted_types = Object.keys(type_counts);
+        sorted_types.sort();
+        var num_types = sorted_types.length;
+        var type_starts = {};
+
+        var header_size = 4+4+2*3*4+4; // special number and version and bounding box min&max and # types
+        var typeblock_header_size = 4+4; // type id and num cells w/ that type
+        var cell_size = 3*4; // 3 float32s (just posn)
+
+        var start = header_size;
+        for (var k=0; k<num_types; k++) {
+            key = sorted_types[k];
+            type_starts[key] = start;
+            start += typeblock_header_size+type_counts[key]*cell_size;
+        }
+        var total_size = start;
+        
+        var buffer = new ArrayBuffer(total_size);
+        var view = new DataView(buffer);
+        view.setInt32(0, 1619149277, true);
+        view.setInt32(4, 1, true); // version
+        for (var i=0; i<3; i++) {
+            view.setFloat32(   8+i*4, this.min_point[i], true);
+            view.setFloat32(8+12+i*4, this.max_point[i], true);
+        }
+        view.setInt32(8+24, num_types, true); // types_count
+
+        var type_place_in_arr = {};
+
+        // put the header for each type block
+        for (var k=0; k<num_types; k++) {
+            key = sorted_types[k];
+            view.setInt32(type_starts[key]+0, key, true);
+            view.setInt32(type_starts[key]+4, type_counts[key], true);
+            type_place_in_arr[key] = type_starts[key]+typeblock_header_size;
+        }
+
+        for (var i=0; i<num_cells; i++) {
+            var c = this.voro.cell(i);
+            var t = c.type;
+            var place_in_arr = type_place_in_arr[t];
+            view.setFloat32(place_in_arr+0, c.pos[0], true);
+            view.setFloat32(place_in_arr+4, c.pos[1], true);
+            view.setFloat32(place_in_arr+8, c.pos[2], true);
+            type_place_in_arr[t] = place_in_arr + cell_size;
+        }
+
+        return buffer;
+    }
+
+    this.create_from_raw_buffer = function(buffer) {
+        var view = new DataView(buffer);
+        var idflag = view.getInt32(0, true);
+        if (idflag != 1619149277) {
+            console.log("WARNING: tried to load from raw buffer but it didn't have the magic number in front -- so is not a voro buffer!");
+            return false;
+        }
+        var version = view.getInt32(4, true);
+        if (version != 1) {
+            console.log("WARNING: tried to load cells from raw buffer but found unknown version id: " + version);
+            return false;
+        }
+
+        var header_size = 8;
+
+        var offset = header_size;
+        var bbmin = 
+            [view.getFloat32(offset+0, true),
+             view.getFloat32(offset+4, true),
+             view.getFloat32(offset+8, true)];
+        offset += 12;
+        var bbmax =
+            [view.getFloat32(offset+0, true),
+             view.getFloat32(offset+4, true),
+             view.getFloat32(offset+8, true)];
+        offset += 12;
+        this.create_voro(bbmin, bbmax);
+
+
+        var cur_pos = offset;
+        var num_types = view.getInt32(cur_pos, true);
+        cur_pos += 4;
+        for (var i=0; i<num_types; i++) {
+            var type = view.getInt32(cur_pos, true); cur_pos += 4;
+            var num_pts = view.getInt32(cur_pos, true); cur_pos += 4;
+            for (var pi=0; pi<num_pts; pi++) {
+                var x = view.getFloat32(cur_pos, true); cur_pos += 4;
+                var y = view.getFloat32(cur_pos, true); cur_pos += 4;
+                var z = view.getFloat32(cur_pos, true); cur_pos += 4;
+                this.voro.add_cell([x,y,z], type);
+            }
+        }
+
+        return true;
     }
 
 
