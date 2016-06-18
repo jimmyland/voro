@@ -97,6 +97,9 @@ Voro3 = function (min_point, max_point) {
         geometry.name = 'voro3';
         var num_tris = this.voro.gl_tri_count();
         geometry.setDrawRange(0, num_tris*3);
+        var box = new THREE.Box3(this.min_point, this.max_point);
+        geometry.boundingSphere = box.getBoundingSphere();
+
         return geometry;
     };
     this.realloc_geometry = function() {
@@ -120,6 +123,8 @@ Voro3 = function (min_point, max_point) {
         geometry.name = 'voro3_preview';
         var num_verts = this.voro.gl_single_cell_vert_count();
         geometry.setDrawRange(0, num_verts);
+        var box = new THREE.Box3(this.min_point, this.max_point);
+        geometry.boundingSphere = box.getBoundingSphere();
         return geometry;
     };
     this.realloc_preview = function() {
