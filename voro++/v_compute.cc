@@ -298,6 +298,11 @@ bool voro_compute<c_class>::compute_cell(v_cell &c,int ijk,int s,int ci,int cj,i
 
 	if(!con.initialize_voronoicell(c,ijk,s,ci,cj,ck,i,j,k,x,y,z,disp)) return false;
 	con.r_init(ijk,s);
+    
+    bool weirdcell = (x==1.0004212856292725 && y==1.0006406307220459 && z==1.0003476142883301);
+    if (weirdcell) {
+        std::cout << "in the weird cell!!" << std::endl;
+    }
 
 	// Initialize the Voronoi cell to fill the entire container
 	double crs,mrs;
@@ -326,6 +331,24 @@ bool voro_compute<c_class>::compute_cell(v_cell &c,int ijk,int s,int ci,int cj,i
 	// vertex. This is used to cut off the calculation since we only need
 	// to test out to twice this range.
 	mrs=c.max_radius_squared();
+    if (weirdcell) {
+        std::cout << "~w mrs=" << mrs << std::endl;
+        
+        double r,s,*ptsp=c.pts+3,*ptse=c.pts+3*c.p;
+        r=*c.pts*(*c.pts)+c.pts[1]*c.pts[1]+c.pts[2]*c.pts[2];
+        std::cout << "r=" << r << std::endl;
+        while(ptsp<ptse) {
+            std::cout << ptsp[0] << ", " << ptsp[1] << ", " << ptsp[2] << std::endl;
+            s=*ptsp*(*ptsp);ptsp++;
+            s+=*ptsp*(*ptsp);ptsp++;
+            s+=*ptsp*(*ptsp);ptsp++;
+            if(s>r) {
+                std::cout << "s=" << s << std::endl;
+                r=s;
+            }
+        }
+        return r;
+    }
 
 	// Now compute the fractional position of the particle within its
 	// region and store it in (fx,fy,fz). We use this to compute an index
@@ -333,6 +356,10 @@ bool voro_compute<c_class>::compute_cell(v_cell &c,int ijk,int s,int ci,int cj,i
 	unsigned int m1,m2;
 	con.frac_pos(x,y,z,ci,cj,ck,fx,fy,fz);
 	di=int(fx*xsp*wl_fgrid);dj=int(fy*ysp*wl_fgrid);dk=int(fz*zsp*wl_fgrid);
+    
+    if (weirdcell) {
+        std::cout << "~w di=" << di << std::endl;
+    }
 
 	// The indices (di,dj,dk) tell us which worklist to use, to test the
 	// blocks in the optimal order. But we only store worklists for the
@@ -441,6 +468,9 @@ bool voro_compute<c_class>::compute_cell(v_cell &c,int ijk,int s,int ci,int cj,i
 	// mask counter, and if it wraps around then reset the whole mask; that
 	// will only happen once every 2^32 tries.
 	mv++;
+    if (weirdcell) {
+        std::cout << "~w mv=" << mv << std::endl;
+    }
 	if(mv==0) {reset_mask();mv=1;}
 
 	// Set the queue pointers

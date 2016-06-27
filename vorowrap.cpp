@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <stdlib.h>
+#include <math.h>
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -16,7 +17,7 @@
 using namespace std;
 using namespace emscripten;
 
-#define INSANITY
+// #define INSANITY
 #define ADD_ALL_FACES_ALL_THE_TIME 0
 
 #ifdef INSANITY
@@ -71,6 +72,41 @@ struct CellCache { // computations from a voro++ computed cell
         // makes all the vertices for the faces to reference
         c.vertices(pos.x, pos.y, pos.z, vertices);
     }
+    double doublearea(int i, int j, int k) {
+        double a[3] = {
+            vertices[j*3+0]-vertices[i*3+0],
+            vertices[j*3+1]-vertices[i*3+1],
+            vertices[j*3+2]-vertices[i*3+2]
+        };
+        double b[3] = {
+            vertices[k*3+0]-vertices[i*3+0],
+            vertices[k*3+1]-vertices[i*3+1],
+            vertices[k*3+2]-vertices[i*3+2]
+        };
+        double o[3] = {
+            a[1]*b[2]-a[2]*b[1],
+            a[2]*b[0]-a[0]*b[2],
+            a[0]*b[1]-a[1]*b[0]
+        };
+        return sqrt(o[0]*o[0]+o[1]*o[1]+o[2]*o[2]);
+    }
+    double face_size(int face) {
+        size_t i=0, fi=0;
+        for (; fi<face && i<faces.size(); fi++,i+=faces[i]+1) {}
+        double area = 0;
+        if (i<faces.size()) {
+            int vicount = faces[i];
+            int vs[3] = {faces[i+1], 0, faces[i+2]};
+            for (int j = i+3; j < i+vicount+1; j++) { // facev
+                vs[1] = faces[j];
+                
+                area += doublearea(vs[0],vs[1],vs[2]);
+                
+                vs[2] = vs[1];
+            }
+        }
+        return area*.5;
+    }
 };
 
 struct CellToTris {
@@ -101,7 +137,7 @@ struct SingleCellBufferManager {
         resize_buffers();
     }
     void resize_buffers() {
-        vert_buf.resize(max_verts);
+        vert_buf.resize(max_verts*3);
     }
     void clear() {
         vert_buf.clear();
@@ -129,6 +165,7 @@ struct SingleCellBufferManager {
         }
     }
     inline void add_vert(const vector<double> &vertices, int vi) {
+        assert(vi*3+2 < vertices.size());
         if (vert_count >= max_verts) {
             max_verts *= 2;
             resize_buffers();
@@ -172,7 +209,8 @@ struct GLBufferManager {
                         cout << "invalid backlink " << cell_inds[ti] << " vs " << i << endl;
                     }
                 }
-                for (int ni : info[i]->cache.neighbors) {
+                for (size_t nii=0; nii<info[i]->cache.neighbors.size(); nii++) {//(int ni : info[i]->cache.neighbors) {
+                    int ni = info[i]->cache.neighbors[nii];
                     if (ni >= int(info.size())) {
                         valid = false;
                         cout << "neighbor index is out of bounds: " << i << ": " << ni << " vs " << info.size() << endl;
@@ -185,8 +223,13 @@ struct GLBufferManager {
                             }
                         }
                         if (!backlink) {
-                            valid = false;
                             cout << "neighbor " << i << " -> " << ni << " lacks backlink" << endl;
+                            double face_area = info[i]->cache.face_size(nii);
+                            if (face_area < 4.84704e-14) {
+                                cout << "backlink error on face so samll (" << face_area  << ") so maybe we don't care?" << endl;
+                            } else {
+                                valid = false;
+                            }
                         }
                     }
                 }
@@ -333,9 +376,13 @@ struct GLBufferManager {
     }
 };
 
+enum { SANITY_MINIMAL, SANITY_FULL };
+
 struct Voro {
-    Voro() : b_min(glm::vec3(-10)), b_max(glm::vec3(10)), con(0) {}
-    Voro(glm::vec3 bound_min, glm::vec3 bound_max) : b_min(bound_min), b_max(bound_max), con(0) {}
+    Voro()
+        : b_min(glm::vec3(-10)), b_max(glm::vec3(10)), con(0), sanity_level(SANITY_FULL) {}
+    Voro(glm::vec3 bound_min, glm::vec3 bound_max)
+        : b_min(bound_min), b_max(bound_max), con(0), sanity_level(SANITY_FULL) {}
     ~Voro() {
         clear_computed();
     }
@@ -358,8 +405,11 @@ struct Voro {
     }
     
     bool sanity(string when) {
-        bool valid = gl_computed.sanity(when, false);
+        bool valid = true;
         
+        if (sanity_level > 0) {
+            valid = gl_computed.sanity(when, false);
+        }
         for (int cell=0; cell<links.size(); cell++) {
             const auto &link = links[cell];
             if (link.ijk >= 0 && link.q < 0) {
@@ -367,22 +417,24 @@ struct Voro {
                 valid = false;
             }
         }
-        if (gl_computed.info.size() > 0) {
-            if (gl_computed.info.size() != cells.size()) {
-                cout << "computed info cells mismatch voro cells: " << gl_computed.info.size() << " vs " << cells.size() << endl;
-                valid = false;
-            }
-            for (int i=0; i<cells.size(); i++) {
-                CellCache cache;
-                if (gl_computed.info[i]) {
-                    auto &link = links[i];
-                    if (link.valid()) {
-                        if (con->compute_cell(gl_computed.vorocell, link.ijk, link.q)) {
-                            cache.create(cells[i].pos, gl_computed.vorocell);
-                            auto &vs = gl_computed.info[i]->cache;
-                            valid = compare_vecs(vs.neighbors, cache.neighbors, "neighbors", i) && valid;
-                            valid = compare_vecs(vs.faces, cache.faces, "faces", i) && valid;
-//                            valid = compare_vecs(vs.vertices, cache.vertices, "vertices", i) && valid;
+        if (sanity_level > 0) {
+            if (gl_computed.info.size() > 0) {
+                if (gl_computed.info.size() != cells.size()) {
+                    cout << "computed info cells mismatch voro cells: " << gl_computed.info.size() << " vs " << cells.size() << endl;
+                    valid = false;
+                }
+                for (int i=0; i<cells.size(); i++) {
+                    CellCache cache;
+                    if (gl_computed.info[i]) {
+                        auto &link = links[i];
+                        if (link.valid()) {
+                            if (con->compute_cell(gl_computed.vorocell, link.ijk, link.q)) {
+                                cache.create(cells[i].pos, gl_computed.vorocell);
+                                auto &vs = gl_computed.info[i]->cache;
+                                valid = compare_vecs(vs.neighbors, cache.neighbors, "neighbors", i) && valid;
+                                valid = compare_vecs(vs.faces, cache.faces, "faces", i) && valid;
+    //                            valid = compare_vecs(vs.vertices, cache.vertices, "vertices", i) && valid;
+                            }
                         }
                     }
                 }
@@ -499,6 +551,7 @@ struct Voro {
         if (con) {
             CellConLink link;
             bool ret = con->put(id, pt.x, pt.y, pt.z, link.ijk, link.q);
+            cout << "adding: id=" << id << "; link.ijk=" << link.ijk << "; link.q=" << link.q << endl;
             if (!ret) { link = CellConLink(); } // reset to invalid default when put fails
             links.push_back(link);
             assert(cells.size() == links.size());
@@ -506,9 +559,32 @@ struct Voro {
             gl_computed.add_cell();
             gl_computed.compute_cell(*this, id);
             gl_computed.recompute_neighbors(*this, id);
+            
+            if (sanity_level > 0) {
+                cout << "added cell: " << id << endl;
+                cout << "pos=" << pt.x << ", " << pt.y << ", " << pt.z << endl;
+                con->print_block(link.ijk, link.q);
+                cout << "nbrs =";
+                if (gl_computed.info[id]) {
+                    for (int ni : gl_computed.info[id]->cache.neighbors) {
+                        cout << " " << ni;
+                    }
+                } else {
+                    cout << " ... cell was not computed ...; ret=" << ret;
+                }
+                cout << endl;
+            }
         }
         SANITY("after add_cell");
         return id;
+    }
+    
+    void debug_print_block(int ijk, int q) {
+        if (con) {
+            con->print_block(ijk, q);
+        } else {
+            cout << "no con; cannot print any block yet!" << endl;
+        }
     }
     
     bool move_cell(int cell, glm::vec3 pt) { // similar to a delete+add, but w/ no swapping and less recomputation
@@ -531,7 +607,7 @@ struct Voro {
                 int needsupdate = con->move(links[cell].ijk, links[cell].q, cell, pt.x, pt.y, pt.z, needsupdate_q);
                 if (needsupdate > -1) { // we updated q of this element, so we need to update external backrefs to reflect that
                     links[needsupdate].q = needsupdate_q; // only updating q is ok, since the swapnpop won't change the ijk
-                }
+                } 
             }
 
             gl_computed.move_cell(*this, cell);
@@ -593,9 +669,11 @@ struct Voro {
         } else {
             gl_single_cell.compute_cell(*this, cell);
         }
+        SANITY("after gl_compute_single_cell");
     }
     uintptr_t gl_single_cell_vertices() {
         return reinterpret_cast<uintptr_t>(&gl_single_cell.vert_buf[0]);
+        SANITY("returned gl_single_cell_vertices");
     }
     int gl_single_cell_vert_count() {
         return gl_single_cell.vert_count;
@@ -611,6 +689,9 @@ struct Voro {
     }
     int cell_count() {
         return cells.size();
+    }
+    void set_sanity_level(int sanity) {
+        sanity_level = sanity;
     }
     void toggle_cell(int cell) {
         if (cell < 0 || cell >= cells.size())
@@ -640,6 +721,10 @@ struct Voro {
         assert(cell>=0 && cell<cells.size());
         return cells[cell].pos;
     }
+    int cell_type(int cell) {
+        assert(cell>=0 && cell<cells.size());
+        return cells[cell].type;
+    }
     Cell cell(int c) {
         assert(c>=0 && c<cells.size());
         return cells[c];
@@ -658,6 +743,7 @@ protected:
     vector<Cell> cells;
     
     voro::container *con;
+    int sanity_level; // level of error checking.  define "INSANITY" for zero error checking
     // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
     GLBufferManager gl_computed;
@@ -683,16 +769,36 @@ void SingleCellBufferManager::compute_cell(Voro &src, int cell) {
 void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for all cells and add tris for non-zero cells
     assert(cell >= 0 && cell < info.size());
     auto &link = src.links[cell];
+    
+    if (cell == 364) {
+        cout << "~cell364: valid=" << src.links[cell].valid() << endl;
+        auto p = src.cell_pos(cell);
+        cout << "~cell364: pos=" << p[0] << ", " << p[1] << ", " << p[2] << endl;
+    }
     if (!link.valid()) {
         if (info[cell]) { clear_cell_all(*info[cell]); }
         return;
     }
     CellToTris &c = get_clean_cell(cell);
-    
     if (src.con->compute_cell(vorocell, link.ijk, link.q)) {
+        if (cell == 364) {
+            cout << "link.ijk=" << link.ijk << "; link.q=" << link.q << endl;
+            src.con->print_block(link.ijk, link.q);
+        }
         c.cache.create(src.cells[cell].pos, vorocell);
         
         add_cell_tris(src, cell, c);
+        if (cell == 364) {
+            cout << "~cell364: nbrs=";
+            for (int ni : c.cache.neighbors) {
+                cout << " " << ni;
+            }
+            cout << endl;
+        }
+    } else {
+        if (cell == 364) {
+            cout << "~cell364: compute_cell failed";
+        }
     }
 }
 
@@ -831,6 +937,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     class_<Voro>("Voro")
     .constructor<glm::vec3, glm::vec3>()
     .function("cell_pos", &Voro::cell_pos)
+    .function("cell_type", &Voro::cell_type)
     .function("cell", &Voro::cell)
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
@@ -844,7 +951,10 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_from_vertex", &Voro::cell_from_vertex)
     .function("delete_cell", &Voro::delete_cell)
     .function("move_cell", &Voro::move_cell)
+    .function("set_cell", &Voro::set_cell)
+    .function("set_all", &Voro::set_all)
     .function("sanity", &Voro::sanity)
+    .function("set_sanity_level", &Voro::set_sanity_level)
     .function("set_fill", &Voro::set_fill)
     .function("set_only_centermost", &Voro::set_only_centermost)
     .function("gl_compute_single_cell", &Voro::gl_compute_single_cell)
@@ -852,6 +962,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_single_build", &Voro::gl_single_build)
     .function("gl_single_cell_vertices", &Voro::gl_single_cell_vertices)
     .function("gl_single_cell_max_verts", &Voro::gl_single_cell_max_verts)
+    .function("debug_print_block", &Voro::debug_print_block)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
