@@ -530,11 +530,6 @@ function init() {
 
 
 function onDocumentKeyDown( event ) {
-    if (event.keyCode === "S".charCodeAt()) {
-        v3.voro.debug_print_block(171, 92);
-        console.log("sanity checking ...");
-        v3.sanity("after manual sanity check triggered");
-    }
     if (event.keyCode === " ".charCodeAt()) {
         settings.next_mode();
         for (var i in datgui.__controllers) {
@@ -713,7 +708,7 @@ function render() {
 }
 
 function animate() {  
-    v3.do_chaos();
+    // v3.do_chaos();
     render();  
     controls.update();
 

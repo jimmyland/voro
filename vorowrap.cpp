@@ -18,7 +18,7 @@ using namespace std;
 using namespace emscripten;
 
 // define this to disable all (expensive, debugging-only) sanity checking; INSANITY is recommended for a final build
-// #define INSANITY
+ #define INSANITY
 // define this to 1 to add the shared faces of neighboring cells that are both toggled 'on'; if the cells are solid, 0 is preferred
 #define ADD_ALL_FACES_ALL_THE_TIME 0
 // the minimum squared distance between two cells.  If you try to move or add a cell closer to another cell than this threshold, the move
