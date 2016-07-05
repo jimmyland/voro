@@ -27,13 +27,30 @@ var settings;
 //camera, renderer.domElement
 XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.controls = undefined;
+    this.max_points = 1000; // an initial buffer size; can expand as needed by re-allocating
     var _this = this;
+
+    this.init_geom = function() {
+        // init geom, mat, pts, positions to represent a point cloud w/ no points initially
+        this.geom = new THREE.BufferGeometry();
+        this.positions = new Float32Array(this.max_points*3);
+        this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.geom.setDrawRange(0, 0);
+        this.mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
+        this.mat.visible = false;
+        this.pts = new THREE.Points(this.geom, this.mat);
+        this.geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), 100000); // just make it huge; we don't care about the bounding sphere.
+        this.scene.add(this.pts)
+    };
 
     this.reset = function() {
         this.cells = [];
-        this.plane = this.mouse_offset = this.geom = this.pts = this.mat = undefined;
+        this.plane = this.mouse_offset = undefined;
+
+        this.mat.visible = false;
         this.controls.detach();
     };
+
     this.init = function(scene, camera, domEl, v3, override_other_controls) {
         this.v3 = v3;
         this.scene = scene;
@@ -43,9 +60,9 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.controls.addEventListener('objectChange', this.handle_moved); //moved_control
         this.controls.addEventListener('mouseDown', override_other_controls); //e.g. steal from camera
         this.scene.add(this.controls);
+        this.init_geom();
         this.reset();
     };
-
 
     this.update = function() {
         if (this.controls) this.controls.update();
@@ -61,12 +78,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     };
 
     this.handle_moved = function() {
-        var ptspos = _this.pts.position;
-        for (var i=0; i<_this.cells.length; i++) {
-            // todo pull out the global pos of the corresponding individual pt in the geom.
-            var newpos = ptspos.toArray();
-            _this.v3.move_cell(_this.cells[i], newpos);
-        }
+        _this.move_cells();
         _this.update_previews();
         render();
     };
@@ -102,32 +114,56 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         rayline = new THREE.Line3(caster.ray.origin, endpt);
         var newpos = this.plane.intersectLine(rayline);
         if (newpos && this.cells.length > 0) { // todo: make this not specific to single-cell case:
-            this.v3.move_cell(this.cells[0], newpos.toArray());
-            this.set_geom(newpos);
+            // this.v3.move_cell(this.cells[0], newpos.toArray());
+            this.pts.position.set(newpos.x, newpos.y, newpos.z);
+            this.move_cells();
             this.update_previews();
         }
     }
 
+    this.move_cells = function() { // assume this.cells is 1:1 w/ the points in this.geom
+        this.pts.updateMatrixWorld();
+        var p = this.geom.attributes.position.array;
+        var v = new THREE.Vector3();
+        for (var i=0; i<this.cells.length; i++) {
+            v.set(p[i*3],p[i*3+1],p[i*3+2]);
+            v.applyMatrix4(this.pts.matrixWorld);
+            this.v3.move_cell(this.cells[i], [v.x,v.y,v.z]);
+        }
+    }
 
-    // todo: redesign this to take an array of cells
-    this.set_geom = function(p) {
-        if (!p) {
+    this.set_geom_multi = function(cells) {
+        // if there's nothing, just hide everything
+        if (!cells || cells.length === 0) {
             this.invis();
             return;
         }
-        if (!this.geom) {
-            this.geom = new THREE.Geometry();
-            this.geom.vertices.push(new THREE.Vector3());
-            this.mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
-            this.pts = new THREE.Points(this.geom, this.mat);
-            this.pts.position.set(p.x, p.y, p.z);
-            this.scene.add(this.pts);
-            this.controls.attach(this.pts);
-        } else {
-            this.controls.attach(this.pts);
-            this.mat.visible = true;
-            this.pts.position.set(p.x, p.y, p.z);
+
+        // re-alloc verts if needed
+        if (cells.length > this.max_points) {
+            this.max_points = Math.max(this.max_points*2, cells.length);
+            this.geom.removeAttribute('position');
+            this.positions = new Float32Array(this.max_points*3);
+            this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         }
+
+        // set the cell positions
+        this.geom.setDrawRange(0, cells.length);
+        var center = [0,0,0];
+        var p0 = this.v3.cell_pos(cells[0]);
+        center = p0; // center at p0 for now; todo: revisit where the center of the selection should be?  1st cell clicked OR centroid of cells OR other?
+        this.positions[0] = 0; this.positions[1] = 0; this.positions[2] = 0;
+        for (var i=1; i<cells.length; i++) {
+            var pi = this.v3.cell_pos(this.cells[i]);
+            this.positions[i*3+0] = pi[0]-center[0];
+            this.positions[i*3+1] = pi[1]-center[1];
+            this.positions[i*3+2] = pi[2]-center[2];
+        }
+
+        // position and hook up the whole pointcloud
+        this.pts.position.set(center[0], center[1], center[2]);
+        this.mat.visible = true;
+        this.controls.attach(this.pts);
     };
 
     this.attach = function(cells) {
@@ -137,7 +173,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             var n = camera.getWorldDirection();
             var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
             this.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
-            this.set_geom(p);
+            this.set_geom_multi(cells);
             render();
             var p_on_screen = p.project(camera);
             this.mouse_offset = p_on_screen.sub(mouse);
