@@ -22,6 +22,8 @@
 #include "rad_option.hh"
 
 #include <cassert>
+#include <iostream>
+#include <iomanip>
 
 namespace voro {
 
@@ -477,10 +479,26 @@ class container : public container_base, public radius_mono {
 		 * condition, then the routine returns false. */
 		template<class v_cell>
 		inline bool compute_cell(v_cell &c,int ijk,int q) {
-            assert(q >= 0 && q < co[ijk]);
+            assert(q >= 0 && ijk >= 0 && ijk < nxyz && co[ijk] >= 0 && q < co[ijk]);
+
 			int k=ijk/nxy,ijkt=ijk-nxy*k,j=ijkt/nx,i=ijkt-j*nx;
 			return vc.compute_cell(c,ijk,q,i,j,k);
 		}
+        inline bool valid_coords(int ijk, int q) {
+            return (q>=0 && ijk >= 0 && ijk < nxyz && co[ijk] >= 0 && q < co[ijk]);
+        }
+        inline void print_block(int ijk, int q) {
+            bool v = valid_coords(ijk, q);
+            std::cout << "v=" << v << "; ";
+            if (v) {
+                std::cout << "co[ijk]=" << co[ijk] << "; ";
+                for (int ii=0; ii<co[ijk]; ii++) {
+                    double *pp=p[ijk]+ii*3;
+                    std::cout << std::setprecision(17) << "(" << pp[0] << "," << pp[1] << "," << pp[2] << ") ";
+                }
+            }
+            std::cout << std::endl;
+        }
 		/** Computes the Voronoi cell for a ghost particle at a given
 		 * location.
 		 * \param[out] c a Voronoi cell class in which to store the

@@ -222,6 +222,9 @@ Voro3 = function (min_point, max_point) {
     this.cell_pos = function(cell) {
         return this.voro.cell_pos(cell);
     };
+    this.cell_type = function(cell) {
+        return this.voro.cell_type(cell);
+    };
     this.sanity = function(name) {
         return this.voro.sanity(name||"unlabelled sanity check");
     };
@@ -365,9 +368,10 @@ Voro3 = function (min_point, max_point) {
 
 
     // Chaos functions are part of sanity checking / debugging code
-    
-    this.doChaos = function() {
-        var chaos_limit = 1000;
+    var chaos_limit = 1000;
+    this.do_chaos = function() {
+        if (chaos_limit===1000) this.voro.set_sanity_level(0);
+        
         if (chaos_limit == null || chaos_limit-- > 0) {
             var choice = Math.random()*4;
             if (Math.floor(choice) === 0) {
@@ -403,13 +407,22 @@ Voro3 = function (min_point, max_point) {
                 pos[0] += .01;
                 this.voro.move_cell(cell,pos);
             }
-            v3.update_geometry();
+            var preview_cell = Math.floor(Math.random()*this.voro.cell_count());
+            this.set_preview(preview_cell);
+            this.update_geometry();
+            
+            if (chaos_limit%30===0) {
+                this.voro.set_sanity_level(1);
+                var sanity = this.sanity("after chaos_limit="+chaos_limit);
+                this.voro.set_sanity_level(0);
+            }
         }
 
         // if we're done, check sanity
         if (chaos_limit !== null && chaos_limit === 0) {
             console.log("chaos over -- checking sanity at end ...");
-            var sanity = v3.sanity("after chaos");
+            this.voro.set_sanity_level(9001);
+            var sanity = this.sanity("after chaos");
             console.log("sanity = " + sanity);
         }
     }
