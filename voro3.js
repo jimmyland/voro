@@ -395,14 +395,6 @@ Voro3 = function (min_point, max_point) {
                 this.voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
                 this.voro.add_cell([1,1,1], true);
                 this.voro.add_cell([1+Math.random()*.001,1+Math.random()*.001,1+Math.random()*.001], true);
-                if (chaos_limit===590) { 
-                    chaos_limit = 0;
-                    this.voro.set_all(0);
-                    this.voro.set_cell(364, 1);
-                    this.voro.set_cell(1938, 1);
-                    this.update_geometry();
-                    return; 
-                }
                 this.voro.add_cell([0,Math.random()*.1-.05,0], true);
                 this.voro.add_cell([0,Math.random()*1000-500,0], true);
             } else {
@@ -418,13 +410,18 @@ Voro3 = function (min_point, max_point) {
             var preview_cell = Math.floor(Math.random()*this.voro.cell_count());
             this.set_preview(preview_cell);
             this.update_geometry();
-            if (chaos_limit<=591) { this.voro.set_sanity_level(1); console.log("chaos_limit="+chaos_limit); }
-            // if (chaos_limit%10===0) { var sanity = this.sanity("after chaos_limit="+chaos_limit); }
+            
+            if (chaos_limit%30===0) {
+                this.voro.set_sanity_level(1);
+                var sanity = this.sanity("after chaos_limit="+chaos_limit);
+                this.voro.set_sanity_level(0);
+            }
         }
 
         // if we're done, check sanity
         if (chaos_limit !== null && chaos_limit === 0) {
             console.log("chaos over -- checking sanity at end ...");
+            this.voro.set_sanity_level(9001);
             var sanity = this.sanity("after chaos");
             console.log("sanity = " + sanity);
         }
