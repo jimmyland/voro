@@ -627,15 +627,22 @@ function doAddDelClick(button, mouse) {
     }
 }
 
-function startMove(mouse) {
+function startMove(mouse, extend_current_sel) {
     if (!xf_manager.active()) {
-        if (settings.mode === 'move') {
-            moving_cell_new = v3.raycast(mouse, camera, raycaster);
-            xf_manager.attach([moving_cell_new]);
-        }
-        if (settings.mode === 'move neighbor') {
-            moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
-            xf_manager.attach([moving_cell_new]);
+        if (settings.mode === 'move' || settings.mode === 'move neighbor') {
+            if (settings.mode === 'move') {
+                moving_cell_new = v3.raycast(mouse, camera, raycaster);
+                
+            }
+            if (settings.mode === 'move neighbor') {
+                moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
+            }
+
+            var cells = [moving_cell_new];
+            if (extend_current_sel) {
+                cells = xf_manager.cells.concat(cells);
+            }
+            xf_manager.attach(cells);
         }
     }
 }
@@ -645,7 +652,7 @@ function onDocumentMouseDown(event) {
     
     doAddDelClick(event.button, mouse);
 
-    startMove(mouse);
+    startMove(mouse, event.shiftKey);
     
     render();
 }
@@ -712,7 +719,7 @@ function onDocumentTouchStart( event ) {
     // last_touch_for_camera = controls.dragEnabled;
     // ~~~ todo check if above section is needed ~~~
     
-    startMove(mouse);
+    startMove(mouse, false);
 
 }
 function onDocumentTouchMove( event ) {
