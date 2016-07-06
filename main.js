@@ -627,14 +627,14 @@ function doAddDelClick(button, mouse) {
     }
 }
 
-function startMove(mouse, extend_current_sel) {
+function startMove(mouse, extend_current_sel, nbr) {
     if (!xf_manager.active()) {
         if (settings.mode === 'move' || settings.mode === 'move neighbor') {
             if (settings.mode === 'move') {
                 moving_cell_new = v3.raycast(mouse, camera, raycaster);
                 
             }
-            if (settings.mode === 'move neighbor') {
+            if (settings.mode === 'move neighbor' || nbr) {
                 moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
             }
 
@@ -652,7 +652,7 @@ function onDocumentMouseDown(event) {
     
     doAddDelClick(event.button, mouse);
 
-    startMove(mouse, event.shiftKey);
+    startMove(mouse, event.shiftKey, event.button===2);
     
     render();
 }
@@ -719,7 +719,7 @@ function onDocumentTouchStart( event ) {
     // last_touch_for_camera = controls.dragEnabled;
     // ~~~ todo check if above section is needed ~~~
     
-    startMove(mouse, false);
+    startMove(mouse, false, false);
 
 }
 function onDocumentTouchMove( event ) {
