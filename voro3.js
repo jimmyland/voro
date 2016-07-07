@@ -66,7 +66,7 @@ var Voro3 = function () {
     };
 
     this.create_gl_objects = function(scene) {
-        this.geometry = this.init_geometry(this.est_max_tris);
+        this.geometry = this.init_geometry(this.est_max_tris, this.est_max_preview_verts);
         this.material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
         //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
         if (this.mesh) {
@@ -90,10 +90,9 @@ var Voro3 = function () {
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
     };
-    this.init_geometry = function(est_max_tris) {
+    this.init_geometry = function(est_max_tris, est_max_preview_verts) {
         var geometry = new THREE.BufferGeometry();
-        var max_tris = est_max_tris;
-        this.voro.gl_build(max_tris /* initial guess at num tris needed */);
+        this.voro.gl_build(est_max_tris, est_max_preview_verts);
         this.alloc_geometry(geometry);
         geometry.name = 'voro3';
         var num_tris = this.voro.gl_tri_count();
@@ -109,9 +108,9 @@ var Voro3 = function () {
     };
     
     this.alloc_preview = function(geometry) {
-        this.preview_verts_ptr = this.voro.gl_single_cell_vertices();
+        this.preview_verts_ptr = this.voro.gl_wire_vertices();
         var verts_ptr = this.preview_verts_ptr; // just to give it a shorter name
-        var max_verts = this.voro.gl_single_cell_max_verts();
+        var max_verts = this.voro.gl_wire_max_verts();
         var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_verts*3);
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
@@ -119,10 +118,9 @@ var Voro3 = function () {
     this.init_preview = function(est_max_preview_verts) {
         var geometry = new THREE.BufferGeometry();
         var max_verts = est_max_preview_verts;
-        this.voro.gl_single_build(max_verts);
         this.alloc_preview(geometry);
         geometry.name = 'voro3_preview';
-        var num_verts = this.voro.gl_single_cell_vert_count();
+        var num_verts = this.voro.gl_wire_vert_count();
         geometry.setDrawRange(0, num_verts);
         var box = new THREE.Box3(this.min_point, this.max_point);
         geometry.boundingSphere = box.getBoundingSphere();
@@ -156,8 +154,8 @@ var Voro3 = function () {
         this.geometry.attributes.position.needsUpdate = true;
     };
     this.update_preview = function() {
-        var num_verts = this.voro.gl_single_cell_vert_count();
-        var current_verts_ptr = this.voro.gl_single_cell_vertices();
+        var num_verts = this.voro.gl_wire_vert_count();
+        var current_verts_ptr = this.voro.gl_wire_vertices();
         if (current_verts_ptr !== this.preview_verts_ptr) {
             this.realloc_preview();
         }
@@ -205,7 +203,8 @@ var Voro3 = function () {
             this.preview_lines.visible = false;
             return;
         }
-        this.voro.gl_compute_single_cell(cell);
+        this.voro.gl_clear_wires();
+        this.voro.gl_add_wires(cell);
         this.update_preview();
         this.preview_lines.visible = true;
     };
