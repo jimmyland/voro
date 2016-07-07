@@ -3,15 +3,16 @@
  * 
  * For filling the gap between my js wrapper of voro++ and three.js
  */
+/* global THREE, Module */
+/*jshint -W008 */
+/*jslint devel: true, indent: 4, maxerr: 50 */
+"use strict";
 
 // e.g. call with
 // v3 = new Voro3([-10, -10, -10], [10, 10, 10]);
 // you MUST CALL v3.delete() if/when you're done using the object but want to stay on the same page to tell the c++ module to free memory
 
-Voro3 = function (min_point, max_point) {
-    
-    var _this = this;
-    
+var Voro3 = function () {
     
     this.est_max_preview_verts = 1024;
     this.est_max_tris = 32768;
@@ -32,7 +33,7 @@ Voro3 = function (min_point, max_point) {
             this.voro.delete();
         }
         this.voro = new Module.Voro(this.min_point,this.max_point);
-    }
+    };
     
     this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level) {
         this.create_voro(min_point, max_point);
@@ -40,13 +41,13 @@ Voro3 = function (min_point, max_point) {
         Math.seedrandom(seed);
         
         generator_fn(numPts, this.voro);
-        if (fill_level == 0) {
+        if (fill_level === 0) {
             this.voro.set_only_centermost(1,0);
         } else {
             this.voro.set_fill(fill_level/100.0, Math.random()*2147483648);
         }
         
-        this.create_gl_objects();
+        this.create_gl_objects(scene);
         
         this.add_to_scene(scene);
     };
@@ -57,14 +58,14 @@ Voro3 = function (min_point, max_point) {
             return false;
         }
         
-        this.create_gl_objects();
+        this.create_gl_objects(scene);
         
         this.add_to_scene(scene);
 
         return true;
     };
 
-    this.create_gl_objects = function() {
+    this.create_gl_objects = function(scene) {
         this.geometry = this.init_geometry(this.est_max_tris);
         this.material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
         //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
@@ -74,13 +75,13 @@ Voro3 = function (min_point, max_point) {
         this.mesh = new THREE.Mesh( this.geometry, this.material );
         
         this.preview_geometry = this.init_preview(this.est_max_preview_verts);
-        this.preview_material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: .5, transparent: false } );
+        this.preview_material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 0.5, transparent: false } );
         if (this.preview_lines) {
             scene.remove(this.preview_lines);
         }
         this.preview_lines = new THREE.LineSegments(this.preview_geometry, this.preview_material);
         this.preview_lines.visible = false;
-    }
+    };
     
     this.alloc_geometry = function(geometry) {
         this.verts_ptr = this.voro.gl_vertices();
@@ -88,7 +89,7 @@ Voro3 = function (min_point, max_point) {
         var array = Module.HEAPF32.subarray(this.verts_ptr/4, this.verts_ptr/4 + max_tris*3*3);
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
-    }
+    };
     this.init_geometry = function(est_max_tris) {
         var geometry = new THREE.BufferGeometry();
         var max_tris = est_max_tris;
@@ -105,7 +106,7 @@ Voro3 = function (min_point, max_point) {
     this.realloc_geometry = function() {
         this.geometry.removeAttribute('position');
         this.alloc_geometry(this.geometry);
-    }
+    };
     
     this.alloc_preview = function(geometry) {
         this.preview_verts_ptr = this.voro.gl_single_cell_vertices();
@@ -114,7 +115,7 @@ Voro3 = function (min_point, max_point) {
         var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_verts*3);
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
-    }
+    };
     this.init_preview = function(est_max_preview_verts) {
         var geometry = new THREE.BufferGeometry();
         var max_verts = est_max_preview_verts;
@@ -130,7 +131,7 @@ Voro3 = function (min_point, max_point) {
     this.realloc_preview = function() {
         this.preview_geometry.removeAttribute('position');
         this.alloc_preview(this.preview_geometry);
-    }
+    };
     
     this.add_cell = function (pt_3, state) {
         if (state === undefined) {
@@ -152,7 +153,7 @@ Voro3 = function (min_point, max_point) {
             this.realloc_geometry();
         }
         this.geometry.setDrawRange(0, num_tris*3);
-        this.geometry.attributes['position'].needsUpdate = true;
+        this.geometry.attributes.position.needsUpdate = true;
     };
     this.update_preview = function() {
         var num_verts = this.voro.gl_single_cell_vert_count();
@@ -161,7 +162,7 @@ Voro3 = function (min_point, max_point) {
             this.realloc_preview();
         }
         this.preview_geometry.setDrawRange(0, num_verts);
-        this.preview_geometry.attributes['position'].needsUpdate = true;
+        this.preview_geometry.attributes.position.needsUpdate = true;
     };
     this.raycast_vertex_index = function(mouse, camera, caster) {
         caster.setFromCamera(mouse, camera);
@@ -185,18 +186,18 @@ Voro3 = function (min_point, max_point) {
         return intersect.point;
     };
     this.raycast = function(mouse, camera, caster) {
-        index = this.raycast_vertex_index(mouse, camera, caster)
+        var index = this.raycast_vertex_index(mouse, camera, caster);
         if (index < 0)
             return index;
         
-        return this.voro.cell_from_vertex(index)
+        return this.voro.cell_from_vertex(index);
     };
     this.raycast_neighbor = function(mouse, camera, caster) {
-        index = this.raycast_vertex_index(mouse, camera, caster)
+        var index = this.raycast_vertex_index(mouse, camera, caster);
         if (index < 0)
             return index;
         
-        return this.voro.cell_neighbor_from_vertex(index)
+        return this.voro.cell_neighbor_from_vertex(index);
     };
 
     this.set_preview = function(cell) {
@@ -253,17 +254,18 @@ Voro3 = function (min_point, max_point) {
             }
         }
         return buffer;
-    }
+    };
 
     // custom binary file format
     // v1: [int32 file_type_id_number=1619149277] [int32 ver=1]
     //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
     this.get_binary_raw_buffer = function() {
+        var key, k, i, t;
         var num_cells = this.voro.cell_count();
         var type_counts = {};
-        for (var i=0; i<num_cells; i++) {
-            var t = this.voro.cell(i).type;
+        for (i=0; i<num_cells; i++) {
+            t = this.voro.cell(i).type;
             type_counts[t] = type_counts[t] || 0;
             type_counts[t] += 1;
         }
@@ -277,7 +279,7 @@ Voro3 = function (min_point, max_point) {
         var cell_size = 3*4; // 3 float32s (just posn)
 
         var start = header_size;
-        for (var k=0; k<num_types; k++) {
+        for (k=0; k<num_types; k++) {
             key = sorted_types[k];
             type_starts[key] = start;
             start += typeblock_header_size+type_counts[key]*cell_size;
@@ -288,7 +290,7 @@ Voro3 = function (min_point, max_point) {
         var view = new DataView(buffer);
         view.setInt32(0, 1619149277, true);
         view.setInt32(4, 1, true); // version
-        for (var i=0; i<3; i++) {
+        for (i=0; i<3; i++) {
             view.setFloat32(   8+i*4, this.min_point[i], true);
             view.setFloat32(8+12+i*4, this.max_point[i], true);
         }
@@ -297,16 +299,16 @@ Voro3 = function (min_point, max_point) {
         var type_place_in_arr = {};
 
         // put the header for each type block
-        for (var k=0; k<num_types; k++) {
+        for (k=0; k<num_types; k++) {
             key = sorted_types[k];
             view.setInt32(type_starts[key]+0, key, true);
             view.setInt32(type_starts[key]+4, type_counts[key], true);
             type_place_in_arr[key] = type_starts[key]+typeblock_header_size;
         }
 
-        for (var i=0; i<num_cells; i++) {
+        for (i=0; i<num_cells; i++) {
             var c = this.voro.cell(i);
-            var t = c.type;
+            t = c.type;
             var place_in_arr = type_place_in_arr[t];
             view.setFloat32(place_in_arr+0, c.pos[0], true);
             view.setFloat32(place_in_arr+4, c.pos[1], true);
@@ -315,7 +317,7 @@ Voro3 = function (min_point, max_point) {
         }
 
         return buffer;
-    }
+    };
 
     this.create_from_raw_buffer = function(buffer) {
         var view = new DataView(buffer);
@@ -361,7 +363,7 @@ Voro3 = function (min_point, max_point) {
         }
 
         return true;
-    }
+    };
 
 
 
@@ -370,23 +372,26 @@ Voro3 = function (min_point, max_point) {
     // Chaos functions are part of sanity checking / debugging code
     var chaos_limit = 1000;
     this.do_chaos = function() {
+        var cell = 0;
+        var sanity = true;
+
         if (chaos_limit===1000) this.voro.set_sanity_level(0);
         
-        if (chaos_limit == null || chaos_limit-- > 0) {
+        if (chaos_limit === null || chaos_limit-- > 0) {
             var choice = Math.random()*4;
             if (Math.floor(choice) === 0) {
-                var cell = Math.floor(Math.random()*this.voro.cell_count());
+                cell = Math.floor(Math.random()*this.voro.cell_count());
                 this.voro.toggle_cell(cell);
                 this.voro.toggle_cell(cell);
                 this.voro.toggle_cell(cell);
             }
             else if (Math.floor(choice) === 1) {
                 this.voro.delete_cell(0);
-                var cell = Math.floor(Math.random()*this.voro.cell_count());
+                cell = Math.floor(Math.random()*this.voro.cell_count());
                 this.voro.delete_cell(cell);
-                var cell = Math.floor(Math.random()*this.voro.cell_count());
+                cell = Math.floor(Math.random()*this.voro.cell_count());
                 this.voro.delete_cell(cell);
-                var cell = Math.floor(Math.random()*this.voro.cell_count());
+                cell = Math.floor(Math.random()*this.voro.cell_count());
                 this.voro.delete_cell(cell);
             } else if (Math.floor(choice) === 2) {
                 this.voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
@@ -402,9 +407,9 @@ Voro3 = function (min_point, max_point) {
                 this.voro.move_cell(Math.random()*this.voro.cell_count(),[0,Math.random()*1000-500,0]);
                 this.voro.move_cell(0,[0,Math.random()*40-20,0]);
                 var pos = [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
-                var cell = this.voro.add_cell(pos, true);
+                cell = this.voro.add_cell(pos, true);
                 this.voro.move_cell(cell,pos);
-                pos[0] += .01;
+                pos[0] += 0.01;
                 this.voro.move_cell(cell,pos);
             }
             var preview_cell = Math.floor(Math.random()*this.voro.cell_count());
@@ -413,7 +418,7 @@ Voro3 = function (min_point, max_point) {
             
             if (chaos_limit%30===0) {
                 this.voro.set_sanity_level(1);
-                var sanity = this.sanity("after chaos_limit="+chaos_limit);
+                sanity = this.sanity("after chaos_limit="+chaos_limit);
                 this.voro.set_sanity_level(0);
             }
         }
@@ -422,10 +427,10 @@ Voro3 = function (min_point, max_point) {
         if (chaos_limit !== null && chaos_limit === 0) {
             console.log("chaos over -- checking sanity at end ...");
             this.voro.set_sanity_level(9001);
-            var sanity = this.sanity("after chaos");
+            sanity = this.sanity("after chaos");
             console.log("sanity = " + sanity);
         }
-    }
-}
+    };
+};
 
 Voro3.prototype.constructor = Voro3;

@@ -1,5 +1,9 @@
 // main test code for running the vorojs functions + showing results via threejs
 // currently just a chopped up version of a basic threejs example
+/* global THREE, Detector, saveAs, fromByteArray, toByteArray, $, ready_for_emscripten_calls, Voro3, dat */
+/*jshint -W008 */
+/*jslint devel: true, indent: 4, maxerr: 50 */
+"use strict";
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
@@ -15,9 +19,6 @@ function override_cam_controls() { // disable trackball controls
     last_touch_for_camera = false;
 }
 
-var bb_geometry;
-
-
 var v3;
 var xf_manager;
 
@@ -25,7 +26,7 @@ var datgui;
 var settings;
 
 //camera, renderer.domElement
-XFManager = function (scene, camera, domEl, v3, override_other_controls) {
+var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.controls = undefined;
     this.max_points = 1000; // an initial buffer size; can expand as needed by re-allocating
     var _this = this;
@@ -36,11 +37,11 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.positions = new Float32Array(this.max_points*3);
         this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         this.geom.setDrawRange(0, 0);
-        this.mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
+        this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0xff00ff, depthTest: false } );
         this.mat.visible = false;
         this.pts = new THREE.Points(this.geom, this.mat);
         this.geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), 100000); // just make it huge; we don't care about the bounding sphere.
-        this.scene.add(this.pts)
+        this.scene.add(this.pts);
     };
 
     this.reset = function() {
@@ -66,7 +67,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.update = function() {
         if (this.controls) this.controls.update();
-    }
+    };
 
     this.update_previews = function() {
         for (var i=0; i<this.cells.length; i++) {
@@ -94,14 +95,13 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.over_axis = function() { return this.controls && this.controls.axis; };
     this.dragging = function() { return this.controls && this.controls.visible && this.controls._dragging; };
     this.dragging_custom = function() { return this.mat && this.mat.visible && this.plane; };
-    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible; }
+    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible; };
 
     this.drag_custom = function(mouse) {
         if (this.controls) {
             this.controls.axis = null; // make sure the transformcontrols are not active when the custom drag controls are active
         }
-        var n = this.plane.normal;
-        
+
         var pos = mouse.clone().add(this.mouse_offset);
         var caster = new THREE.Raycaster();
         caster.setFromCamera(pos, this.camera);
@@ -111,7 +111,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         endpt.multiplyScalar(1000);
         endpt.add(caster.ray.origin);
         
-        rayline = new THREE.Line3(caster.ray.origin, endpt);
+        var rayline = new THREE.Line3(caster.ray.origin, endpt);
         var newpos = this.plane.intersectLine(rayline);
         if (newpos && this.cells.length > 0) { // todo: make this not specific to single-cell case:
             // this.v3.move_cell(this.cells[0], newpos.toArray());
@@ -119,7 +119,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.move_cells();
             this.update_previews();
         }
-    }
+    };
 
     this.move_cells = function() { // assume this.cells is 1:1 w/ the points in this.geom
         this.pts.updateMatrixWorld();
@@ -130,7 +130,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             v.applyMatrix4(this.pts.matrixWorld);
             this.v3.move_cell(this.cells[i], [v.x,v.y,v.z]);
         }
-    }
+    };
 
     this.set_geom_multi = function(cells) {
         // if there's nothing, just hide everything
@@ -189,11 +189,11 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     
 
 
-}
+};
 
 
 
-Generators = {
+var Generators = {
     "uniform random": function(numpts, voro) {
         voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts; i++) {
@@ -222,7 +222,7 @@ Generators = {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
                     var r = rfac*j;
-                    voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2===1);
                 }
             }
         }
@@ -238,7 +238,7 @@ Generators = {
                 var r = ri*(w-4)/(n*.5) + 4;
                 for (var ti=0; ti<n+1; ti++) { // angle
                     var theta = ti*2*Math.PI/n;
-                    voro.add_cell([r*Math.cos(theta)+Math.random()*jitter, r*Math.sin(theta)+Math.random()*jitter, z+Math.random()*jitter], ((zi%n)-ti)==0);
+                    voro.add_cell([r*Math.cos(theta)+Math.random()*jitter, r*Math.sin(theta)+Math.random()*jitter, z+Math.random()*jitter], ((zi%n)-ti)===0);
                 }
             }
         }
@@ -265,7 +265,7 @@ Generators = {
         var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
-                offset = (j%2)*(w/n);
+                var offset = (j%2)*(w/n);
                 for (var k=0; k<n+1; k++) {
                     voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+offset], (i+j+k)%2==1);
                 }
@@ -278,11 +278,11 @@ Generators = {
         var o = (w/n);
         for (var i=0; i<2*n+1; i++) {
             var s = i%4;
-            var ox = (s==0||s==1)?0:o;
+            var ox = (s===0||s===1)?0:o;
             var oz = (i%2)*o*.5-o*.25;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], (i+j+k)%2===1);
                 }
             }
         }
@@ -294,8 +294,8 @@ Generators = {
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2===1);
+                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2===1);
                 }
             }
         }
@@ -306,11 +306,11 @@ Generators = {
         var o = (w/n);
         for (var i=0; i<2*n+1; i++) {
             var s = i%4;
-            var ox = (s==0||s==1)?0:o;
-            var oy = (s==0||s==3)?0:o;
+            var ox = (s===0||s===1)?0:o;
+            var oy = (s===0||s===3)?0:o;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], (i+j+k)%2==1);
+                    voro.add_cell([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], (i+j+k)%2===1);
                 }
             }
         }
@@ -368,14 +368,14 @@ var VoroSettings = function() {
                 return i;
         }
         return null;
-    }
+    };
     this.next_mode = function() {
         var i = this.mode_index(this.mode);
-        if (i != null) {
+        if (i !== null) {
             this.mode = this.all_modes[(i+1)%this.all_modes.length];
             return;
         }
-    }
+    };
     this.mode = 'toggle';
     // this.generator = 'uniform random';
     this.generator = 'cylindrical columns';
@@ -395,39 +395,39 @@ var VoroSettings = function() {
         var binstl = v3.get_binary_stl_buffer();
         var blob = new Blob([binstl], {type: 'application/octet-binary'});
         saveAs(blob, this.filename + ".stl");
-    }
+    };
     this.downloadRaw = function() {
         var bin = v3.get_binary_raw_buffer();
         var blob = new Blob([bin], {type: 'application/octet-binary'});
         saveAs(blob, this.filename + ".vor");
-    }
+    };
     this.uploadRaw = function() {
         document.getElementById('upload_raw').addEventListener('change', loadRawVoroFile, false);
         $("#upload_raw").trigger('click');
         return false;
-    }
+    };
     this.save = function() {
         var bin = v3.get_binary_raw_buffer();
         var binstr = fromByteArray(new Uint8Array(bin));
         localStorage.setItem("saved_cells", binstr);
-    }
+    };
     this.load = function() {
         var binstr = localStorage.getItem("saved_cells");
-        if (binstr != null) {
-            bin = toByteArray(binstr).buffer;
+        if (binstr !== null) {
+            var bin = toByteArray(binstr).buffer;
             var valid = v3.generate_from_buffer(scene, bin);
             if (!valid) {
                 alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
             }
         }
-    }
+    };
 
 };
 
 function loadRawVoroFile(evt) {
     var files = evt.target.files;
 
-    for (var i = 0, f; f = files[i]; i++) {
+    if (files.length > 0) {
         var reader = new FileReader();
         reader.onload = function(event) {
             var valid = v3.generate_from_buffer(scene, event.target.result);
@@ -435,9 +435,7 @@ function loadRawVoroFile(evt) {
                 alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
             }
         };
-        reader.readAsArrayBuffer(f);
-        
-        break;
+        reader.readAsArrayBuffer(files[0]);
     }
     document.getElementById('upload_raw').value = null;
 }
@@ -493,7 +491,7 @@ function init() {
     
     var bb_geom = new THREE.BoxGeometry( 20, 20, 20 );
     var bb_mat = new THREE.MeshBasicMaterial( { wireframe: true } );
-    bounding_box_mesh = new THREE.Mesh( bb_geom, bb_mat );
+    var bounding_box_mesh = new THREE.Mesh( bb_geom, bb_mat );
     var bb_edges = new THREE.EdgesHelper(bounding_box_mesh);
     scene.add(bb_edges);
 
@@ -503,7 +501,7 @@ function init() {
     renderer.setPixelRatio( window.devicePixelRatio );
     
     window.addEventListener( 'resize', onWindowResize, false );
-    container = document.getElementById( 'container' );
+    var container = document.getElementById( 'container' );
     container.addEventListener( 'mousemove', onDocumentMouseMove, false );
     container.addEventListener( 'touchstart', onDocumentTouchStart, false );
     container.addEventListener( 'touchmove', onDocumentTouchMove, false );
@@ -549,7 +547,6 @@ function init() {
     procgen.add(settings,'seed');
     procgen.add(settings,'numpts').min(1);
     procgen.add(settings,'generator',Object.keys(Generators));
-    var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
 
     procgen.add(settings,'regenerate');
 
@@ -597,15 +594,15 @@ function onWindowResize() {
 function doToggleClick(button, mouse) {
     if (settings.mode === 'toggle' || settings.mode === 'toggle off') {
         xf_manager.deselect();
+        var cell;
         if (button === 2 || settings.mode === 'toggle off') {
-            var cell = v3.raycast(mouse, camera, raycaster);
+            cell = v3.raycast(mouse, camera, raycaster);
             v3.toggle_cell(cell);
         } else {
-            var cell = v3.raycast_neighbor(mouse, camera, raycaster);
+            cell = v3.raycast_neighbor(mouse, camera, raycaster);
             v3.toggle_cell(cell);
         }
-        
-        var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+
         v3.set_preview(-1);
         // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
     }
@@ -630,6 +627,7 @@ function doAddDelClick(button, mouse) {
 function startMove(mouse, extend_current_sel, nbr) {
     if (!xf_manager.active()) {
         if (settings.mode === 'move' || settings.mode === 'move neighbor') {
+            var moving_cell_new;
             if (settings.mode === 'move') {
                 moving_cell_new = v3.raycast(mouse, camera, raycaster);
                 
@@ -657,14 +655,14 @@ function onDocumentMouseDown(event) {
     render();
 }
 
-
-function logv2(s,v){
-    console.log(s + ": " + v.x + ", " + v.y);
-}
-function logv3(s,v){
-    console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
-}
-function onDocumentMouseUp(event) {
+// unused vector logging functions; helpful for debugging sometimes
+// function logv2(s,v){
+//     console.log(s + ": " + v.x + ", " + v.y);
+// }
+// function logv3(s,v){
+//     console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
+// }
+function onDocumentMouseUp() {
     xf_manager.invis();
 }
 function onDocumentMouseMove( event ) {
