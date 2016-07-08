@@ -37,11 +37,12 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.positions = new Float32Array(this.max_points*3);
         this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         this.geom.setDrawRange(0, 0);
-        this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0xff00ff, depthTest: false } );
+        this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0xff00ff, depthTest: false, depthWrite: false } );
         this.mat.visible = false;
         this.pts = new THREE.Points(this.geom, this.mat);
         this.geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), 100000); // just make it huge; we don't care about the bounding sphere.
         this.scene.add(this.pts);
+        this.pts.renderOrder = 1;
     };
 
     this.reset = function() {
@@ -87,6 +88,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.detach = function() { if (this.controls) this.controls.detach(); };
     this.invis = function() { if (this.mat) this.mat.visible = false; };
+    this.stop_custom = function() { this.plane = null; }
 
     this.deselect = function() {
         this.cells = [];
@@ -97,7 +99,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.over_axis = function() { return this.controls && this.controls.axis; };
     this.dragging = function() { return this.controls && this.controls.visible && this.controls._dragging; };
     this.dragging_custom = function() { return this.mat && this.mat.visible && this.plane; };
-    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible; };
+    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible && this.plane; };
 
     this.drag_custom = function(mouse) {
         if (this.controls) {
@@ -667,7 +669,7 @@ function onDocumentMouseDown(event) {
 //     console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
 // }
 function onDocumentMouseUp() {
-    xf_manager.invis();
+    xf_manager.stop_custom();
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
@@ -735,7 +737,7 @@ function onDocumentTouchMove( event ) {
     }
 }
 function onDocumentTouchEnd( event ) {
-    xf_manager.invis();
+    xf_manager.stop_custom();
 
     if (!last_touch_for_camera) {
         doToggleClick(event.button, mouse);
