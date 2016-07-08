@@ -74,7 +74,7 @@ var Voro3 = function () {
         }
         this.mesh = new THREE.Mesh( this.geometry, this.material );
         
-        this.preview_geometry = this.init_preview(this.est_max_preview_verts);
+        this.preview_geometry = this.init_preview();
         this.preview_material = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 0.5, transparent: false } );
         if (this.preview_lines) {
             scene.remove(this.preview_lines);
@@ -115,9 +115,8 @@ var Voro3 = function () {
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
     };
-    this.init_preview = function(est_max_preview_verts) {
+    this.init_preview = function() {
         var geometry = new THREE.BufferGeometry();
-        var max_verts = est_max_preview_verts;
         this.alloc_preview(geometry);
         geometry.name = 'voro3_preview';
         var num_verts = this.voro.gl_wire_vert_count();
@@ -198,15 +197,22 @@ var Voro3 = function () {
         return this.voro.cell_neighbor_from_vertex(index);
     };
 
-    this.set_preview = function(cell) {
+    this.clear_preview = function() {
+        this.voro.gl_clear_wires();
+        this.preview_lines.visible = false;
+    };
+    this.add_preview = function(cell) {
         if (cell < 0) {
             this.preview_lines.visible = false;
             return;
         }
-        this.voro.gl_clear_wires();
         this.voro.gl_add_wires(cell);
-        this.update_preview();
         this.preview_lines.visible = true;
+    };
+    this.set_preview = function(cell) {
+        this.clear_preview();
+        this.add_preview(cell);
+        this.update_preview();
     };
     
 

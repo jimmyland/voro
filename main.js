@@ -70,12 +70,13 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     };
 
     this.update_previews = function() {
+        this.v3.clear_preview();
         for (var i=0; i<this.cells.length; i++) {
-            // todo; actually set preview for all cells at once, not just one after the other in sequence
-            if (this.v3.cell_type(this.cells[i]) === 0) {
-                this.v3.set_preview(this.cells[i]);
+            if (this.cells.length > 1 || this.v3.cell_type(this.cells[i]) === 0) {
+                this.v3.add_preview(this.cells[i]);
             }
         }
+        this.v3.update_preview();
     };
 
     this.handle_moved = function() {
@@ -88,6 +89,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.invis = function() { if (this.mat) this.mat.visible = false; };
 
     this.deselect = function() {
+        this.cells = [];
         this.detach();
         this.invis();
     };
@@ -113,8 +115,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         
         var rayline = new THREE.Line3(caster.ray.origin, endpt);
         var newpos = this.plane.intersectLine(rayline);
-        if (newpos && this.cells.length > 0) { // todo: make this not specific to single-cell case:
-            // this.v3.move_cell(this.cells[0], newpos.toArray());
+        if (newpos && this.cells.length > 0) {
             this.pts.position.set(newpos.x, newpos.y, newpos.z);
             this.move_cells();
             this.update_previews();
@@ -159,6 +160,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.positions[i*3+1] = pi[1]-center[1];
             this.positions[i*3+2] = pi[2]-center[2];
         }
+        this.geom.attributes.position.needsUpdate = true;
 
         // position and hook up the whole pointcloud
         this.pts.position.set(center[0], center[1], center[2]);
@@ -181,14 +183,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         }
     };
 
-
-
-
     this.init(scene, camera, domEl, v3, override_other_controls);
-
-    
-
-
 };
 
 
@@ -636,9 +631,18 @@ function startMove(mouse, extend_current_sel, nbr) {
                 moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
             }
 
+            var has_cell = false;
+            for (var i=0; i<xf_manager.cells.length; i++) {
+                has_cell = has_cell || (xf_manager.cells[i] === moving_cell_new);
+            }
+
             var cells = [moving_cell_new];
-            if (extend_current_sel) {
-                cells = xf_manager.cells.concat(cells);
+            if (extend_current_sel || has_cell) {
+                cells = xf_manager.cells;
+                
+                if (!has_cell) {
+                    cells.push(moving_cell_new);
+                }
             }
             xf_manager.attach(cells);
         }
