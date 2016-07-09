@@ -61,6 +61,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.controls = new THREE.TransformControls(camera, domEl);
         this.controls.addEventListener('objectChange', this.handle_moved); //moved_control
         this.controls.addEventListener('mouseDown', override_other_controls); //e.g. steal from camera
+        this.controls.setSpace("world");
         this.scene.add(this.controls);
         this.init_geom();
         this.reset();
@@ -80,6 +81,23 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.v3.update_preview();
     };
 
+    this.keydown = function(event) {
+        if (event.keyCode === 27) {
+            this.deselect();
+        }
+        if (this.mat.visible) {
+            if (event.keyCode === 'W'.charCodeAt()) {
+                this.controls.setMode("translate");
+            }
+            if (event.keyCode === 'E'.charCodeAt()) {
+                this.controls.setMode("rotate");
+            }
+            if (event.keyCode === 'R'.charCodeAt()) {
+                this.controls.setMode("scale");
+            }
+        }
+    };
+
     this.handle_moved = function() {
         _this.move_cells();
         _this.update_previews();
@@ -88,7 +106,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.detach = function() { if (this.controls) this.controls.detach(); };
     this.invis = function() { if (this.mat) this.mat.visible = false; };
-    this.stop_custom = function() { this.plane = null; }
+    this.stop_custom = function() { this.plane = null; };
 
     this.deselect = function() {
         this.cells = [];
@@ -566,9 +584,8 @@ function onDocumentKeyDown( event ) {
             datgui.__controllers[i].updateDisplay();
         }
     }
-    if (event.keyCode === 27) {
-        xf_manager.deselect();
-    }
+    
+    xf_manager.keydown(event);
     // not sure this feature was actually useful ...
     // if (event.keyCode >= 'X'.charCodeAt() && event.keyCode <= 'Z'.charCodeAt()) {
     //     var axis = event.keyCode - 'X'.charCodeAt();
