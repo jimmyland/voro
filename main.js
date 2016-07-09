@@ -1,5 +1,9 @@
 // main test code for running the vorojs functions + showing results via threejs
 // currently just a chopped up version of a basic threejs example
+/* global THREE, Detector, saveAs, fromByteArray, toByteArray, $, ready_for_emscripten_calls, Voro3, dat */
+/*jshint -W008 */
+/*jslint devel: true, indent: 4, maxerr: 50 */
+"use strict";
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
@@ -15,9 +19,6 @@ function override_cam_controls() { // disable trackball controls
     last_touch_for_camera = false;
 }
 
-var bb_geometry;
-
-
 var v3;
 var xf_manager;
 
@@ -25,15 +26,33 @@ var datgui;
 var settings;
 
 //camera, renderer.domElement
-XFManager = function (scene, camera, domEl, v3, override_other_controls) {
+var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.controls = undefined;
+    this.max_points = 1000; // an initial buffer size; can expand as needed by re-allocating
     var _this = this;
+
+    this.init_geom = function() {
+        // init geom, mat, pts, positions to represent a point cloud w/ no points initially
+        this.geom = new THREE.BufferGeometry();
+        this.positions = new Float32Array(this.max_points*3);
+        this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.geom.setDrawRange(0, 0);
+        this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0xff00ff, depthTest: false, depthWrite: false } );
+        this.mat.visible = false;
+        this.pts = new THREE.Points(this.geom, this.mat);
+        this.geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), 100000); // just make it huge; we don't care about the bounding sphere.
+        this.scene.add(this.pts);
+        this.pts.renderOrder = 1;
+    };
 
     this.reset = function() {
         this.cells = [];
-        this.plane = this.mouse_offset = this.geom = this.pts = this.mat = undefined;
+        this.plane = this.mouse_offset = undefined;
+
+        this.mat.visible = false;
         this.controls.detach();
     };
+
     this.init = function(scene, camera, domEl, v3, override_other_controls) {
         this.v3 = v3;
         this.scene = scene;
@@ -42,39 +61,55 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.controls = new THREE.TransformControls(camera, domEl);
         this.controls.addEventListener('objectChange', this.handle_moved); //moved_control
         this.controls.addEventListener('mouseDown', override_other_controls); //e.g. steal from camera
+        this.controls.setSpace("world");
         this.scene.add(this.controls);
+        this.init_geom();
         this.reset();
     };
 
-
     this.update = function() {
         if (this.controls) this.controls.update();
-    }
+    };
 
     this.update_previews = function() {
+        this.v3.clear_preview();
         for (var i=0; i<this.cells.length; i++) {
-            // todo; actually set preview for all cells at once, not just one after the other in sequence
-            if (this.v3.cell_type(this.cells[i]) === 0) {
-                this.v3.set_preview(this.cells[i]);
+            if (this.cells.length > 1 || this.v3.cell_type(this.cells[i]) === 0) {
+                this.v3.add_preview(this.cells[i]);
+            }
+        }
+        this.v3.update_preview();
+    };
+
+    this.keydown = function(event) {
+        if (event.keyCode === 27) {
+            this.deselect();
+        }
+        if (this.mat.visible) {
+            if (event.keyCode === 'W'.charCodeAt()) {
+                this.controls.setMode("translate");
+            }
+            if (event.keyCode === 'E'.charCodeAt()) {
+                this.controls.setMode("rotate");
+            }
+            if (event.keyCode === 'R'.charCodeAt()) {
+                this.controls.setMode("scale");
             }
         }
     };
 
     this.handle_moved = function() {
-        var ptspos = _this.pts.position;
-        for (var i=0; i<_this.cells.length; i++) {
-            // todo pull out the global pos of the corresponding individual pt in the geom.
-            var newpos = ptspos.toArray();
-            _this.v3.move_cell(_this.cells[i], newpos);
-        }
+        _this.move_cells();
         _this.update_previews();
         render();
     };
 
     this.detach = function() { if (this.controls) this.controls.detach(); };
     this.invis = function() { if (this.mat) this.mat.visible = false; };
+    this.stop_custom = function() { this.plane = null; };
 
     this.deselect = function() {
+        this.cells = [];
         this.detach();
         this.invis();
     };
@@ -82,14 +117,13 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.over_axis = function() { return this.controls && this.controls.axis; };
     this.dragging = function() { return this.controls && this.controls.visible && this.controls._dragging; };
     this.dragging_custom = function() { return this.mat && this.mat.visible && this.plane; };
-    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible; }
+    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible && this.plane; };
 
     this.drag_custom = function(mouse) {
         if (this.controls) {
             this.controls.axis = null; // make sure the transformcontrols are not active when the custom drag controls are active
         }
-        var n = this.plane.normal;
-        
+
         var pos = mouse.clone().add(this.mouse_offset);
         var caster = new THREE.Raycaster();
         caster.setFromCamera(pos, this.camera);
@@ -99,35 +133,59 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         endpt.multiplyScalar(1000);
         endpt.add(caster.ray.origin);
         
-        rayline = new THREE.Line3(caster.ray.origin, endpt);
+        var rayline = new THREE.Line3(caster.ray.origin, endpt);
         var newpos = this.plane.intersectLine(rayline);
-        if (newpos && this.cells.length > 0) { // todo: make this not specific to single-cell case:
-            this.v3.move_cell(this.cells[0], newpos.toArray());
-            this.set_geom(newpos);
+        if (newpos && this.cells.length > 0) {
+            this.pts.position.set(newpos.x, newpos.y, newpos.z);
+            this.move_cells();
             this.update_previews();
         }
-    }
+    };
 
+    this.move_cells = function() { // assume this.cells is 1:1 w/ the points in this.geom
+        this.pts.updateMatrixWorld();
+        var p = this.geom.attributes.position.array;
+        var v = new THREE.Vector3();
+        for (var i=0; i<this.cells.length; i++) {
+            v.set(p[i*3],p[i*3+1],p[i*3+2]);
+            v.applyMatrix4(this.pts.matrixWorld);
+            this.v3.move_cell(this.cells[i], [v.x,v.y,v.z]);
+        }
+    };
 
-    // todo: redesign this to take an array of cells
-    this.set_geom = function(p) {
-        if (!p) {
+    this.set_geom_multi = function(cells) {
+        // if there's nothing, just hide everything
+        if (!cells || cells.length === 0) {
             this.invis();
             return;
         }
-        if (!this.geom) {
-            this.geom = new THREE.Geometry();
-            this.geom.vertices.push(new THREE.Vector3());
-            this.mat = new THREE.PointsMaterial( { size: .2, color: 0xff00ff, depthTest: false } );
-            this.pts = new THREE.Points(this.geom, this.mat);
-            this.pts.position.set(p.x, p.y, p.z);
-            this.scene.add(this.pts);
-            this.controls.attach(this.pts);
-        } else {
-            this.controls.attach(this.pts);
-            this.mat.visible = true;
-            this.pts.position.set(p.x, p.y, p.z);
+
+        // re-alloc verts if needed
+        if (cells.length > this.max_points) {
+            this.max_points = Math.max(this.max_points*2, cells.length);
+            this.geom.removeAttribute('position');
+            this.positions = new Float32Array(this.max_points*3);
+            this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         }
+
+        // set the cell positions
+        this.geom.setDrawRange(0, cells.length);
+        var center = [0,0,0];
+        var p0 = this.v3.cell_pos(cells[0]);
+        center = p0; // center at p0 for now; todo: revisit where the center of the selection should be?  1st cell clicked OR centroid of cells OR other?
+        this.positions[0] = 0; this.positions[1] = 0; this.positions[2] = 0;
+        for (var i=1; i<cells.length; i++) {
+            var pi = this.v3.cell_pos(this.cells[i]);
+            this.positions[i*3+0] = pi[0]-center[0];
+            this.positions[i*3+1] = pi[1]-center[1];
+            this.positions[i*3+2] = pi[2]-center[2];
+        }
+        this.geom.attributes.position.needsUpdate = true;
+
+        // position and hook up the whole pointcloud
+        this.pts.position.set(center[0], center[1], center[2]);
+        this.mat.visible = true;
+        this.controls.attach(this.pts);
     };
 
     this.attach = function(cells) {
@@ -137,7 +195,7 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             var n = camera.getWorldDirection();
             var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
             this.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
-            this.set_geom(p);
+            this.set_geom_multi(cells);
             render();
             var p_on_screen = p.project(camera);
             this.mouse_offset = p_on_screen.sub(mouse);
@@ -145,19 +203,12 @@ XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         }
     };
 
-
-
-
     this.init(scene, camera, domEl, v3, override_other_controls);
-
-    
-
-
-}
+};
 
 
 
-Generators = {
+var Generators = {
     "uniform random": function(numpts, voro) {
         voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts; i++) {
@@ -186,7 +237,7 @@ Generators = {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
                     var r = rfac*j;
-                    voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2===1);
                 }
             }
         }
@@ -202,7 +253,7 @@ Generators = {
                 var r = ri*(w-4)/(n*.5) + 4;
                 for (var ti=0; ti<n+1; ti++) { // angle
                     var theta = ti*2*Math.PI/n;
-                    voro.add_cell([r*Math.cos(theta)+Math.random()*jitter, r*Math.sin(theta)+Math.random()*jitter, z+Math.random()*jitter], ((zi%n)-ti)==0);
+                    voro.add_cell([r*Math.cos(theta)+Math.random()*jitter, r*Math.sin(theta)+Math.random()*jitter, z+Math.random()*jitter], ((zi%n)-ti)===0);
                 }
             }
         }
@@ -229,7 +280,7 @@ Generators = {
         var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
-                offset = (j%2)*(w/n);
+                var offset = (j%2)*(w/n);
                 for (var k=0; k<n+1; k++) {
                     voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+offset], (i+j+k)%2==1);
                 }
@@ -242,11 +293,11 @@ Generators = {
         var o = (w/n);
         for (var i=0; i<2*n+1; i++) {
             var s = i%4;
-            var ox = (s==0||s==1)?0:o;
+            var ox = (s===0||s===1)?0:o;
             var oz = (i%2)*o*.5-o*.25;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], (i+j+k)%2===1);
                 }
             }
         }
@@ -258,8 +309,8 @@ Generators = {
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2==1);
+                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2===1);
+                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2===1);
                 }
             }
         }
@@ -270,11 +321,11 @@ Generators = {
         var o = (w/n);
         for (var i=0; i<2*n+1; i++) {
             var s = i%4;
-            var ox = (s==0||s==1)?0:o;
-            var oy = (s==0||s==3)?0:o;
+            var ox = (s===0||s===1)?0:o;
+            var oy = (s===0||s===3)?0:o;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], (i+j+k)%2==1);
+                    voro.add_cell([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], (i+j+k)%2===1);
                 }
             }
         }
@@ -332,14 +383,14 @@ var VoroSettings = function() {
                 return i;
         }
         return null;
-    }
+    };
     this.next_mode = function() {
         var i = this.mode_index(this.mode);
-        if (i != null) {
+        if (i !== null) {
             this.mode = this.all_modes[(i+1)%this.all_modes.length];
             return;
         }
-    }
+    };
     this.mode = 'toggle';
     // this.generator = 'uniform random';
     this.generator = 'cylindrical columns';
@@ -359,39 +410,39 @@ var VoroSettings = function() {
         var binstl = v3.get_binary_stl_buffer();
         var blob = new Blob([binstl], {type: 'application/octet-binary'});
         saveAs(blob, this.filename + ".stl");
-    }
+    };
     this.downloadRaw = function() {
         var bin = v3.get_binary_raw_buffer();
         var blob = new Blob([bin], {type: 'application/octet-binary'});
         saveAs(blob, this.filename + ".vor");
-    }
+    };
     this.uploadRaw = function() {
         document.getElementById('upload_raw').addEventListener('change', loadRawVoroFile, false);
         $("#upload_raw").trigger('click');
         return false;
-    }
+    };
     this.save = function() {
         var bin = v3.get_binary_raw_buffer();
         var binstr = fromByteArray(new Uint8Array(bin));
         localStorage.setItem("saved_cells", binstr);
-    }
+    };
     this.load = function() {
         var binstr = localStorage.getItem("saved_cells");
-        if (binstr != null) {
-            bin = toByteArray(binstr).buffer;
+        if (binstr !== null) {
+            var bin = toByteArray(binstr).buffer;
             var valid = v3.generate_from_buffer(scene, bin);
             if (!valid) {
                 alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
             }
         }
-    }
+    };
 
 };
 
 function loadRawVoroFile(evt) {
     var files = evt.target.files;
 
-    for (var i = 0, f; f = files[i]; i++) {
+    if (files.length > 0) {
         var reader = new FileReader();
         reader.onload = function(event) {
             var valid = v3.generate_from_buffer(scene, event.target.result);
@@ -399,9 +450,7 @@ function loadRawVoroFile(evt) {
                 alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
             }
         };
-        reader.readAsArrayBuffer(f);
-        
-        break;
+        reader.readAsArrayBuffer(files[0]);
     }
     document.getElementById('upload_raw').value = null;
 }
@@ -457,7 +506,7 @@ function init() {
     
     var bb_geom = new THREE.BoxGeometry( 20, 20, 20 );
     var bb_mat = new THREE.MeshBasicMaterial( { wireframe: true } );
-    bounding_box_mesh = new THREE.Mesh( bb_geom, bb_mat );
+    var bounding_box_mesh = new THREE.Mesh( bb_geom, bb_mat );
     var bb_edges = new THREE.EdgesHelper(bounding_box_mesh);
     scene.add(bb_edges);
 
@@ -467,7 +516,7 @@ function init() {
     renderer.setPixelRatio( window.devicePixelRatio );
     
     window.addEventListener( 'resize', onWindowResize, false );
-    container = document.getElementById( 'container' );
+    var container = document.getElementById( 'container' );
     container.addEventListener( 'mousemove', onDocumentMouseMove, false );
     container.addEventListener( 'touchstart', onDocumentTouchStart, false );
     container.addEventListener( 'touchmove', onDocumentTouchMove, false );
@@ -513,7 +562,6 @@ function init() {
     procgen.add(settings,'seed');
     procgen.add(settings,'numpts').min(1);
     procgen.add(settings,'generator',Object.keys(Generators));
-    var fill_controller = procgen.add(settings, 'fill_level', 0, 100);
 
     procgen.add(settings,'regenerate');
 
@@ -536,9 +584,8 @@ function onDocumentKeyDown( event ) {
             datgui.__controllers[i].updateDisplay();
         }
     }
-    if (event.keyCode === 27) {
-        xf_manager.deselect();
-    }
+    
+    xf_manager.keydown(event);
     // not sure this feature was actually useful ...
     // if (event.keyCode >= 'X'.charCodeAt() && event.keyCode <= 'Z'.charCodeAt()) {
     //     var axis = event.keyCode - 'X'.charCodeAt();
@@ -561,15 +608,15 @@ function onWindowResize() {
 function doToggleClick(button, mouse) {
     if (settings.mode === 'toggle' || settings.mode === 'toggle off') {
         xf_manager.deselect();
+        var cell;
         if (button === 2 || settings.mode === 'toggle off') {
-            var cell = v3.raycast(mouse, camera, raycaster);
+            cell = v3.raycast(mouse, camera, raycaster);
             v3.toggle_cell(cell);
         } else {
-            var cell = v3.raycast_neighbor(mouse, camera, raycaster);
+            cell = v3.raycast_neighbor(mouse, camera, raycaster);
             v3.toggle_cell(cell);
         }
-        
-        var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+
         v3.set_preview(-1);
         // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
     }
@@ -591,15 +638,32 @@ function doAddDelClick(button, mouse) {
     }
 }
 
-function startMove(mouse) {
+function startMove(mouse, extend_current_sel, nbr) {
     if (!xf_manager.active()) {
-        if (settings.mode === 'move') {
-            moving_cell_new = v3.raycast(mouse, camera, raycaster);
-            xf_manager.attach([moving_cell_new]);
-        }
-        if (settings.mode === 'move neighbor') {
-            moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
-            xf_manager.attach([moving_cell_new]);
+        if (settings.mode === 'move' || settings.mode === 'move neighbor') {
+            var moving_cell_new;
+            if (settings.mode === 'move') {
+                moving_cell_new = v3.raycast(mouse, camera, raycaster);
+                
+            }
+            if (settings.mode === 'move neighbor' || nbr) {
+                moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
+            }
+
+            var has_cell = false;
+            for (var i=0; i<xf_manager.cells.length; i++) {
+                has_cell = has_cell || (xf_manager.cells[i] === moving_cell_new);
+            }
+
+            var cells = [moving_cell_new];
+            if (extend_current_sel || has_cell) {
+                cells = xf_manager.cells;
+                
+                if (!has_cell) {
+                    cells.push(moving_cell_new);
+                }
+            }
+            xf_manager.attach(cells);
         }
     }
 }
@@ -609,20 +673,20 @@ function onDocumentMouseDown(event) {
     
     doAddDelClick(event.button, mouse);
 
-    startMove(mouse);
+    startMove(mouse, event.shiftKey, event.button===2);
     
     render();
 }
 
-
-function logv2(s,v){
-    console.log(s + ": " + v.x + ", " + v.y);
-}
-function logv3(s,v){
-    console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
-}
-function onDocumentMouseUp(event) {
-    xf_manager.invis();
+// unused vector logging functions; helpful for debugging sometimes
+// function logv2(s,v){
+//     console.log(s + ": " + v.x + ", " + v.y);
+// }
+// function logv3(s,v){
+//     console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
+// }
+function onDocumentMouseUp() {
+    xf_manager.stop_custom();
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
@@ -676,7 +740,7 @@ function onDocumentTouchStart( event ) {
     // last_touch_for_camera = controls.dragEnabled;
     // ~~~ todo check if above section is needed ~~~
     
-    startMove(mouse);
+    startMove(mouse, false, false);
 
 }
 function onDocumentTouchMove( event ) {
@@ -690,7 +754,7 @@ function onDocumentTouchMove( event ) {
     }
 }
 function onDocumentTouchEnd( event ) {
-    xf_manager.invis();
+    xf_manager.stop_custom();
 
     if (!last_touch_for_camera) {
         doToggleClick(event.button, mouse);

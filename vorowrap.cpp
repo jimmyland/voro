@@ -129,80 +129,17 @@ struct CellToTris {
 
 struct Voro;
 
-struct SingleCellBufferManager {
-    voro::voronoicell vorocell; // reused temp var, holds computed cell info
-    vector<int> faces; // faces as voro++ likes to store them -- packed as [#vs in f0, f0 v0, f0 v1, ..., #vs in f1, ...]
-    vector<double> vertices; // vertex coordinates, indexed by faces array
-    int computed_cell;
-    
-    vector<float> vert_buf;
-    int vert_count;
-    int max_verts;
-    
-    SingleCellBufferManager() : computed_cell(-1), vert_count(0), max_verts(0) {}
-    
-    void init(int vert_capacity) {
-        clear();
-        
-        max_verts = vert_capacity;
-        resize_buffers();
-    }
-    void resize_buffers() {
-        vert_buf.resize(max_verts*3);
-    }
-    void clear() {
-        vert_buf.clear();
-        vert_count = max_verts = 0;
-        faces.clear();
-        vertices.clear();
-        computed_cell = -1;
-    }
-    void clean() {
-        vert_count = 0;
-    }
-    
-    void compute_from_cache(const vector<int> &faces, const vector<double> &vertices) {
-        this->faces.clear(); this->vertices.clear();
-        computed_cell = -1;
-        size_t skip = 0;
-        int last = 0;
-        clean();
-        for (int i=0; i<faces.size(); i+=faces[i]+1) {
-            int len = faces[i];
-            for (int fi=0; fi<len; fi++) {
-                add_vert(vertices, faces[i+1+fi]);
-                add_vert(vertices, faces[i+1+((fi+1)%len)]);
-            }
-        }
-    }
-    inline void add_vert(const vector<double> &vertices, int vi) {
-        assert(vi*3+2 < vertices.size());
-        if (vert_count >= max_verts) {
-            max_verts *= 2;
-            resize_buffers();
-        }
-        float *buf = &vert_buf[0] + (vert_count*3);
-        
-        *buf = vertices[vi*3]; buf++;
-        *buf = vertices[vi*3+1]; buf++;
-        *buf = vertices[vi*3+2]; buf++;
-        vert_count++;
-    }
-    void compute_cell(Voro &src, int cell);
-//    void compute_potential_cell(Voro &src, glm::vec3 pos);
-
-};
-
 struct GLBufferManager {
-    vector<float> vertices;
+    vector<float> vertices, wire_vertices;
     int tri_count, max_tris;
+    int wire_vert_count, wire_max_verts;
     vector<int> cell_inds; // map from tri indices to cell indices
     vector<short> cell_internal_inds; // map from tri indices to internal tri backref
     voro::voronoicell_neighbor vorocell; // reused temp var, holds computed cell info
     
     vector<CellToTris*> info;
     
-    GLBufferManager() : vertices(0), /*normals(0),*/ tri_count(0), max_tris(0), cell_inds(0) {}
+    GLBufferManager() : wire_vert_count(0), wire_max_verts(0), tri_count(0), max_tris(0), cell_inds(0) {}
     
     bool sanity(string when, bool doassert=true) {
         bool valid = true;
@@ -261,13 +198,20 @@ struct GLBufferManager {
         cell_inds.resize(max_tris);
         cell_internal_inds.resize(max_tris);
     }
+    void resize_wire_buffers() {
+        wire_vertices.resize(wire_max_verts*3);
+    }
 
-    void init(int numCells, int triCapacity) {
+    void init(int numCells, int triCapacity, int wiresCapacity) {
         clear();
         
         max_tris = triCapacity;
+        wire_max_verts = wiresCapacity;
+        
         resize_buffers();
+        resize_wire_buffers();
         tri_count = 0;
+        wire_vert_count = 0;
         
         info.resize(numCells, 0);
     }
@@ -354,7 +298,7 @@ struct GLBufferManager {
     
     void compute_cell(Voro &src, int cell); // compute caches for all cells and add tris for non-zero cells
 
-    void compute_all(Voro &src, int tricap);
+    void compute_all(Voro &src, int tricap, int wirecap);
     
     void add_cell_tris(Voro &src, int cell, CellToTris &c2t);
    
@@ -375,10 +319,30 @@ struct GLBufferManager {
     void swapnpop_cell(Voro &src, int cell, int lasti);
     void move_cell(Voro &src, int cell);
     
+    void add_wires(Voro &src, int cell);
+    inline void add_wire_vert(const vector<double> &vertices, int vi) {
+        assert(vi*3+2 < vertices.size());
+        if (wire_vert_count >= wire_max_verts) {
+            wire_max_verts *= 2;
+            resize_wire_buffers();
+        }
+        float *buf = &wire_vertices[0] + (wire_vert_count*3);
+
+        *buf = vertices[vi*3]; buf++;
+        *buf = vertices[vi*3+1]; buf++;
+        *buf = vertices[vi*3+2]; buf++;
+        wire_vert_count++;
+    }
+    void clear_wires() {
+        wire_vert_count = 0;
+    }
+    
     void clear() {
         vertices.clear();
         //normals.clear();
         cell_inds.clear();
+        wire_vertices.clear();
+        
         tri_count = max_tris = 0;
         
         for (auto *c : info) {
@@ -691,36 +655,30 @@ struct Voro {
         return true;
     }
     
-    void gl_build(int max_tris_guess) {
+    void gl_build(int max_tris_guess, int max_wire_verts_guess) {
         // populate gl_computed with current whole voronoi diagram
-        gl_computed.compute_all(*this, max_tris_guess);
+        gl_computed.compute_all(*this, max_tris_guess, max_wire_verts_guess);
         
     }
     uintptr_t gl_vertices() {
         return reinterpret_cast<uintptr_t>(&gl_computed.vertices[0]);
     }
-    void gl_single_build(int max_verts_guess) {
-        gl_single_cell.init(max_verts_guess);
+    void gl_add_wires(int cell) {
+        gl_computed.add_wires(*this, cell);
+        SANITY("after gl_add_wires");
     }
-    void gl_compute_single_cell(int cell) {
-        gl_single_cell.computed_cell = cell;
-        CellCache *cache = gl_computed.get_cache(cell);
-        if (cache) {
-            gl_single_cell.compute_from_cache(cache->faces, cache->vertices);
-        } else {
-            gl_single_cell.compute_cell(*this, cell);
-        }
-        SANITY("after gl_compute_single_cell");
+    void gl_clear_wires() {
+        gl_computed.clear_wires();
     }
-    uintptr_t gl_single_cell_vertices() {
-        return reinterpret_cast<uintptr_t>(&gl_single_cell.vert_buf[0]);
-        SANITY("returned gl_single_cell_vertices");
+    uintptr_t gl_wire_vertices() {
+        return reinterpret_cast<uintptr_t>(&gl_computed.wire_vertices[0]);
+        SANITY("returned gl_wire_vertices");
     }
-    int gl_single_cell_vert_count() {
-        return gl_single_cell.vert_count;
+    int gl_wire_vert_count() {
+        return gl_computed.wire_vert_count;
     }
-    int gl_single_cell_max_verts() {
-        return gl_single_cell.max_verts;
+    int gl_wire_max_verts() {
+        return gl_computed.wire_max_verts;
     }
     int gl_tri_count() {
         return gl_computed.tri_count;
@@ -773,7 +731,6 @@ struct Voro {
 
 protected:
     friend class GLBufferManager;
-    friend class SingleCellBufferManager;
     
     // library user populates the bounds and the cells vector
     // these define the truth of what the voronoi diagram should be.
@@ -788,24 +745,8 @@ protected:
     // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
     GLBufferManager gl_computed;
-    SingleCellBufferManager gl_single_cell;
 
 };
-    
-void SingleCellBufferManager::compute_cell(Voro &src, int cell) {
-    assert(cell >= 0 && cell < src.cell_count());
-    auto &link = src.links[cell];
-    if (!link.valid()) {
-        clean();
-        return;
-    }
-    if (src.con->compute_cell(vorocell, link.ijk, link.q)) {
-        vorocell.face_vertices(faces);
-        const auto &pos = src.cells[cell].pos;
-        vorocell.vertices(pos.x, pos.y, pos.z, vertices);
-        compute_from_cache(faces, vertices);
-    }
-}
 
 void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for all cells and add tris for non-zero cells
     assert(cell >= 0 && cell < info.size());
@@ -823,11 +764,11 @@ void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for 
     }
 }
 
-void GLBufferManager::compute_all(Voro &src, int tricap) {
+void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap) {
     if (!src.con) {
         src.build_container();
     }
-    init(src.cells.size(), tricap);
+    init(src.cells.size(), tricap, wirecap);
     
     assert(src.cells.size()==src.links.size());
     for (size_t i=0; i < src.cells.size(); i++) {
@@ -835,6 +776,22 @@ void GLBufferManager::compute_all(Voro &src, int tricap) {
     }
 }
 
+void GLBufferManager::add_wires(Voro &src, int cell) {
+    assert(cell >= 0 && cell < info.size());
+    if (!info[cell]) {
+        compute_cell(src, cell);
+        if (!info[cell]) return; // happens if cell couldn't be computed -- e.g., if the cell is out of bounds
+    }
+    const vector<int> &faces = info[cell]->cache.faces;
+    const vector<double> &vertices = info[cell]->cache.vertices;
+    for (int i=0; i<faces.size(); i+=faces[i]+1) {
+        int len = faces[i];
+        for (int fi=0; fi<len; fi++) {
+            add_wire_vert(vertices, faces[i+1+fi]);
+            add_wire_vert(vertices, faces[i+1+((fi+1)%len)]);
+        }
+    }
+}
 
 
 void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // assuming the cache is fine, just add the tris for it
@@ -978,11 +935,11 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("set_sanity_level", &Voro::set_sanity_level)
     .function("set_fill", &Voro::set_fill)
     .function("set_only_centermost", &Voro::set_only_centermost)
-    .function("gl_compute_single_cell", &Voro::gl_compute_single_cell)
-    .function("gl_single_cell_vert_count", &Voro::gl_single_cell_vert_count)
-    .function("gl_single_build", &Voro::gl_single_build)
-    .function("gl_single_cell_vertices", &Voro::gl_single_cell_vertices)
-    .function("gl_single_cell_max_verts", &Voro::gl_single_cell_max_verts)
+    .function("gl_add_wires", &Voro::gl_add_wires)
+    .function("gl_clear_wires", &Voro::gl_clear_wires)
+    .function("gl_wire_vert_count", &Voro::gl_wire_vert_count)
+    .function("gl_wire_vertices", &Voro::gl_wire_vertices)
+    .function("gl_wire_max_verts", &Voro::gl_wire_max_verts)
     .function("debug_print_block", &Voro::debug_print_block)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
