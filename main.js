@@ -146,11 +146,13 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.pts.updateMatrixWorld();
         var p = this.geom.attributes.position.array;
         var v = new THREE.Vector3();
+        var posns = [];
         for (var i=0; i<this.cells.length; i++) {
             v.set(p[i*3],p[i*3+1],p[i*3+2]);
             v.applyMatrix4(this.pts.matrixWorld);
-            this.v3.move_cell(this.cells[i], [v.x,v.y,v.z]);
+            posns.push([v.x,v.y,v.z]);
         }
+        this.v3.move_cells(this.cells, posns);
     };
 
     this.set_geom_multi = function(cells) {

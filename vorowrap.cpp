@@ -2,12 +2,14 @@
 
 #include <iostream>
 #include <algorithm>
+#include <unordered_set>
 #include <stdlib.h>
 #include <math.h>
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
 #endif
 
 #include "voro++/voro++.hh"
@@ -318,6 +320,7 @@ struct GLBufferManager {
     
     void swapnpop_cell(Voro &src, int cell, int lasti);
     void move_cell(Voro &src, int cell);
+    void move_cells(Voro &src, const unordered_set<int> &cells);
     
     void add_wires(Voro &src, int cell);
     inline void add_wire_vert(const vector<double> &vertices, int vi) {
@@ -623,6 +626,41 @@ struct Voro {
         SANITY("after move_cell");
         return true;
     }
+    bool move_cells(val cells_to_move, val posns) { // similar to a delete+add, but w/ no swapping and less recomputation'
+        int len = cells_to_move["length"].as<int>();
+        unordered_set<int> moved_cells;
+        for (int i=0; i<len; i++) {
+            int cell = cells_to_move[i].as<int>();
+            if (cell < 0 || cell >= cells.size()) {
+                cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
+                continue;
+            }
+            
+            glm::vec3 pt(posns[i][0].as<float>(), posns[i][1].as<float>(), posns[i][2].as<float>());
+            if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell)) {
+                cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
+                continue;
+            }
+            
+            cells[cell].pos = pt;
+            moved_cells.insert(cell);
+            if (!links.empty()) {
+                assert(links.size() == cells.size());
+                if (con) {
+                    int needsupdate_q;
+                    int needsupdate = con->move(links[cell].ijk, links[cell].q, cell, pt.x, pt.y, pt.z, needsupdate_q);
+                    if (needsupdate > -1) { // we updated q of this element, so we need to update external backrefs to reflect that
+                        links[needsupdate].q = needsupdate_q; // only updating q is ok, since the swapnpop won't change the ijk
+                    }
+                }
+            }
+        }
+        
+        gl_computed.move_cells(*this, moved_cells);
+        
+        SANITY("after move_cells");
+        return true;
+    }
     
     bool delete_cell(int cell) { // this is a swapnpop deletion
         if (cell < 0 || cell >= cells.size()) { // can't delete out of range
@@ -900,6 +938,23 @@ void GLBufferManager::move_cell(Voro &src, int cell) {
     }
 }
 
+void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
+    unordered_set<int> computed;
+    for (int cell : cells) {
+        if (info[cell]) {
+            for (int ni : info[cell]->cache.neighbors) { if (ni >= 0 && !cells.count(ni) && !computed.count(ni)) { compute_cell(src, ni); computed.insert(ni); } }
+        }
+    }
+    for (int cell : cells) {
+        compute_cell(src, cell);
+        computed.insert(cell);
+    }
+    for (int cell : cells) {
+        if (info[cell]) {
+            for (int ni : info[cell]->cache.neighbors) { if (ni >= 0 && !cells.count(ni) && !computed.count(ni)) { compute_cell(src, ni); computed.insert(ni); } }
+        }
+    }
+}
 
 
 EMSCRIPTEN_BINDINGS(voro) {
@@ -929,6 +984,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_from_vertex", &Voro::cell_from_vertex)
     .function("delete_cell", &Voro::delete_cell)
     .function("move_cell", &Voro::move_cell)
+    .function("move_cells", &Voro::move_cells)
     .function("set_cell", &Voro::set_cell)
     .function("set_all", &Voro::set_all)
     .function("sanity", &Voro::sanity)

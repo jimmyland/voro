@@ -143,6 +143,10 @@ var Voro3 = function () {
         this.voro.move_cell(cell, pt_arr);
         this.update_geometry();
     };
+    this.move_cells = function(cells, pts_arr) {
+        this.voro.move_cells(cells, pts_arr);
+        this.update_geometry();
+    };
     this.update_geometry = function () {
         var num_tris = this.voro.gl_tri_count();
         var current_verts_ptr = this.voro.gl_vertices();
