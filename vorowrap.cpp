@@ -132,8 +132,8 @@ struct CellToTris {
 struct Voro;
 
 struct GLBufferManager {
-    vector<float> vertices, wire_vertices;
-    int tri_count, max_tris;
+    vector<float> vertices, wire_vertices, cell_sites;
+    int tri_count, max_tris, max_sites;
     int wire_vert_count, wire_max_verts;
     vector<int> cell_inds; // map from tri indices to cell indices
     vector<short> cell_internal_inds; // map from tri indices to internal tri backref
@@ -203,24 +203,27 @@ struct GLBufferManager {
     void resize_wire_buffers() {
         wire_vertices.resize(wire_max_verts*3);
     }
+    void resize_sites_buffers() {
+        cell_sites.resize(max_sites*3);
+    }
 
-    void init(int numCells, int triCapacity, int wiresCapacity) {
+    void init(int numCells, int triCapacity, int wiresCapacity, int sitesCapacity) {
         clear();
         
         max_tris = triCapacity;
         wire_max_verts = wiresCapacity;
+        max_sites = sitesCapacity;
         
         resize_buffers();
         resize_wire_buffers();
+        resize_sites_buffers();
         tri_count = 0;
         wire_vert_count = 0;
         
         info.resize(numCells, 0);
     }
     
-    void add_cell() {
-        info.push_back(0);
-    }
+    void add_cell(Voro &src);
     
     int vert2cell(int vi) {
         if (vi < 0 || vi >= tri_count*3)
@@ -300,7 +303,7 @@ struct GLBufferManager {
     
     void compute_cell(Voro &src, int cell); // compute caches for all cells and add tris for non-zero cells
 
-    void compute_all(Voro &src, int tricap, int wirecap);
+    void compute_all(Voro &src, int tricap, int wirecap, int sitescap);
     
     void add_cell_tris(Voro &src, int cell, CellToTris &c2t);
    
@@ -321,6 +324,14 @@ struct GLBufferManager {
     void swapnpop_cell(Voro &src, int cell, int lasti);
     void move_cell(Voro &src, int cell);
     void move_cells(Voro &src, const unordered_set<int> &cells);
+    
+    void update_site(Voro &src, int cell);
+    inline void update_site(const glm::vec3 &pos, int cell) {
+        assert(cell >= 0 && cell < cell_sites.size());
+        cell_sites[cell*3]   = pos.x;
+        cell_sites[cell*3+1] = pos.y;
+        cell_sites[cell*3+2] = pos.z;
+    }
     
     void add_wires(Voro &src, int cell);
     inline void add_wire_vert(const vector<double> &vertices, int vi) {
@@ -345,8 +356,9 @@ struct GLBufferManager {
         //normals.clear();
         cell_inds.clear();
         wire_vertices.clear();
+        cell_sites.clear();
         
-        tri_count = max_tris = 0;
+        tri_count = max_tris = max_sites = 0;
         
         for (auto *c : info) {
             delete c;
@@ -579,9 +591,7 @@ struct Voro {
             links.push_back(link);
             assert(cells.size() == links.size());
             
-            gl_computed.add_cell();
-            gl_computed.compute_cell(*this, id);
-            gl_computed.recompute_neighbors(*this, id);
+            gl_computed.add_cell(*this);
         }
         SANITY("after add_cell");
         return id;
@@ -693,9 +703,9 @@ struct Voro {
         return true;
     }
     
-    void gl_build(int max_tris_guess, int max_wire_verts_guess) {
+    void gl_build(int max_tris_guess, int max_wire_verts_guess, int max_sites_guess) {
         // populate gl_computed with current whole voronoi diagram
-        gl_computed.compute_all(*this, max_tris_guess, max_wire_verts_guess);
+        gl_computed.compute_all(*this, max_tris_guess, max_wire_verts_guess, max_sites_guess);
         
     }
     uintptr_t gl_vertices() {
@@ -710,13 +720,18 @@ struct Voro {
     }
     uintptr_t gl_wire_vertices() {
         return reinterpret_cast<uintptr_t>(&gl_computed.wire_vertices[0]);
-        SANITY("returned gl_wire_vertices");
     }
     int gl_wire_vert_count() {
         return gl_computed.wire_vert_count;
     }
     int gl_wire_max_verts() {
         return gl_computed.wire_max_verts;
+    }
+    uintptr_t gl_cell_sites() {
+        return reinterpret_cast<uintptr_t>(&gl_computed.cell_sites[0]);
+    }
+    int gl_max_sites() {
+        return gl_computed.max_sites;
     }
     int gl_tri_count() {
         return gl_computed.tri_count;
@@ -802,15 +817,16 @@ void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for 
     }
 }
 
-void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap) {
+void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitescap) {
     if (!src.con) {
         src.build_container();
     }
-    init(src.cells.size(), tricap, wirecap);
+    init(src.cells.size(), tricap, wirecap, sitescap);
     
     assert(src.cells.size()==src.links.size());
     for (size_t i=0; i < src.cells.size(); i++) {
         compute_cell(src, i);
+        update_site(src, i);
     }
 }
 
@@ -924,6 +940,7 @@ void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
         }
     }
     
+    update_site(src, cell);
     info.pop_back();
 }
 
@@ -932,10 +949,15 @@ void GLBufferManager::move_cell(Voro &src, int cell) {
         for (int ni : info[cell]->cache.neighbors) { if (ni >= 0) { compute_cell(src, ni); } }
     }
     compute_cell(src, cell);
+    update_site(src, cell);
     if (info[cell]) {
         // todo: possible optimization: don't recompute a neighbor here if it was already computed above.
         for (int ni : info[cell]->cache.neighbors) { if (ni >= 0) { compute_cell(src, ni); } }
     }
+}
+
+void GLBufferManager::update_site(Voro &src, int cell) {
+    update_site(src.cells[cell].pos, cell);
 }
 
 void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
@@ -947,6 +969,7 @@ void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
     }
     for (int cell : cells) {
         compute_cell(src, cell);
+        update_site(src, cell);
         computed.insert(cell);
     }
     for (int cell : cells) {
@@ -954,6 +977,19 @@ void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
             for (int ni : info[cell]->cache.neighbors) { if (ni >= 0 && !cells.count(ni) && !computed.count(ni)) { compute_cell(src, ni); computed.insert(ni); } }
         }
     }
+}
+
+void GLBufferManager::add_cell(Voro &src) {
+    int id = (int)info.size();
+    info.push_back(0);
+    if (info.size() > max_sites) {
+        max_sites *= 2;
+        resize_sites_buffers();
+    }
+    
+    compute_cell(src, id);
+    recompute_neighbors(src, id);
+    update_site(src, id);
 }
 
 
@@ -978,6 +1014,8 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_vertices", &Voro::gl_vertices)
     .function("gl_tri_count", &Voro::gl_tri_count)
     .function("gl_max_tris", &Voro::gl_max_tris)
+    .function("gl_cell_sites", &Voro::gl_cell_sites)
+    .function("gl_max_sites", &Voro::gl_max_sites)
     .function("cell_count", &Voro::cell_count)
     .function("toggle_cell", &Voro::toggle_cell)
     .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)
