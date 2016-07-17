@@ -192,7 +192,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.attach = function(cells) {
         this.cells = cells;
-        if (this.cells.length > 0) {
+        if (this.cells.length > 0 && this.cells[0] >= 0) {
             // todo pass set of cells to set_geom, post redesign????
             var n = camera.getWorldDirection();
             var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
@@ -399,12 +399,15 @@ var VoroSettings = function() {
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
+    this.toggleSites = function() {
+        v3.sites_points.visible = !v3.sites_points.visible;
+        render();
+    };
     
     this.regenerate = function() {
         xf_manager.reset();
         v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
         render();
-        
     };
 
     this.filename = 'filename';
@@ -558,6 +561,7 @@ function init() {
     datgui.add(settings,'uploadRaw');
     datgui.add(settings,'save');
     datgui.add(settings,'load');
+    datgui.add(settings,'toggleSites');
     
     var procgen = datgui.addFolder('Proc. Gen. Settings');
     
@@ -650,6 +654,9 @@ function startMove(mouse, extend_current_sel, nbr) {
             }
             if (settings.mode === 'move neighbor' || nbr) {
                 moving_cell_new = v3.raycast_neighbor(mouse, camera, raycaster);
+            }
+            if (moving_cell_new < 0) {
+                return;
             }
 
             var has_cell = false;

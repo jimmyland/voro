@@ -189,7 +189,7 @@ var Voro3 = function () {
         }
         this.sites_geometry.setDrawRange(0, num_sites);
         this.sites_geometry.attributes.position.needsUpdate = true;
-    }
+    };
     this.update_geometry = function () {
         var num_tris = this.voro.gl_tri_count();
         var current_verts_ptr = this.voro.gl_vertices();
