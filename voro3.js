@@ -12,11 +12,31 @@
 // v3 = new Voro3([-10, -10, -10], [10, 10, 10]);
 // you MUST CALL v3.delete() if/when you're done using the object but want to stay on the same page to tell the c++ module to free memory
 
+
 var Voro3 = function () {
     
     this.est_max_preview_verts = 1024;
     this.est_max_tris = 32768;
     this.est_max_cell_sites = 10000;
+
+    this.inds_to_ids = function(inds) {
+        var res = [];
+        for (var i=0; i<inds.length; i++) {
+            res.push(this.voro.stable_id(inds[i]));
+        }
+        return res;
+    };
+    this.ids_to_inds = function(ids) {
+        var res = [];
+        for (var i=0; i<ids.length; i++) {
+            var ind = this.voro.index_from_id(ids[i]);
+            if (ind >= 0) {
+                res.push(ind);
+            }
+        }
+        return res;
+    };
+
     
     this.add_to_scene = function(scene) {
         if (this.preview_lines) {

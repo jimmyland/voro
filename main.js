@@ -21,9 +21,66 @@ function override_cam_controls() { // disable trackball controls
 
 var v3;
 var xf_manager;
+var undo_q;
 
 var datgui;
 var settings;
+
+var UndoableHelpers = {
+    UndoAdd: function (data) {
+        this.redo = function(v3, xfm) {
+            for (var i=0; i<data.cell_ids.length; i++) {
+                var cell_index = v3.voro.add_cell(data.pts[i], data.types[i]);
+                v3.voro.set_stable_id(cell_index, data.cell_ids[i]);
+            }
+            var sel_inds = v3.ids_to_inds(data.post_sel_inds);
+            xfm.attach(sel_inds);
+        };
+        this.undo = function(v3, xfm) {
+            var inds = v3.ids_to_inds(data.cell_ids);
+            console.log("inds = " + inds);
+            for (var i=0; i<inds.length; i++) {
+                console.log("Undoing add by deleting: " + inds[i]);
+                v3.voro.delete_cell(inds[i]);
+            }
+            var sel_inds = v3.ids_to_inds(data.prev_sel_inds);
+            xfm.attach(sel_inds);
+            console.log("undo: " + data.delete_cell);
+        };
+    }
+};
+var UndoQueue = function() {
+    this.undo_queue = [];
+    this.undo_queue_posn = -1;
+    this.undo = function() {
+        console.log("PRESSING UNDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+        if (this.undo_queue.length > 0 && this.undo_queue_posn >= 0) {
+            var action = this.undo_queue[this.undo_queue_posn];
+            this.undo_queue_posn -= 1;
+            action.undo(v3, xf_manager);
+        }
+        console.log("DONE PRESSING UNDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+        v3.update_geometry();
+    };
+    this.redo = function() {
+        console.log("PRESSING REDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+        if (this.undo_queue_posn+1 < this.undo_queue.length) {
+            this.undo_queue_posn += 1;
+            var action = this.undo_queue[this.undo_queue_posn];
+            action.redo(v3, xf_manager);
+        }
+        console.log("DONE PRESSING REDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+        v3.update_geometry();
+    };
+    this.add_undoable = function(UndoableAction, data) {
+        console.log("ADDING ACTION: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+        this.undo_queue = this.undo_queue.slice(0, this.undo_queue_posn+1);
+        this.undo_queue.push(new UndoableAction(data));
+        this.undo_queue_posn += 1;
+        console.log("DONEADDING ACTION: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+    };
+};
+
 
 //camera, renderer.domElement
 var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
@@ -85,6 +142,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         if (event.keyCode === 27) {
             this.deselect();
         }
+        
         if (this.mat.visible) {
             if (event.keyCode === 'W'.charCodeAt()) {
                 this.controls.setMode("translate");
@@ -202,6 +260,8 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             var p_on_screen = p.project(camera);
             this.mouse_offset = p_on_screen.sub(mouse);
             this.update_previews();
+        } else {
+            this.deselect();
         }
     };
 
@@ -485,6 +545,7 @@ function init() {
 
     // create voro structure w/ bounding box
     v3 = new Voro3();
+    undo_q = new UndoQueue();
     
     var lights = [];
     lights[0] = new THREE.DirectionalLight( 0xcc9999 );
@@ -590,6 +651,13 @@ function onDocumentKeyDown( event ) {
             datgui.__controllers[i].updateDisplay();
         }
     }
+    if (event.keyCode == "Z".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+        if (event.shiftKey) {
+            undo_q.redo();
+        } else {
+            undo_q.undo();
+        }
+    }
     
     xf_manager.keydown(event);
     // not sure this feature was actually useful ...
@@ -638,6 +706,12 @@ function doAddDelClick(button, mouse) {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
                 var added_cell = v3.add_cell(pt);
+                undo_q.add_undoable(UndoableHelpers.UndoAdd, {
+                    cell_ids: v3.inds_to_ids([added_cell]), 
+                    pts: [pt.toArray()], types: [true],
+                    prev_sel_inds: v3.inds_to_ids(xf_manager.cells),
+                    post_sel_inds: v3.inds_to_ids([added_cell])
+                });
                 xf_manager.attach([added_cell]);
             }
         }
