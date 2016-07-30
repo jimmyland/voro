@@ -47,6 +47,23 @@ var UndoableHelpers = {
             xfm.attach(sel_inds);
             console.log("undo: " + data.delete_cell);
         };
+    },
+    UndoSeq: function(prev_sel_inds, post_sel_inds, voro_act_seq) {
+        var prev_sel_ids = v3.inds_to_ids(prev_sel_inds);
+        var post_sel_ids = v3.inds_to_ids(post_sel_inds);
+        this.redo = function(v3, xfm) {
+            v3.redo(voro_act_seq);
+
+            var sel_inds = v3.ids_to_inds(post_sel_ids);
+            xfm.attach(sel_inds);
+        };
+        this.undo = function(v3, xfm) {
+            v3.undo(voro_act_seq);
+
+            var sel_inds = v3.ids_to_inds(prev_sel_ids);
+            xfm.attach(sel_inds);
+        };
+
     }
 };
 var UndoQueue = function() {
@@ -72,10 +89,10 @@ var UndoQueue = function() {
         console.log("DONE PRESSING REDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         v3.update_geometry();
     };
-    this.add_undoable = function(UndoableAction, data) {
+    this.add_undoable = function(undoable) {
         console.log("ADDING ACTION: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         this.undo_queue = this.undo_queue.slice(0, this.undo_queue_posn+1);
-        this.undo_queue.push(new UndoableAction(data));
+        this.undo_queue.push(undoable);
         this.undo_queue_posn += 1;
         console.log("DONEADDING ACTION: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
     };
@@ -706,12 +723,7 @@ function doAddDelClick(button, mouse) {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
                 var added_cell = v3.add_cell(pt);
-                undo_q.add_undoable(UndoableHelpers.UndoAdd, {
-                    cell_ids: v3.inds_to_ids([added_cell]), 
-                    pts: [pt.toArray()], types: [true],
-                    prev_sel_inds: v3.inds_to_ids(xf_manager.cells),
-                    post_sel_inds: v3.inds_to_ids([added_cell])
-                });
+                undo_q.add_undoable(new UndoableHelpers.UndoSeq(xf_manager.cells, [added_cell], v3.pop_acts()));
                 xf_manager.attach([added_cell]);
             }
         }

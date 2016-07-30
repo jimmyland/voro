@@ -18,6 +18,18 @@ var Voro3 = function () {
     this.est_max_preview_verts = 1024;
     this.est_max_tris = 32768;
     this.est_max_cell_sites = 10000;
+    this.tracked_acts = [];
+    this.action_tracking = false;
+    var that = this;
+
+    this.start_tracking = function(yes) {
+        if (yes === undefined || yes) {
+            this.action_tracking = true;
+        } else {
+            this.action_tracking = false;
+        }
+        this.tracked_acts = [];
+    }
 
     this.inds_to_ids = function(inds) {
         var res = [];
@@ -36,6 +48,46 @@ var Voro3 = function () {
         }
         return res;
     };
+
+    var AddAct = function(cells, pts, states) {
+        var cell_ids = that.inds_to_ids(cells);
+        this.redo = function() {
+            for (var i=0; i<cell_ids.length; i++) {
+                var cell_ind = that.voro.add_cell(pts[i], states[i]);
+                that.voro.set_stable_id(cell_ind, cell_ids[i]);
+            }
+        }
+        this.undo = function() {
+            var inds = that.ids_to_inds(cell_ids);
+            for (var i=0; i<inds.length; i++) {
+                that.voro.delete_cell(inds[i]);
+            }
+        }
+    }
+
+    this.undo = function(seq) {
+        for (var i=seq.length-1; i>=0; i--) {
+            seq[i].undo(this);
+        }
+    };
+    this.redo = function(seq) {
+        for (var i=0; i<seq.length; i++) {
+            seq[i].redo(this);
+        }
+    }
+
+    this.pop_acts = function() { // retrieves and clears all accumulated actions (e.g. since last call to pop_acts)
+        assert(this.action_tracking);
+        var acts = this.tracked_acts;
+        this.tracked_acts = [];
+        return acts;
+    }
+
+    this.track_act = function(act) {
+        if (this.action_tracking) {
+            this.tracked_acts.push(act);
+        }
+    }
 
     
     this.add_to_scene = function(scene) {
@@ -64,6 +116,7 @@ var Voro3 = function () {
         
         Math.seedrandom(seed);
         
+        this.start_tracking(false);
         generator_fn(numPts, this.voro);
         if (fill_level === 0) {
             this.voro.set_only_centermost(1,0);
@@ -74,17 +127,24 @@ var Voro3 = function () {
         this.create_gl_objects(scene);
         
         this.add_to_scene(scene);
+
+        this.start_tracking();
     };
 
     this.generate_from_buffer = function(scene, buffer) {
+        var was_tracking = this.action_tracking;
+        this.start_tracking(false);
         var valid = this.create_from_raw_buffer(buffer);
         if (!valid) {
+            this.start_tracking(was_tracking);
             return false;
         }
         
         this.create_gl_objects(scene);
         
         this.add_to_scene(scene);
+
+        this.start_tracking();
 
         return true;
     };
@@ -190,6 +250,7 @@ var Voro3 = function () {
         }
         var pt = [pt_3.x, pt_3.y, pt_3.z];
         var cell = this.voro.add_cell(pt, state);
+        this.track_act(new AddAct([cell],[pt],[state]));
         this.update_geometry();
         return cell;
     };
