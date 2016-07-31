@@ -3,7 +3,7 @@
  * 
  * For filling the gap between my js wrapper of voro++ and three.js
  */
-/* global THREE, Module */
+/* global THREE, Module, assert */
 /*jshint -W008 */
 /*jslint devel: true, indent: 4, maxerr: 50 */
 "use strict";
@@ -79,6 +79,7 @@ var Voro3 = function () {
     };
 
     this.pop_acts = function() { // retrieves and clears all accumulated actions (e.g. since last call to pop_acts)
+        assert(this.action_tracking);
         var acts = this.tracked_acts;
         this.tracked_acts = [];
         return acts;
