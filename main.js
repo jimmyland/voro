@@ -27,27 +27,6 @@ var datgui;
 var settings;
 
 var UndoableHelpers = {
-    UndoAdd: function (data) {
-        this.redo = function(v3, xfm) {
-            for (var i=0; i<data.cell_ids.length; i++) {
-                var cell_index = v3.voro.add_cell(data.pts[i], data.types[i]);
-                v3.voro.set_stable_id(cell_index, data.cell_ids[i]);
-            }
-            var sel_inds = v3.ids_to_inds(data.post_sel_inds);
-            xfm.attach(sel_inds);
-        };
-        this.undo = function(v3, xfm) {
-            var inds = v3.ids_to_inds(data.cell_ids);
-            console.log("inds = " + inds);
-            for (var i=0; i<inds.length; i++) {
-                console.log("Undoing add by deleting: " + inds[i]);
-                v3.voro.delete_cell(inds[i]);
-            }
-            var sel_inds = v3.ids_to_inds(data.prev_sel_inds);
-            xfm.attach(sel_inds);
-            console.log("undo: " + data.delete_cell);
-        };
-    },
     UndoSeq: function(prev_sel_inds, post_sel_inds, voro_act_seq) {
         var prev_sel_ids = v3.inds_to_ids(prev_sel_inds);
         var post_sel_ids = v3.inds_to_ids(post_sel_inds);
@@ -55,13 +34,13 @@ var UndoableHelpers = {
             v3.redo(voro_act_seq);
 
             var sel_inds = v3.ids_to_inds(post_sel_ids);
-            xfm.attach(sel_inds);
+            xfm.attach(sel_inds, true);
         };
         this.undo = function(v3, xfm) {
             v3.undo(voro_act_seq);
 
             var sel_inds = v3.ids_to_inds(prev_sel_ids);
-            xfm.attach(sel_inds);
+            xfm.attach(sel_inds, true);
         };
 
     }
@@ -265,17 +244,18 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.controls.attach(this.pts);
     };
 
-    this.attach = function(cells) {
+    this.attach = function(cells, skip_setting_plane) {
         this.cells = cells;
         if (this.cells.length > 0 && this.cells[0] >= 0) {
-            // todo pass set of cells to set_geom, post redesign????
-            var n = camera.getWorldDirection();
-            var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
-            this.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+            if (!skip_setting_plane) {
+                var n = camera.getWorldDirection();
+                var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
+                this.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+                var p_on_screen = p.project(camera);
+                this.mouse_offset = p_on_screen.sub(mouse);
+            }
             this.set_geom_multi(cells);
             render();
-            var p_on_screen = p.project(camera);
-            this.mouse_offset = p_on_screen.sub(mouse);
             this.update_previews();
         } else {
             this.deselect();

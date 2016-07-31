@@ -29,7 +29,7 @@ var Voro3 = function () {
             this.action_tracking = false;
         }
         this.tracked_acts = [];
-    }
+    };
 
     this.inds_to_ids = function(inds) {
         var res = [];
@@ -56,14 +56,16 @@ var Voro3 = function () {
                 var cell_ind = that.voro.add_cell(pts[i], states[i]);
                 that.voro.set_stable_id(cell_ind, cell_ids[i]);
             }
-        }
+            that.update_geometry();
+        };
         this.undo = function() {
             var inds = that.ids_to_inds(cell_ids);
             for (var i=0; i<inds.length; i++) {
                 that.voro.delete_cell(inds[i]);
             }
-        }
-    }
+            that.update_geometry();
+        };
+    };
 
     this.undo = function(seq) {
         for (var i=seq.length-1; i>=0; i--) {
@@ -74,20 +76,19 @@ var Voro3 = function () {
         for (var i=0; i<seq.length; i++) {
             seq[i].redo(this);
         }
-    }
+    };
 
     this.pop_acts = function() { // retrieves and clears all accumulated actions (e.g. since last call to pop_acts)
-        assert(this.action_tracking);
         var acts = this.tracked_acts;
         this.tracked_acts = [];
         return acts;
-    }
+    };
 
     this.track_act = function(act) {
         if (this.action_tracking) {
             this.tracked_acts.push(act);
         }
-    }
+    };
 
     
     this.add_to_scene = function(scene) {
