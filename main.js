@@ -32,48 +32,53 @@ var UndoableHelpers = {
         var post_sel_ids = v3.inds_to_ids(post_sel_inds);
         this.redo = function(v3, xfm) {
             v3.redo(voro_act_seq);
+            v3.update_geometry();
 
             var sel_inds = v3.ids_to_inds(post_sel_ids);
             xfm.attach(sel_inds, true);
         };
         this.undo = function(v3, xfm) {
             v3.undo(voro_act_seq);
+            v3.update_geometry();
 
             var sel_inds = v3.ids_to_inds(prev_sel_ids);
             xfm.attach(sel_inds, true);
         };
-
+        this.get_sel_inds = function() {
+            return v3.ids_to_inds(post_sel_ids);
+        }
     }
 };
 var UndoQueue = function() {
     this.undo_queue = [];
     this.undo_queue_posn = -1;
     this.undo = function() {
-        console.log("PRESSING UNDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         if (this.undo_queue.length > 0 && this.undo_queue_posn >= 0) {
             var action = this.undo_queue[this.undo_queue_posn];
             this.undo_queue_posn -= 1;
             action.undo(v3, xf_manager);
         }
-        console.log("DONE PRESSING UNDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         v3.update_geometry();
     };
     this.redo = function() {
-        console.log("PRESSING REDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         if (this.undo_queue_posn+1 < this.undo_queue.length) {
             this.undo_queue_posn += 1;
             var action = this.undo_queue[this.undo_queue_posn];
             action.redo(v3, xf_manager);
         }
-        console.log("DONE PRESSING REDO: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         v3.update_geometry();
     };
     this.add_undoable = function(undoable) {
-        console.log("ADDING ACTION: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
         this.undo_queue = this.undo_queue.slice(0, this.undo_queue_posn+1);
         this.undo_queue.push(undoable);
         this.undo_queue_posn += 1;
-        console.log("DONEADDING ACTION: undo_queue=" + this.undo_queue + "; undo_queue_posn=" + this.undo_queue_posn);
+    };
+    this.get_top_sel_inds = function() { // helper to get the selection at the top of the undo queue
+        if (this.undo_queue_posn < 0) {
+            return [];
+        } else {
+            return this.undo_queue[this.undo_queue_posn].get_sel_inds();
+        }
     };
 };
 
@@ -693,6 +698,24 @@ function doToggleClick(button, mouse) {
     }
 }
 
+function addToUndoQIfNeeded() {
+    var old_sel = undo_q.get_top_sel_inds();
+    var selection_changed = function(old_sel, sel) {
+        if (old_sel.length != sel.length) {
+            return true;
+        }
+        for (var i=0; i<sel.length; i++) {
+            if (sel[i] != old_sel[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+    if (v3.has_acts() || selection_changed(old_sel, xf_manager.cells)) {
+        undo_q.add_undoable(new UndoableHelpers.UndoSeq(old_sel, xf_manager.cells, v3.pop_acts()));
+    }
+}
+
 function doAddDelClick(button, mouse) {
     if (settings.mode === 'add/delete' || settings.mode === 'delete') {
         if (button === 2 || settings.mode === 'delete') {
@@ -703,8 +726,8 @@ function doAddDelClick(button, mouse) {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
                 var added_cell = v3.add_cell(pt);
-                undo_q.add_undoable(new UndoableHelpers.UndoSeq(xf_manager.cells, [added_cell], v3.pop_acts()));
                 xf_manager.attach([added_cell]);
+                addToUndoQIfNeeded();
             }
         }
     }
@@ -762,6 +785,7 @@ function onDocumentMouseDown(event) {
 // }
 function onDocumentMouseUp() {
     xf_manager.stop_custom();
+    addToUndoQIfNeeded();
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
@@ -838,6 +862,7 @@ function onDocumentTouchEnd( event ) {
     }
 
     event.preventDefault();
+    addToUndoQIfNeeded();
 
 }
 
