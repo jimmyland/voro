@@ -64,6 +64,28 @@ var Voro3 = function () {
             }
         };
     };
+    var DeleteAct = function(cells) {
+        var pts = [];
+        var states = [];
+        for (var i=0; i<cells.length; i++) {
+            var c = that.voro.cell(cells[i]);
+            pts.push(c.pos);
+            states.push(c.type);
+        }
+        var add = new AddAct(cells, pts, states);
+        this.undo = function() { add.redo(); };
+        this.redo = function() { add.undo(); };
+    }
+    var ToggleAct = function(cells) {
+        var cell_ids = that.inds_to_ids(cells);
+        this.redo = function() {
+            var inds = that.ids_to_inds(cell_ids);
+            for (var i=0; i<inds.length; i++) {
+                that.voro.toggle_cell(inds[i]);
+            }
+        };
+        this.undo = this.redo;
+    }
     var MoveAct = function(cells, pts, old_pts) {
         var moves = {};
         this.update = function(cells, pts, old_pts) {
@@ -92,6 +114,7 @@ var Voro3 = function () {
             }
         };
     };
+
 
     this.undo = function(seq) {
         for (var i=seq.length-1; i>=0; i--) {
@@ -394,11 +417,13 @@ var Voro3 = function () {
     
 
     this.toggle_cell = function(cell) {
+        this.track_act(new ToggleAct([cell]));
         this.voro.toggle_cell(cell);
         this.update_geometry();
     };
 
     this.delete_cell = function(cell) {
+        this.track_act(new DeleteAct([cell]));
         this.voro.delete_cell(cell);
         this.update_geometry();
     };
