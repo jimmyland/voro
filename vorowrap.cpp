@@ -791,7 +791,6 @@ struct Voro {
             cell_to_id[cell] = id;
             id_to_cell[id] = cell;
         }
-        cout << "setting or getting id for cell " << cell << " -> " << cell_to_id[cell] << endl;
         return cell_to_id[cell];
     }
     // use this to re-associate cells to ids, e.g. if you undo a deletion.
@@ -799,10 +798,6 @@ struct Voro {
     // id must be one that has already been used (< tracked_ids) so that it will not collide with new ids.
     void set_stable_id(int cell, size_t id) {
         // only allow setting id for cells that do not have an id yet
-        cout << "setting stable id " << id << " for cell " << cell << "; id_to_cell.count(id)=" << id_to_cell.count(id) << endl;
-        if (id_to_cell.count(id)) {
-            cout << "id_to_cell[" << id << "]=" << id_to_cell[id] << endl;
-        }
         assert(!id_to_cell.count(id));
         assert(!cell_to_id.count(cell));
         assert(id < tracked_ids);
@@ -844,11 +839,11 @@ protected:
     
     // this puts the old_index into the new_index and removes everything related to what used to be at the new_index
     void update_stable_id(int old_index, int new_index) {
-        cout << "update_stable_id(" << old_index << ", " << new_index << ")" << endl;
-        if (cell_to_id.count(old_index)) {
+        if (cell_to_id.count(new_index)) {
             auto id_to_remove = cell_to_id[new_index];
             id_to_cell.erase(id_to_remove);
-
+        }
+        if (cell_to_id.count(old_index)) {
             auto id = cell_to_id[old_index];
             cell_to_id.erase(old_index);
             if (old_index!=new_index) {
