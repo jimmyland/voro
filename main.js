@@ -50,6 +50,10 @@ var UndoAct = function(prev_sel_inds, post_sel_inds, voro_act_seq) {
 var UndoQueue = function() {
     this.undo_queue = [];
     this.undo_queue_posn = -1;
+    this.clear = function() {
+        this.undo_queue = [];
+        this.undo_queue_posn = -1;
+    };
     this.undo = function() {
         if (this.undo_queue.length > 0 && this.undo_queue_posn >= 0) {
             var action = this.undo_queue[this.undo_queue_posn];
@@ -468,6 +472,7 @@ var VoroSettings = function() {
     this.regenerate = function() {
         xf_manager.reset();
         v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
+        undo_q.clear();
         render();
     };
 
@@ -499,6 +504,8 @@ var VoroSettings = function() {
             var valid = v3.generate_from_buffer(scene, bin);
             if (!valid) {
                 alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
+            } else {
+                undo_q.clear();
             }
         }
     };
@@ -514,6 +521,8 @@ function loadRawVoroFile(evt) {
             var valid = v3.generate_from_buffer(scene, event.target.result);
             if (!valid) {
                 alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
+            } else {
+                undo_q.clear();
             }
         };
         reader.readAsArrayBuffer(files[0]);
