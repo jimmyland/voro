@@ -75,7 +75,7 @@ var Voro3 = function () {
         var add = new AddAct(cells, pts, states);
         this.undo = function() { add.redo(); };
         this.redo = function() { add.undo(); };
-    }
+    };
     var ToggleAct = function(cells) {
         var cell_ids = that.inds_to_ids(cells);
         this.redo = function() {
@@ -85,7 +85,7 @@ var Voro3 = function () {
             }
         };
         this.undo = this.redo;
-    }
+    };
     var MoveAct = function(cells, pts, old_pts) {
         var moves = {};
         this.update = function(cells, pts, old_pts) {
@@ -135,7 +135,7 @@ var Voro3 = function () {
     };
     this.has_acts = function() {
         return this.tracked_acts.length > 0;
-    }
+    };
 
     this.track_act = function(act) {
         if (this.action_tracking) {

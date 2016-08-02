@@ -26,28 +26,26 @@ var undo_q;
 var datgui;
 var settings;
 
-var UndoableHelpers = {
-    UndoSeq: function(prev_sel_inds, post_sel_inds, voro_act_seq) {
-        var prev_sel_ids = v3.inds_to_ids(prev_sel_inds);
-        var post_sel_ids = v3.inds_to_ids(post_sel_inds);
-        this.redo = function(v3, xfm) {
-            v3.redo(voro_act_seq);
-            v3.update_geometry();
+var UndoAct = function(prev_sel_inds, post_sel_inds, voro_act_seq) {
+    var prev_sel_ids = v3.inds_to_ids(prev_sel_inds);
+    var post_sel_ids = v3.inds_to_ids(post_sel_inds);
+    this.redo = function(v3, xfm) {
+        v3.redo(voro_act_seq);
+        v3.update_geometry();
 
-            var sel_inds = v3.ids_to_inds(post_sel_ids);
-            xfm.attach(sel_inds, true);
-        };
-        this.undo = function(v3, xfm) {
-            v3.undo(voro_act_seq);
-            v3.update_geometry();
+        var sel_inds = v3.ids_to_inds(post_sel_ids);
+        xfm.attach(sel_inds, true);
+    };
+    this.undo = function(v3, xfm) {
+        v3.undo(voro_act_seq);
+        v3.update_geometry();
 
-            var sel_inds = v3.ids_to_inds(prev_sel_ids);
-            xfm.attach(sel_inds, true);
-        };
-        this.get_sel_inds = function() {
-            return v3.ids_to_inds(post_sel_ids);
-        }
-    }
+        var sel_inds = v3.ids_to_inds(prev_sel_ids);
+        xfm.attach(sel_inds, true);
+    };
+    this.get_sel_inds = function() {
+        return v3.ids_to_inds(post_sel_ids);
+    };
 };
 var UndoQueue = function() {
     this.undo_queue = [];
@@ -648,6 +646,7 @@ function init() {
 
 
 function onDocumentKeyDown( event ) {
+    addToUndoQIfNeeded();
     if (event.keyCode === " ".charCodeAt()) {
         settings.next_mode();
         for (var i in datgui.__controllers) {
@@ -711,9 +710,9 @@ function addToUndoQIfNeeded() {
             }
         }
         return false;
-    }
+    };
     if (v3.has_acts() || selection_changed(old_sel, xf_manager.cells)) {
-        undo_q.add_undoable(new UndoableHelpers.UndoSeq(old_sel, xf_manager.cells, v3.pop_acts()));
+        undo_q.add_undoable(new UndoAct(old_sel, xf_manager.cells, v3.pop_acts()));
     }
 }
 
@@ -728,7 +727,6 @@ function doAddDelClick(button, mouse) {
             if (pt) {
                 var added_cell = v3.add_cell(pt);
                 xf_manager.attach([added_cell]);
-                addToUndoQIfNeeded();
             }
         }
     }
