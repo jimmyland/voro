@@ -21,9 +21,69 @@ function override_cam_controls() { // disable trackball controls
 
 var v3;
 var xf_manager;
+var undo_q;
 
 var datgui;
 var settings;
+
+var UndoAct = function(prev_sel_inds, post_sel_inds, voro_act_seq) {
+    var prev_sel_ids = v3.inds_to_ids(prev_sel_inds);
+    var post_sel_ids = v3.inds_to_ids(post_sel_inds);
+    this.redo = function(v3, xfm) {
+        v3.redo(voro_act_seq);
+        v3.update_geometry();
+
+        var sel_inds = v3.ids_to_inds(post_sel_ids);
+        xfm.attach(sel_inds, true);
+    };
+    this.undo = function(v3, xfm) {
+        v3.undo(voro_act_seq);
+        v3.update_geometry();
+
+        var sel_inds = v3.ids_to_inds(prev_sel_ids);
+        xfm.attach(sel_inds, true);
+    };
+    this.get_sel_inds = function() {
+        return v3.ids_to_inds(post_sel_ids);
+    };
+};
+var UndoQueue = function() {
+    this.undo_queue = [];
+    this.undo_queue_posn = -1;
+    this.clear = function() {
+        this.undo_queue = [];
+        this.undo_queue_posn = -1;
+    };
+    this.undo = function() {
+        if (this.undo_queue.length > 0 && this.undo_queue_posn >= 0) {
+            var action = this.undo_queue[this.undo_queue_posn];
+            this.undo_queue_posn -= 1;
+            action.undo(v3, xf_manager);
+        }
+        v3.update_geometry();
+    };
+    this.redo = function() {
+        if (this.undo_queue_posn+1 < this.undo_queue.length) {
+            this.undo_queue_posn += 1;
+            var action = this.undo_queue[this.undo_queue_posn];
+            action.redo(v3, xf_manager);
+        }
+        v3.update_geometry();
+    };
+    this.add_undoable = function(undoable) {
+        this.undo_queue = this.undo_queue.slice(0, this.undo_queue_posn+1);
+        this.undo_queue.push(undoable);
+        this.undo_queue_posn += 1;
+    };
+    this.get_top_sel_inds = function() { // helper to get the selection at the top of the undo queue
+        if (this.undo_queue_posn < 0) {
+            return [];
+        } else {
+            return this.undo_queue[this.undo_queue_posn].get_sel_inds();
+        }
+    };
+};
+
 
 //camera, renderer.domElement
 var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
@@ -85,6 +145,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         if (event.keyCode === 27) {
             this.deselect();
         }
+        
         if (this.mat.visible) {
             if (event.keyCode === 'W'.charCodeAt()) {
                 this.controls.setMode("translate");
@@ -190,17 +251,21 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.controls.attach(this.pts);
     };
 
-    this.attach = function(cells) {
+    this.attach = function(cells, skip_setting_plane) {
         this.cells = cells;
         if (this.cells.length > 0 && this.cells[0] >= 0) {
-            // todo pass set of cells to set_geom, post redesign????
-            var n = camera.getWorldDirection();
-            var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
-            this.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+            if (!skip_setting_plane) {
+                var n = camera.getWorldDirection();
+                var p = new THREE.Vector3().fromArray(this.v3.cell_pos(this.cells[0]));
+                this.plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
+                var p_on_screen = p.project(camera);
+                this.mouse_offset = p_on_screen.sub(mouse);
+            }
             this.set_geom_multi(cells);
             render();
-            var p_on_screen = p.project(camera);
-            this.mouse_offset = p_on_screen.sub(mouse);
+            this.update_previews();
+        } else {
+            this.deselect();
             this.update_previews();
         }
     };
@@ -407,6 +472,7 @@ var VoroSettings = function() {
     this.regenerate = function() {
         xf_manager.reset();
         v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
+        undo_q.clear();
         render();
     };
 
@@ -438,6 +504,8 @@ var VoroSettings = function() {
             var valid = v3.generate_from_buffer(scene, bin);
             if (!valid) {
                 alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
+            } else {
+                undo_q.clear();
             }
         }
     };
@@ -453,6 +521,8 @@ function loadRawVoroFile(evt) {
             var valid = v3.generate_from_buffer(scene, event.target.result);
             if (!valid) {
                 alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
+            } else {
+                undo_q.clear();
             }
         };
         reader.readAsArrayBuffer(files[0]);
@@ -485,6 +555,7 @@ function init() {
 
     // create voro structure w/ bounding box
     v3 = new Voro3();
+    undo_q = new UndoQueue();
     
     var lights = [];
     lights[0] = new THREE.DirectionalLight( 0xcc9999 );
@@ -584,10 +655,18 @@ function init() {
 
 
 function onDocumentKeyDown( event ) {
+    addToUndoQIfNeeded();
     if (event.keyCode === " ".charCodeAt()) {
         settings.next_mode();
         for (var i in datgui.__controllers) {
             datgui.__controllers[i].updateDisplay();
+        }
+    }
+    if (event.keyCode == "Z".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+        if (event.shiftKey) {
+            undo_q.redo();
+        } else {
+            undo_q.undo();
         }
     }
     
@@ -625,6 +704,24 @@ function doToggleClick(button, mouse) {
 
         v3.set_preview(-1);
         // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
+    }
+}
+
+function addToUndoQIfNeeded() {
+    var old_sel = undo_q.get_top_sel_inds();
+    var selection_changed = function(old_sel, sel) {
+        if (old_sel.length != sel.length) {
+            return true;
+        }
+        for (var i=0; i<sel.length; i++) {
+            if (sel[i] != old_sel[i]) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (v3.has_acts() || selection_changed(old_sel, xf_manager.cells)) {
+        undo_q.add_undoable(new UndoAct(old_sel, xf_manager.cells, v3.pop_acts()));
     }
 }
 
@@ -696,6 +793,7 @@ function onDocumentMouseDown(event) {
 // }
 function onDocumentMouseUp() {
     xf_manager.stop_custom();
+    addToUndoQIfNeeded();
 }
 function onDocumentMouseMove( event ) {
     event.preventDefault();
@@ -772,6 +870,7 @@ function onDocumentTouchEnd( event ) {
     }
 
     event.preventDefault();
+    addToUndoQIfNeeded();
 
 }
 

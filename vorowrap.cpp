@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_set>
+#include <unordered_map>
 #include <stdlib.h>
 #include <math.h>
 
@@ -371,9 +372,9 @@ enum { SANITY_MINIMAL, SANITY_FULL, SANITY_EXCESSIVE };
 
 struct Voro {
     Voro()
-        : b_min(glm::vec3(-10)), b_max(glm::vec3(10)), con(0), sanity_level(SANITY_FULL) {}
+        : b_min(glm::vec3(-10)), b_max(glm::vec3(10)), con(0), sanity_level(SANITY_FULL), tracked_ids(0) {}
     Voro(glm::vec3 bound_min, glm::vec3 bound_max)
-        : b_min(bound_min), b_max(bound_max), con(0), sanity_level(SANITY_FULL) {}
+        : b_min(bound_min), b_max(bound_max), con(0), sanity_level(SANITY_FULL), tracked_ids(0) {}
     ~Voro() {
         clear_computed();
     }
@@ -680,6 +681,7 @@ struct Voro {
 
         int end_ind = int(cells.size())-1;
         cells[cell] = cells[end_ind];
+        update_stable_id(end_ind, cell);
         cells.pop_back();
         if (!links.empty()) {
             assert(links.size() == cells.size()+1);
@@ -781,6 +783,36 @@ struct Voro {
         assert(c>=0 && c<cells.size());
         return cells[c];
     }
+    
+    size_t stable_id(int cell) {
+
+        if (!cell_to_id.count(cell)) {
+            auto id = tracked_ids++;
+            cell_to_id[cell] = id;
+            id_to_cell[id] = cell;
+        }
+        return cell_to_id[cell];
+    }
+    // use this to re-associate cells to ids, e.g. if you undo a deletion.
+    // cell and id must both be unmapped when this is called.
+    // id must be one that has already been used (< tracked_ids) so that it will not collide with new ids.
+    void set_stable_id(int cell, size_t id) {
+        // only allow setting id for cells that do not have an id yet
+        assert(!id_to_cell.count(id));
+        assert(!cell_to_id.count(cell));
+        assert(id < tracked_ids);
+        
+        id_to_cell[id] = cell;
+        cell_to_id[cell] = id;
+    }
+    int index_from_id(size_t id) {
+        if (!id_to_cell.count(id)) {
+            return -1;
+        } else {
+            return id_to_cell[id];
+        }
+    }
+
 
 protected:
     friend class GLBufferManager;
@@ -798,6 +830,28 @@ protected:
     // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
     GLBufferManager gl_computed;
+    
+    // this sparse mapping gives stable ids to cells as needed (via the stable_id() function)
+    // use stable ids to track cells externally -- cell indices will change on deletion, but stable ids remain as long as the cell does.
+    unordered_map<int, size_t> cell_to_id;
+    unordered_map<size_t, int> id_to_cell;
+    size_t tracked_ids;
+    
+    // this puts the old_index into the new_index and removes everything related to what used to be at the new_index
+    void update_stable_id(int old_index, int new_index) {
+        if (cell_to_id.count(new_index)) {
+            auto id_to_remove = cell_to_id[new_index];
+            id_to_cell.erase(id_to_remove);
+        }
+        if (cell_to_id.count(old_index)) {
+            auto id = cell_to_id[old_index];
+            cell_to_id.erase(old_index);
+            if (old_index!=new_index) {
+                cell_to_id[new_index] = id;
+                id_to_cell[id] = new_index;
+            }
+        }
+    }
 
 };
 
@@ -1035,6 +1089,9 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_wire_vertices", &Voro::gl_wire_vertices)
     .function("gl_wire_max_verts", &Voro::gl_wire_max_verts)
     .function("debug_print_block", &Voro::debug_print_block)
+    .function("stable_id", &Voro::stable_id)
+    .function("set_stable_id", &Voro::set_stable_id)
+    .function("index_from_id", &Voro::index_from_id)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;

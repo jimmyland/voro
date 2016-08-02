@@ -3,7 +3,7 @@
  * 
  * For filling the gap between my js wrapper of voro++ and three.js
  */
-/* global THREE, Module */
+/* global THREE, Module, assert */
 /*jshint -W008 */
 /*jslint devel: true, indent: 4, maxerr: 50 */
 "use strict";
@@ -12,11 +12,137 @@
 // v3 = new Voro3([-10, -10, -10], [10, 10, 10]);
 // you MUST CALL v3.delete() if/when you're done using the object but want to stay on the same page to tell the c++ module to free memory
 
+
 var Voro3 = function () {
     
     this.est_max_preview_verts = 1024;
     this.est_max_tris = 32768;
     this.est_max_cell_sites = 10000;
+    this.tracked_acts = [];
+    this.action_tracking = false;
+    var that = this;
+
+    this.start_tracking = function(yes) {
+        if (yes === undefined || yes) {
+            this.action_tracking = true;
+        } else {
+            this.action_tracking = false;
+        }
+        this.tracked_acts = [];
+    };
+
+    this.inds_to_ids = function(inds) {
+        var res = [];
+        for (var i=0; i<inds.length; i++) {
+            res.push(this.voro.stable_id(inds[i]));
+        }
+        return res;
+    };
+    this.ids_to_inds = function(ids) {
+        var res = [];
+        for (var i=0; i<ids.length; i++) {
+            var ind = this.voro.index_from_id(ids[i]);
+            if (ind >= 0) {
+                res.push(ind);
+            }
+        }
+        return res;
+    };
+
+    var AddAct = function(cells, pts, states) {
+        var cell_ids = that.inds_to_ids(cells);
+        this.redo = function() {
+            for (var i=0; i<cell_ids.length; i++) {
+                var cell_ind = that.voro.add_cell(pts[i], states[i]);
+                that.voro.set_stable_id(cell_ind, cell_ids[i]);
+            }
+        };
+        this.undo = function() {
+            var inds = that.ids_to_inds(cell_ids);
+            for (var i=0; i<inds.length; i++) {
+                that.voro.delete_cell(inds[i]);
+            }
+        };
+    };
+    var DeleteAct = function(cells) {
+        var pts = [];
+        var states = [];
+        for (var i=0; i<cells.length; i++) {
+            var c = that.voro.cell(cells[i]);
+            pts.push(c.pos);
+            states.push(c.type);
+        }
+        var add = new AddAct(cells, pts, states);
+        this.undo = function() { add.redo(); };
+        this.redo = function() { add.undo(); };
+    };
+    var ToggleAct = function(cells) {
+        var cell_ids = that.inds_to_ids(cells);
+        this.redo = function() {
+            var inds = that.ids_to_inds(cell_ids);
+            for (var i=0; i<inds.length; i++) {
+                that.voro.toggle_cell(inds[i]);
+            }
+        };
+        this.undo = this.redo;
+    };
+    var MoveAct = function(cells, pts, old_pts) {
+        var moves = {};
+        this.update = function(cells, pts, old_pts) {
+            var cell_ids = that.inds_to_ids(cells);
+            for (var i=0; i<cell_ids.length; i++) {
+                var id = cell_ids[i];
+                if (id in moves) {
+                    moves[id][0] = pts[i];
+                } else {
+                    moves[id] = [pts[i],old_pts[i]];
+                }
+            }
+        };
+        this.update(cells, pts, old_pts);
+        
+        this.redo = function() {
+            for (var id in moves) {
+                var ind = that.voro.index_from_id(parseInt(id));
+                that.voro.move_cell(ind, moves[id][0]);
+            }
+        };
+        this.undo = function() {
+            for (var id in moves) {
+                var ind = that.voro.index_from_id(parseInt(id));
+                that.voro.move_cell(ind, moves[id][1]);
+            }
+        };
+    };
+
+
+    this.undo = function(seq) {
+        for (var i=seq.length-1; i>=0; i--) {
+            seq[i].undo(this);
+        }
+    };
+    this.redo = function(seq) {
+        for (var i=0; i<seq.length; i++) {
+            seq[i].redo(this);
+        }
+    };
+
+    this.pop_acts = function() { // retrieves and clears all accumulated actions (e.g. since last call to pop_acts)
+        assert(this.action_tracking);
+        var acts = this.tracked_acts;
+        this.tracked_acts = [];
+        return acts;
+    };
+    this.has_acts = function() {
+        return this.tracked_acts.length > 0;
+    };
+
+    this.track_act = function(act) {
+        if (this.action_tracking) {
+            this.tracked_acts.push(act);
+        }
+    };
+
     
     this.add_to_scene = function(scene) {
         if (this.preview_lines) {
@@ -44,6 +170,7 @@ var Voro3 = function () {
         
         Math.seedrandom(seed);
         
+        this.start_tracking(false);
         generator_fn(numPts, this.voro);
         if (fill_level === 0) {
             this.voro.set_only_centermost(1,0);
@@ -54,17 +181,24 @@ var Voro3 = function () {
         this.create_gl_objects(scene);
         
         this.add_to_scene(scene);
+
+        this.start_tracking();
     };
 
     this.generate_from_buffer = function(scene, buffer) {
+        var was_tracking = this.action_tracking;
+        this.start_tracking(false);
         var valid = this.create_from_raw_buffer(buffer);
         if (!valid) {
+            this.start_tracking(was_tracking);
             return false;
         }
         
         this.create_gl_objects(scene);
         
         this.add_to_scene(scene);
+
+        this.start_tracking();
 
         return true;
     };
@@ -170,14 +304,31 @@ var Voro3 = function () {
         }
         var pt = [pt_3.x, pt_3.y, pt_3.z];
         var cell = this.voro.add_cell(pt, state);
+        this.track_act(new AddAct([cell],[pt],[state]));
         this.update_geometry();
         return cell;
     };
+    this.track_move = function(cells, pts) {
+        // get the past positions for all pts
+        var old_pts = [];
+        for (var i=0; i<cells.length; i++) {
+            old_pts.push(this.voro.cell_pos(cells[i]));
+        }
+        // if top of acts stack is move, update it
+        var last_i = this.tracked_acts.length-1;
+        if (last_i >= 0 && this.tracked_acts[last_i] instanceof MoveAct) {
+            this.tracked_acts[last_i].update(cells, pts, old_pts);
+        } else { // else add new moveact
+            this.track_act(new MoveAct(cells, pts, old_pts));
+        }
+    };
     this.move_cell = function(cell, pt_arr) {
+        this.track_move([cell], [pt_arr]);
         this.voro.move_cell(cell, pt_arr);
         this.update_geometry();
     };
     this.move_cells = function(cells, pts_arr) {
+        this.track_move(cells, pts_arr);
         this.voro.move_cells(cells, pts_arr);
         this.update_geometry();
     };
@@ -252,7 +403,6 @@ var Voro3 = function () {
     };
     this.add_preview = function(cell) {
         if (cell < 0) {
-            this.preview_lines.visible = false;
             return;
         }
         this.voro.gl_add_wires(cell);
@@ -266,11 +416,13 @@ var Voro3 = function () {
     
 
     this.toggle_cell = function(cell) {
+        this.track_act(new ToggleAct([cell]));
         this.voro.toggle_cell(cell);
         this.update_geometry();
     };
 
     this.delete_cell = function(cell) {
+        this.track_act(new DeleteAct([cell]));
         this.voro.delete_cell(cell);
         this.update_geometry();
     };
