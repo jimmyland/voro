@@ -264,6 +264,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.update_previews();
         } else {
             this.deselect();
+            this.update_previews();
         }
     };
 

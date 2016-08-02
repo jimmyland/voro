@@ -403,7 +403,6 @@ var Voro3 = function () {
     };
     this.add_preview = function(cell) {
         if (cell < 0) {
-            this.preview_lines.visible = false;
             return;
         }
         this.voro.gl_add_wires(cell);
