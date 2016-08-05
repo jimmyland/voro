@@ -458,9 +458,9 @@ var VoroSettings = function() {
             return;
         }
     };
-    this.mode = 'toggle';
+    this.mode = 'move';
     // this.generator = 'uniform random';
-    this.generator = 'cylindrical columns';
+    this.generator = 'gyrobifastigia';
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
@@ -625,7 +625,6 @@ function init() {
         settings.all_modes.push("toggle off");
         settings.all_modes.push("delete");
     }
-    datgui.add(settings,'mode',settings.all_modes);
     datgui.add(settings,'filename');
     datgui.add(settings,'exportAsSTL');
     datgui.add(settings,'downloadRaw');
