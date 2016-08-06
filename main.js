@@ -655,12 +655,6 @@ function init() {
 
 function onDocumentKeyDown( event ) {
     addToUndoQIfNeeded();
-    if (event.keyCode === " ".charCodeAt()) {
-        settings.next_mode();
-        for (var i in datgui.__controllers) {
-            datgui.__controllers[i].updateDisplay();
-        }
-    }
     if (event.keyCode == "Z".charCodeAt() && (event.ctrlKey || event.metaKey)) {
         if (event.shiftKey) {
             undo_q.redo();
@@ -797,12 +791,24 @@ function onDocumentMouseUp() {
 function onDocumentMouseMove( event ) {
     event.preventDefault();
     doCursorMove(event.clientX, event.clientY);
-    check_allow_trackball();
+    var over_moving_controls = xf_manager.over_axis();
+    var cell_over = check_allow_trackball(over_moving_controls);
+
+    if (xf_manager.dragging() || xf_manager.dragging_custom()) {
+        renderer.domElement.style.cursor = "-webkit-grabbing";
+    } else if (xf_manager.over_axis()) {
+        renderer.domElement.style.cursor = "default";
+    } else if (cell_over !== null && cell_over >= 0) {
+        renderer.domElement.style.cursor = "pointer";
+    } else {
+        renderer.domElement.style.cursor = "move";
+    }
 }
 function check_allow_trackball(over_moving_controls) {
     if (over_moving_controls===undefined) over_moving_controls = xf_manager.over_axis();
+    var cell = null;
     if (!xf_manager.dragging()) {
-        var cell = v3.raycast(mouse, camera, raycaster);
+        cell = v3.raycast(mouse, camera, raycaster);
         if (!controls.isActive() || controls.isTouch()) {
             controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && !over_moving_controls;
             if (!controls.dragEnabled && settings.mode === 'toggle') {
@@ -811,7 +817,7 @@ function check_allow_trackball(over_moving_controls) {
             }
         }
     }
-    return controls.dragEnabled;
+    return cell;
 }
 function doCursorMove(cur_x, cur_y) {
     v3.set_preview(-1);
@@ -835,16 +841,6 @@ function onDocumentTouchStart( event ) {
     event.preventDefault();
 
     mouse_from_touch(event);
-
-    // ~~~ todo check if below section is needed ~~~
-    // var moving_controls_check = moving_controls && moving_controls.checkHover(event);
-    // var allowed = check_allow_trackball(moving_controls_check);
-    // if (!allowed) {
-    //     controls.overrideState();
-    //     controls.dragEnabled = false;
-    // }
-    // last_touch_for_camera = controls.dragEnabled;
-    // ~~~ todo check if above section is needed ~~~
     
     startMove(mouse, false, false);
 
