@@ -767,6 +767,24 @@ function startMove(mouse, extend_current_sel, nbr) {
     }
 }
 
+function set_cursor(cell_over) {
+    if (cell_over === undefined) {
+        cell_over = v3.raycast(mouse, camera, raycaster);
+    }
+    if (xf_manager.dragging() || xf_manager.dragging_custom()) {
+        renderer.domElement.style.cursor = "move";
+        renderer.domElement.style.cursor = "grabbing";
+        renderer.domElement.style.cursor = "-moz-grabbing";
+        renderer.domElement.style.cursor = "-webkit-grabbing";
+    } else if (xf_manager.over_axis()) {
+        renderer.domElement.style.cursor = "default";
+    } else if (cell_over !== null && cell_over >= 0) {
+        renderer.domElement.style.cursor = "pointer";
+    } else {
+        renderer.domElement.style.cursor = "move";
+    }
+}
+
 function onDocumentMouseDown(event) {
     doToggleClick(event.button, mouse);
     
@@ -775,6 +793,8 @@ function onDocumentMouseDown(event) {
     startMove(mouse, event.shiftKey, event.button===2);
     
     render();
+
+    set_cursor();
 }
 
 // unused vector logging functions; helpful for debugging sometimes
@@ -784,25 +804,21 @@ function onDocumentMouseDown(event) {
 // function logv3(s,v){
 //     console.log(s + ": " + v.x + ", " + v.y + ", " + v.z);
 // }
+
 function onDocumentMouseUp() {
     xf_manager.stop_custom();
     addToUndoQIfNeeded();
+
+    set_cursor();
 }
+
 function onDocumentMouseMove( event ) {
     event.preventDefault();
     doCursorMove(event.clientX, event.clientY);
     var over_moving_controls = xf_manager.over_axis();
     var cell_over = check_allow_trackball(over_moving_controls);
-
-    if (xf_manager.dragging() || xf_manager.dragging_custom()) {
-        renderer.domElement.style.cursor = "-webkit-grabbing";
-    } else if (xf_manager.over_axis()) {
-        renderer.domElement.style.cursor = "default";
-    } else if (cell_over !== null && cell_over >= 0) {
-        renderer.domElement.style.cursor = "pointer";
-    } else {
-        renderer.domElement.style.cursor = "move";
-    }
+    set_cursor(cell_over);
+    
 }
 function check_allow_trackball(over_moving_controls) {
     if (over_moving_controls===undefined) over_moving_controls = xf_manager.over_axis();
