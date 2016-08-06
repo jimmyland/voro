@@ -84,26 +84,26 @@
         <script type="text/javascript" src="voro3.js"></script>
         <script type="text/javascript" src="main.js"></script>
         <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; background: #000; position: absolute; top: 0px; padding: 0px;">
-        <div class="btn-group-vertical">
-          <button type="button" class="btn btn-primary active" onclick="settings.mode = 'move';">
-          <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-select"></use></svg>
-          </button>
-          <button type="button" class="btn btn-primary" onclick="settings.mode = 'move neighbor';">
-          <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-select-neighbor"></use></svg>
-          </button>
-          <button type="button" class="btn btn-primary" onclick="settings.mode = 'toggle';">
-          <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-show"></use></svg>
-          </button>
-          <button type="button" class="btn btn-primary" onclick="settings.mode = 'toggle off';">
-          <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-hide"></use></svg>
-          </button>
-          <button type="button" class="btn btn-primary" onclick="settings.mode = 'add/delete';">
-          <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-add"></use></svg>
-          </button>
-          <button type="button" class="btn btn-primary" onclick="settings.mode = 'delete';">
-          <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-delete"></use></svg>
-          </button>
-        </div>
+            <div class="btn-group-vertical">
+              <button type="button" title="select and move cells" class="btn btn-primary active" onclick="settings.mode = 'move';">
+              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-select"></use></svg>
+              </button>
+              <button type="button" title="select and move cell neighbors" class="btn btn-primary" onclick="settings.mode = 'move neighbor';">
+              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-select-neighbor"></use></svg>
+              </button>
+              <button type="button" title="show cells" class="btn btn-primary" onclick="settings.mode = 'toggle';">
+              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-show"></use></svg>
+              </button>
+              <button type="button" title="hide cells" class="btn btn-primary" onclick="settings.mode = 'toggle off';">
+              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-hide"></use></svg>
+              </button>
+              <button type="button" title="add cells" class="btn btn-primary" onclick="settings.mode = 'add/delete';">
+              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-add"></use></svg>
+              </button>
+              <button type="button" title="delete cells" class="btn btn-primary" onclick="settings.mode = 'delete';">
+              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-delete"></use></svg>
+              </button>
+            </div>
         </div>
         <script>
             $(".btn-group-vertical > .btn").click(function(){
