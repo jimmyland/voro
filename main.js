@@ -474,6 +474,7 @@ var VoroSettings = function() {
         v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
         undo_q.clear();
         render();
+        v3.update_geometry(); // TODO: figure out why needsUpdate won't work until after we've rendered, requiring this extra line
     };
 
     this.filename = 'filename';
