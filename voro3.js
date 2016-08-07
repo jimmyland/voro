@@ -221,7 +221,14 @@ var Voro3 = function () {
         this.preview_lines.visible = false;
 
         this.sites_geometry = this.init_sites();
-        this.sites_material = new THREE.PointsMaterial( { size: 0.05, color: 0xffffff } );
+        var uniforms = {color: {value: new THREE.Color(0xffffff)}};
+        this.sites_material = new THREE.ShaderMaterial( {
+            uniforms:       uniforms,
+            vertexShader:   document.getElementById( 'sites_vertshader' ).textContent,
+            fragmentShader: document.getElementById( 'sites_fragshader' ).textContent,
+            depthTest:      true
+        });
+
         if (this.sites_points) {
             scene.remove(this.sites_points);
         }
@@ -281,7 +288,11 @@ var Voro3 = function () {
         var max_verts = this.voro.gl_max_sites();
         var array = Module.HEAPF32.subarray(verts_ptr/4, verts_ptr/4 + max_verts*3);
         var vertices = new THREE.BufferAttribute(array, 3);
+        var sizes_ptr = this.voro.gl_cell_site_sizes();
+        var sizes_array = Module.HEAPF32.subarray(sizes_ptr/4, sizes_ptr/4 + max_verts);
+        var sizes = new THREE.BufferAttribute(sizes_array, 1);
         geometry.addAttribute('position', vertices);
+        geometry.addAttribute('size', sizes);
     };
     this.init_sites = function() {
         var geometry = new THREE.BufferGeometry();
@@ -340,6 +351,7 @@ var Voro3 = function () {
         }
         this.sites_geometry.setDrawRange(0, num_sites);
         this.sites_geometry.attributes.position.needsUpdate = true;
+        this.sites_geometry.attributes.size.needsUpdate = true;
     };
     this.update_geometry = function () {
         var num_tris = this.voro.gl_tri_count();

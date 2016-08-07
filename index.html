@@ -76,6 +76,24 @@
         </symbol>
         </defs>
         </svg>
+        
+        <script type="x-shader/x-vertex" id="sites_vertshader">
+        attribute float size;
+
+        void main() {
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = size * ( 10.0 / -mvPosition.z );
+            gl_Position = projectionMatrix * mvPosition;
+        }
+        </script>
+        
+        <script type="x-shader/x-fragment" id="sites_fragshader">
+        uniform vec3 color;
+
+        void main() {
+            gl_FragColor = vec4(color, 1.0);
+        }
+        </script>
 
         <input type="file" id="upload_raw" accept=".vor" style="position: fixed; top: -100em">
         <script>var ready_for_emscripten_calls = false;</script>

@@ -133,7 +133,7 @@ struct CellToTris {
 struct Voro;
 
 struct GLBufferManager {
-    vector<float> vertices, wire_vertices, cell_sites;
+    vector<float> vertices, wire_vertices, cell_sites, cell_site_sizes;
     int tri_count, max_tris, max_sites;
     int wire_vert_count, wire_max_verts;
     vector<int> cell_inds; // map from tri indices to cell indices
@@ -206,6 +206,7 @@ struct GLBufferManager {
     }
     void resize_sites_buffers() {
         cell_sites.resize(max_sites*3);
+        cell_site_sizes.resize(max_sites);
     }
 
     void init(int numCells, int triCapacity, int wiresCapacity, int sitesCapacity) {
@@ -327,11 +328,15 @@ struct GLBufferManager {
     void move_cells(Voro &src, const unordered_set<int> &cells);
     
     void update_site(Voro &src, int cell);
-    inline void update_site(const glm::vec3 &pos, int cell) {
+    inline void update_site_pos(const glm::vec3 &pos, int cell) {
         assert(cell >= 0 && cell < cell_sites.size());
         cell_sites[cell*3]   = pos.x;
         cell_sites[cell*3+1] = pos.y;
         cell_sites[cell*3+2] = pos.z;
+
+    }
+    inline void update_site_size(float size, int cell) {
+        cell_site_sizes[cell] = size;
     }
     
     void add_wires(Voro &src, int cell);
@@ -358,6 +363,7 @@ struct GLBufferManager {
         cell_inds.clear();
         wire_vertices.clear();
         cell_sites.clear();
+        cell_site_sizes.clear();
         
         tri_count = max_tris = max_sites = 0;
         
@@ -732,6 +738,9 @@ struct Voro {
     uintptr_t gl_cell_sites() {
         return reinterpret_cast<uintptr_t>(&gl_computed.cell_sites[0]);
     }
+    uintptr_t gl_cell_site_sizes() {
+        return reinterpret_cast<uintptr_t>(&gl_computed.cell_site_sizes[0]);
+    }
     int gl_max_sites() {
         return gl_computed.max_sites;
     }
@@ -869,6 +878,7 @@ void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for 
         
         add_cell_tris(src, cell, c);
     }
+    update_site(src, cell);
 }
 
 void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitescap) {
@@ -880,7 +890,6 @@ void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitesc
     assert(src.cells.size()==src.links.size());
     for (size_t i=0; i < src.cells.size(); i++) {
         compute_cell(src, i);
-        update_site(src, i);
     }
 }
 
@@ -934,9 +943,12 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
         if (!ADD_ALL_FACES_ALL_THE_TIME) { // re-add neighbors faces to manage internal faces
             // (we could try to optimize this to just look at shared faces but this seems 'fast enough' for me now)
             for (int ni : info[cell]->cache.neighbors) {
-                if (ni >= 0 && info[ni] && src.cells[ni].type) {
-                    clear_cell_tris(*info[ni]);
-                    add_cell_tris(src, ni, *info[ni]);
+                if (ni >= 0 && info[ni]) {
+                    update_site(src, ni);
+                    if (src.cells[ni].type) {
+                        clear_cell_tris(*info[ni]);
+                        add_cell_tris(src, ni, *info[ni]);
+                    }
                 }
             }
         }
@@ -950,6 +962,7 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
         compute_cell(src, cell);
     } else {
         add_cell_tris(src, cell, *info[cell]);
+        update_site(src, cell);
     }
 }
 
@@ -1011,7 +1024,16 @@ void GLBufferManager::move_cell(Voro &src, int cell) {
 }
 
 void GLBufferManager::update_site(Voro &src, int cell) {
-    update_site(src.cells[cell].pos, cell);
+    update_site_pos(src.cells[cell].pos, cell);
+    float size = 0;
+    if (info[cell]) {
+        for (auto ni : info[cell]->cache.neighbors) {
+            if (ni >= 0) {
+                size += float(src.cells[ni].type > 0);
+            }
+        }
+    }
+    update_site_size(size, cell);
 }
 
 void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
@@ -1069,6 +1091,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_tri_count", &Voro::gl_tri_count)
     .function("gl_max_tris", &Voro::gl_max_tris)
     .function("gl_cell_sites", &Voro::gl_cell_sites)
+    .function("gl_cell_site_sizes", &Voro::gl_cell_site_sizes)
     .function("gl_max_sites", &Voro::gl_max_sites)
     .function("cell_count", &Voro::cell_count)
     .function("toggle_cell", &Voro::toggle_cell)
