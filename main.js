@@ -502,6 +502,7 @@ var VoroSettings = function() {
         var binstr = localStorage.getItem("saved_cells");
         if (binstr !== null) {
             var bin = toByteArray(binstr).buffer;
+            xf_manager.reset();
             var valid = v3.generate_from_buffer(scene, bin);
             if (!valid) {
                 alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
@@ -519,6 +520,7 @@ function loadRawVoroFile(evt) {
     if (files.length > 0) {
         var reader = new FileReader();
         reader.onload = function(event) {
+            xf_manager.reset();
             var valid = v3.generate_from_buffer(scene, event.target.result);
             if (!valid) {
                 alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
