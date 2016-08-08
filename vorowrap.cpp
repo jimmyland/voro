@@ -214,7 +214,8 @@ struct GLBufferManager {
         
         max_tris = triCapacity;
         wire_max_verts = wiresCapacity;
-        max_sites = sitesCapacity;
+        max_sites = numCells*2;
+        if (max_sites < sitesCapacity) max_sites = sitesCapacity;
         
         resize_buffers();
         resize_wire_buffers();
