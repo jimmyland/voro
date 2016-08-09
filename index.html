@@ -79,19 +79,22 @@
         
         <script type="x-shader/x-vertex" id="sites_vertshader">
         attribute float size;
+        varying float alpha;
 
         void main() {
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
             gl_PointSize = size * ( 10.0 / -mvPosition.z );
             gl_Position = projectionMatrix * mvPosition;
+            alpha = clamp(size, 0.0, 1.0);
         }
         </script>
         
         <script type="x-shader/x-fragment" id="sites_fragshader">
         uniform vec3 color;
+        varying float alpha;
 
         void main() {
-            gl_FragColor = vec4(color, 1.0);
+            gl_FragColor = vec4(color, alpha);
         }
         </script>
 
