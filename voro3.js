@@ -226,7 +226,9 @@ var Voro3 = function () {
             uniforms:       uniforms,
             vertexShader:   document.getElementById( 'sites_vertshader' ).textContent,
             fragmentShader: document.getElementById( 'sites_fragshader' ).textContent,
-            depthTest:      true
+            depthTest:      true,
+            blending:       THREE.AdditiveBlending,
+            transparent:    true
         });
 
         if (this.sites_points) {
