@@ -460,8 +460,8 @@ var Voro3 = function () {
             for (var iter=0; iter<sym_op.iters; iter++) {
                 p = sym_op.op(p);
                 var new_cell = this.add_cell_list_noup(p, type);
-                this.sym_map[id].linked.push(new_cell);
                 var new_id = this.voro.stable_id(new_cell);
+                this.sym_map[id].linked.push(new_id);
                 this.sym_map[new_id] = {};
                 this.sym_map[new_id].primary = id;
             }
@@ -487,12 +487,23 @@ var Voro3 = function () {
         this.update_preview();
     };
     
-
-    this.toggle_cell = function(cell) {
+    this.toggle_cell = function(cell, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
         this.track_act(new ToggleAct([cell]));
         this.voro.toggle_cell(cell);
-        // todo apply sym toggle
-        this.update_geometry();
+        if (!sym_flag) {
+            if (this.sym_map) {
+                var id = this.voro.stable_id(cell);
+                var pid = this.sym_map[id].primary;
+                var slist = [pid].concat(this.sym_map[pid].linked);
+                for (var i=0; i<slist.length; i++) {
+                    var sid = slist[i];
+                    if (sid !== id) {
+                        this.toggle_cell(this.voro.index_from_id(sid), true);
+                    }
+                }
+            }
+            this.update_geometry();
+        }
     };
     this.delete_cell = function(cell) {
         this.track_act(new DeleteAct([cell]));
