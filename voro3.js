@@ -58,21 +58,24 @@ var Voro3 = function () {
             }
         };
         this.undo = function() {
-            var inds = that.ids_to_inds(cell_ids);
-            for (var i=0; i<inds.length; i++) {
-                that.voro.delete_cell(inds[i]);
+            for (var i=0; i<cell_ids.length; i++) {
+                var ind = that.voro.index_from_id(cell_ids[i]);
+                that.voro.delete_cell(ind);
             }
         };
     };
     var DeleteAct = function(cells) {
+        var in_cells = [];
         var pts = [];
         var states = [];
         for (var i=0; i<cells.length; i++) {
+            if (cells[i] < 0) { continue; }
             var c = that.voro.cell(cells[i]);
+            in_cells.push(cells[i]);
             pts.push(c.pos);
             states.push(c.type);
         }
-        var add = new AddAct(cells, pts, states);
+        var add = new AddAct(in_cells, pts, states);
         this.undo = function() { add.redo(); };
         this.redo = function() { add.undo(); };
     };
@@ -311,6 +314,14 @@ var Voro3 = function () {
         this.alloc_sites(this.sites_geometry);
     };
     
+    this.add_cell_list_noup = function (pt, state) {
+        if (state === undefined) {
+            state = true;
+        }
+        var cell = this.voro.add_cell(pt, state);
+        this.track_act(new AddAct([cell],[pt],[state]));
+        return cell;
+    };
     this.add_cell = function (pt_3, state) {
         if (state === undefined) {
             state = true;
@@ -411,6 +422,53 @@ var Voro3 = function () {
         return this.voro.cell_neighbor_from_vertex(index);
     };
 
+    this.symmetries = {
+        Mirror: function() {
+            this.iters = 1;
+            this.op = function(pt) {
+                return [-pt[0], pt[1], pt[2]];
+            };
+        }
+    };
+    this.sym_map = {};
+    this.active_sym = null;
+
+    this.disable_symmetry = function() {
+        if (this.active_sym) {
+            for (var id in this.sym_map) {
+                if (this.sym_map[id].primary != id) {
+                    this.delete_cell(this.voro.index_from_id(parseInt(id)));
+                }
+            }
+            this.sym_map = {};
+            this.active_sym = null;
+        }
+    }
+
+    this.enable_symmetry = function(sym_op) {
+        this.disable_symmetry();
+        var orig_cells = this.voro.cell_count();
+        this.active_sym = sym_op;
+        for (var i=0; i<orig_cells; i++) {
+            var id = this.voro.stable_id(i);
+            this.sym_map[id] = {};
+            this.sym_map[id].primary = id;
+            this.sym_map[id].linked = [];
+            var cell = this.voro.cell(i);
+            var p = cell.pos;
+            var type = cell.type;
+            for (var iter=0; iter<sym_op.iters; iter++) {
+                p = sym_op.op(p);
+                var new_cell = this.add_cell_list_noup(p, type);
+                this.sym_map[id].linked.push(new_cell);
+                var new_id = this.voro.stable_id(new_cell);
+                this.sym_map[new_id] = {};
+                this.sym_map[new_id].primary = id;
+            }
+        }
+        this.update_geometry();
+    };
+
     this.clear_preview = function() {
         this.voro.gl_clear_wires();
         this.preview_lines.visible = false;
@@ -419,6 +477,7 @@ var Voro3 = function () {
         if (cell < 0) {
             return;
         }
+        // todo add sym previews
         this.voro.gl_add_wires(cell);
         this.preview_lines.visible = true;
     };
@@ -432,9 +491,9 @@ var Voro3 = function () {
     this.toggle_cell = function(cell) {
         this.track_act(new ToggleAct([cell]));
         this.voro.toggle_cell(cell);
+        // todo apply sym toggle
         this.update_geometry();
     };
-
     this.delete_cell = function(cell) {
         this.track_act(new DeleteAct([cell]));
         this.voro.delete_cell(cell);

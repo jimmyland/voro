@@ -665,6 +665,14 @@ function onDocumentKeyDown( event ) {
             undo_q.undo();
         }
     }
+
+
+    if (event.keyCode === 'S'.charCodeAt()) {
+        v3.enable_symmetry(new v3.symmetries.Mirror());
+    }
+    if (event.keyCode === 'D'.charCodeAt()) {
+        v3.disable_symmetry(new v3.symmetries.Mirror());
+    }
     
     xf_manager.keydown(event);
     // not sure this feature was actually useful ...
