@@ -32,7 +32,14 @@ using namespace emscripten;
 //              these inconsistencies make maintaining the diagram over time much more difficult
 //                  - cell shapes begin to depend on insertion order
 //                  - it seems that cells can be created in ways that would break the sanity check? e.g., broken back-links
-#define SHADOW_THRESHOLD .00001
+#define SHADOW_SEP_DIST .003
+#define SHADOW_THRESHOLD (SHADOW_SEP_DIST*SHADOW_SEP_DIST)
+
+inline void jitter(glm::vec3 &pt, double amt) {
+    pt.x+=amt*(rand()%10000)/10000.0;
+    pt.y+=amt*(rand()%10000)/10000.0;
+    pt.z+=amt*(rand()%10000)/10000.0;
+}
 
 #ifdef INSANITY
 #define SANITY(WHEN) {}
@@ -583,11 +590,13 @@ struct Voro {
         } while(vl.inc());
     }
     
+    int cell_at_pos(glm::vec3 pt) {
+        return con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD);
+    }
+    
     int add_cell(glm::vec3 pt, int type) {
-        if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD)) {
-            // todo: implement a proper notion of shadowing, not this hack.
-            cout << "not adding cell; it's too close!" << endl;
-            return -1;
+        while (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD) >= 0) {
+            jitter(pt, SHADOW_SEP_DIST);
         }
         int id = int(cells.size());
         
@@ -618,10 +627,8 @@ struct Voro {
             cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
             return false;
         }
-        if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell)) {
-            // todo: implement shadowing
-            cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
-            return false;
+        while (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
+            jitter(pt, SHADOW_SEP_DIST);
         }
         
         cells[cell].pos = pt;
@@ -655,9 +662,8 @@ struct Voro {
             }
             
             glm::vec3 pt(posns[i][0].as<float>(), posns[i][1].as<float>(), posns[i][2].as<float>());
-            if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell)) {
-                cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
-                continue;
+            while (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
+                jitter(pt, SHADOW_SEP_DIST);
             }
             
             cells[cell].pos = pt;
@@ -837,7 +843,7 @@ protected:
     
     voro::container *con;
     int sanity_level; // level of error checking.  define "INSANITY" for zero error checking
-    // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
+    // note: links vector MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
     GLBufferManager gl_computed;
     
@@ -1085,6 +1091,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_pos", &Voro::cell_pos)
     .function("cell_type", &Voro::cell_type)
     .function("cell", &Voro::cell)
+    .function("cell_at_pos", &Voro::cell_at_pos)
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
     .function("gl_build", &Voro::gl_build)

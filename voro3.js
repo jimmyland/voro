@@ -477,6 +477,9 @@ var Voro3 = function () {
 
     this.make_sym_cell = function(sym_map, sym_op, cell_ind) {
         var id = this.voro.stable_id(cell_ind);
+        if (id in sym_map) {
+            return;
+        }
         sym_map[id] = {};
         sym_map[id].primary = id;
         sym_map[id].linked = [];
@@ -485,6 +488,16 @@ var Voro3 = function () {
         var type = cell.type;
         for (var iter=0; iter<sym_op.iters; iter++) {
             p = sym_op.op(p);
+            var existing_cell = this.voro.cell_at_pos(p);
+            if (existing_cell >= 0 && existing_cell != cell_ind) {
+                var existing_id = this.voro.stable_id(existing_cell);
+                if (!(existing_id in sym_map)) {
+                    sym_map[id].linked.push(existing_id);
+                    sym_map[existing_id] = {};
+                    sym_map[existing_id].primary = id;
+                    continue;
+                }
+            }
             var new_cell = this.add_cell_list_noup(p, type, true);
             var new_id = this.voro.stable_id(new_cell);
             sym_map[id].linked.push(new_id);

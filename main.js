@@ -459,8 +459,8 @@ var VoroSettings = function() {
         }
     };
     this.mode = 'move';
-    this.generator = 'uniform random';
-    // this.generator = 'gyrobifastigia';
+    // this.generator = 'uniform random';
+    this.generator = 'gyrobifastigia';
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
@@ -668,8 +668,8 @@ function onDocumentKeyDown( event ) {
 
 
     if (event.keyCode === 'S'.charCodeAt()) {
-        // v3.enable_symmetry(new v3.symmetries.Mirror());
-        v3.enable_symmetry(new v3.symmetries.Rotational(6));
+        v3.enable_symmetry(new v3.symmetries.Mirror());
+        // v3.enable_symmetry(new v3.symmetries.Rotational(6));
     }
     if (event.keyCode === 'D'.charCodeAt()) {
         v3.disable_symmetry();
