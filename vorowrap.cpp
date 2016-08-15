@@ -438,8 +438,9 @@ struct Voro {
                                 cache.create(cells[i].pos, gl_computed.vorocell);
                                 auto &vs = gl_computed.info[i]->cache;
                                 valid = compare_vecs(vs.neighbors, cache.neighbors, "neighbors", i) && valid;
-                                valid = compare_vecs(vs.faces, cache.faces, "faces", i) && valid;
-    //                            valid = compare_vecs(vs.vertices, cache.vertices, "vertices", i) && valid;
+//                                bool fvalid = compare_vecs(vs.faces, cache.faces, "faces", i);
+//                                valid = fvalid && valid;
+//                                valid = compare_vecs(vs.vertices, cache.vertices, "vertices", i) && valid;
                             }
                         }
                     }
@@ -567,35 +568,31 @@ struct Voro {
     void build_container() {
         clear_computed(); // clear out any existing computation
         
-        // Use a pre_container to automatically figure out the right settings for the container we create
-        voro::pre_container pcon(b_min.x,b_max.x,b_min.y,b_max.y,b_min.z,b_max.z,false,false,false);
-        for (int i=0; i<cells.size(); i++) {
-            pcon.put(i,cells[i].pos.x,cells[i].pos.y,cells[i].pos.z);
-        }
-        
-        // Set up the number of blocks that the container is divided into
-        int n_x, n_y, n_z;
-        pcon.guess_optimal(n_x,n_y,n_z);
-        
-        // Set up the container class and import the particles from the pre-container
-        con = new voro::container(pcon.ax,pcon.bx,pcon.ay,pcon.by,pcon.az,pcon.bz,n_x,n_y,n_z,false,false,false,10);
-        pcon.setup(*con);
+        auto d = b_max-b_min;
+        float ilscale = pow(double(cells.size())/(voro::optimal_particles*d.x*d.y*d.z),1.0/3.0);
+        auto n = d*ilscale;
+        con = new voro::container(b_min.x,b_max.x,b_min.y,b_max.y,b_min.z,b_max.z,int(n.x+1),int(n.y+1),int(n.z+1),false,false,false,10);
         
         // build links
         assert(links.size() == 0);
         links.resize(cells.size());
-        voro::c_loop_all vl(*con);
-        if(vl.start()) do {
-            links[vl.pid()].set(vl);
-        } while(vl.inc());
+        for (int i=0; i<cells.size(); i++) {
+            auto &link = links[i];
+            auto &pt = cells[i].pos;
+            while (con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD) >= 0) {
+                jitter(pt, SHADOW_SEP_DIST);
+            }
+            bool ret = con->put(i, pt.x, pt.y, pt.z, link.ijk, link.q);
+            if (!ret) { link = CellConLink(); } // reset link if put fails
+        }
     }
     
     int cell_at_pos(glm::vec3 pt) {
-        return con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD);
+        return con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD);
     }
     
     int add_cell(glm::vec3 pt, int type) {
-        while (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD) >= 0) {
+        while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD) >= 0) {
             jitter(pt, SHADOW_SEP_DIST);
         }
         int id = int(cells.size());
@@ -627,7 +624,7 @@ struct Voro {
             cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
             return false;
         }
-        while (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
+        while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
             jitter(pt, SHADOW_SEP_DIST);
         }
         
@@ -662,7 +659,7 @@ struct Voro {
             }
             
             glm::vec3 pt(posns[i][0].as<float>(), posns[i][1].as<float>(), posns[i][2].as<float>());
-            while (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
+            while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
                 jitter(pt, SHADOW_SEP_DIST);
             }
             

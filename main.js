@@ -666,10 +666,12 @@ function onDocumentKeyDown( event ) {
         }
     }
 
-
+    if (event.keyCode === 'K'.charCodeAt()) {
+        v3.voro.sanity('manual check');
+    }
     if (event.keyCode === 'S'.charCodeAt()) {
-        v3.enable_symmetry(new v3.symmetries.Mirror());
-        // v3.enable_symmetry(new v3.symmetries.Rotational(6));
+        // v3.enable_symmetry(new v3.symmetries.Mirror());
+        v3.enable_symmetry(new v3.symmetries.Rotational(6));
     }
     if (event.keyCode === 'D'.charCodeAt()) {
         v3.disable_symmetry();
