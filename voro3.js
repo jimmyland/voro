@@ -89,6 +89,25 @@ var Voro3 = function () {
         };
         this.undo = this.redo;
     };
+    var SetCellAct = function(cells, states) {
+        var cell_ids = that.inds_to_ids(cells);
+        var old_states = [];
+        for (var i=0; i<cells.length; i++) {
+            old_states.push(that.voro.cell_type(cells[i]));
+        }
+        this.set = function(what_states) {
+            var inds = that.ids_to_inds(cell_ids);
+            for (var i=0; i<inds.length; i++) {
+                that.voro.set_cell(inds[i], what_states[i]);
+            }
+        }
+        this.undo = function() {
+            this.set(old_states);
+        }
+        this.redo = function() {
+            this.set(states);
+        }
+    }
     var MoveAct = function(cells, pts, old_pts) {
         var moves = {};
         this.update = function(cells, pts, old_pts) {
@@ -495,6 +514,7 @@ var Voro3 = function () {
                     sym_map[id].linked.push(existing_id);
                     sym_map[existing_id] = {};
                     sym_map[existing_id].primary = id;
+                    this.set_cell(existing_cell, this.voro.cell_type(cell_ind), true);
                     continue;
                 }
             }
@@ -568,7 +588,19 @@ var Voro3 = function () {
             return l;
         }
     };
-    
+    this.set_cell = function(cell, state, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
+        if (cell < 0) { return; }
+        this.track_act(new SetCellAct([cell], [state]));
+        this.voro.set_cell(cell, state);
+        if (!sym_flag) {
+            if (this.active_sym) {
+                var slist = this.ordered_sym_list(cell);
+                for (var i=0; i<slist.length; i++) {
+                    this.set_cell(this.voro.index_from_id(slist[i]), state);
+                }
+            }
+        }
+    }
     this.toggle_cell = function(cell, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
         if (cell < 0) { return; }
         this.track_act(new ToggleAct([cell]));
