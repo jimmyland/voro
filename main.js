@@ -464,10 +464,22 @@ var VoroSettings = function() {
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
+    this.symmetry_type = 'Rotational';
+    this.symmetry_param = 6
     this.toggleSites = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
     };
+    this.symmetrify = function() {
+        var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational};
+        console.log(typeof (this.symmetry_type));
+        console.log(this.symmetry_type);
+        v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
+    }
+    this.delete_what_symmetrify_added = function() {
+        v3.disable_symmetry();
+        xf_manager.reset();
+    }
     
     this.regenerate = function() {
         xf_manager.reset();
@@ -623,11 +635,6 @@ function init() {
     datgui = new dat.GUI();
     settings = new VoroSettings();
     
-    var hasTouch = ('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-    if (hasTouch) {
-        settings.all_modes.push("toggle off");
-        settings.all_modes.push("delete");
-    }
     datgui.add(settings,'filename');
     datgui.add(settings,'exportAsSTL');
     datgui.add(settings,'downloadRaw');
@@ -635,6 +642,13 @@ function init() {
     datgui.add(settings,'save');
     datgui.add(settings,'load');
     datgui.add(settings,'toggleSites');
+
+    var symset = datgui.addFolder('Symmetry Settings');
+    symset.add(settings,'symmetry_type', ['Mirror', 'Rotational']);
+    symset.add(settings,'symmetry_param').min(2).step(1);;
+    symset.add(settings,'symmetrify');
+    symset.add(settings,'delete_what_symmetrify_added');
+    symset.open();
     
     var procgen = datgui.addFolder('Proc. Gen. Settings');
     
