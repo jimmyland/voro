@@ -100,14 +100,14 @@ var Voro3 = function () {
             for (var i=0; i<inds.length; i++) {
                 that.voro.set_cell(inds[i], what_states[i]);
             }
-        }
+        };
         this.undo = function() {
             this.set(old_states);
-        }
+        };
         this.redo = function() {
             this.set(states);
-        }
-    }
+        };
+    };
     var MoveAct = function(cells, pts, old_pts) {
         var moves = {};
         this.update = function(cells, pts, old_pts) {
@@ -136,6 +136,31 @@ var Voro3 = function () {
             }
         };
     };
+    var SetSymAct = function(sym_op, sym_map) {
+        var old_op = that.active_sym;
+        var new_op = sym_op;
+        var copy_map = function(map) { // clone symmetry map as deeply as needed (currently a shallow copy)
+            var m = {};
+            for (var k in map) {
+                m[k] = map[k];
+            }
+            return m;
+        };
+        var new_map = copy_map(sym_map);
+        var old_map = copy_map(that.sym_map);
+
+        this.redo = function() {
+            that.sym_map = copy_map(new_map);
+            that.active_sym = new_op;
+        };
+        this.undo = function() {
+            that.sym_map = copy_map(old_map);
+            that.active_sym = old_op;
+        };
+    };
+    // var UpdateSymAct = function(add_to_map, delete_from_map) {
+
+    // }
 
 
     this.undo = function(seq) {
@@ -403,7 +428,6 @@ var Voro3 = function () {
     };
     this.update_sites = function() {
         var num_sites = this.voro.cell_count();
-        var current_sites_ptr = this.voro.gl_cell_sites();
         this.alloc_sites(this.sites_geometry, true);
         this.sites_geometry.setDrawRange(0, num_sites);
         this.sites_geometry.attributes.position.needsUpdate = true;
@@ -411,7 +435,6 @@ var Voro3 = function () {
     };
     this.update_geometry = function () {
         var num_tris = this.voro.gl_tri_count();
-        var current_verts_ptr = this.voro.gl_vertices();
         this.alloc_geometry(this.geometry, true);
         this.geometry.setDrawRange(0, num_tris*3);
         this.geometry.attributes.position.needsUpdate = true;
@@ -419,7 +442,6 @@ var Voro3 = function () {
     };
     this.update_preview = function() {
         var num_verts = this.voro.gl_wire_vert_count();
-        var current_verts_ptr = this.voro.gl_wire_vertices();
         this.alloc_preview(this.preview_geometry, true);
         this.preview_geometry.setDrawRange(0, num_verts);
         this.preview_geometry.attributes.position.needsUpdate = true;
@@ -476,7 +498,7 @@ var Voro3 = function () {
             this.op = function(pt) {
                 var pnew = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
                 return pnew;
-            }
+            };
         }
     };
     this.sym_map = {};
@@ -484,6 +506,7 @@ var Voro3 = function () {
 
     this.disable_symmetry = function() {
         if (this.active_sym) {
+            this.track_act(new SetSymAct(null, {}));
             this.active_sym = null;
             for (var id in this.sym_map) {
                 if (this.sym_map[id].primary != id) {
@@ -535,6 +558,8 @@ var Voro3 = function () {
         for (var i=0; i<orig_cells; i++) {
             this.make_sym_cell(sym_map, sym_op, i);
         }
+
+        this.track_act(new SetSymAct(sym_op, sym_map));
 
         // setting these two activates the symmetry
         this.sym_map = sym_map;
@@ -600,7 +625,7 @@ var Voro3 = function () {
                 }
             }
         }
-    }
+    };
     this.toggle_cell = function(cell, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
         if (cell < 0) { return; }
         this.track_act(new ToggleAct([cell]));
@@ -617,9 +642,10 @@ var Voro3 = function () {
     };
     this.delete_cell = function(cell) {
         var cell_list = [cell];
+        var i;
         if (this.active_sym) {
             var slist = this.ordered_sym_list(cell);
-            for (var i=0; i<slist.length; i++) {
+            for (i=0; i<slist.length; i++) {
                 var sid = slist[i];
                 cell_list.push(this.voro.index_from_id(sid));
                 //delete this.sym_map[sid]; // todo: add this line when we track symmetry state across undo/redo properly
@@ -628,7 +654,7 @@ var Voro3 = function () {
             //delete this.sym_map[id]; // todo: add this line when we track symmetry state across undo/redo properly
         }
         this.track_act(new DeleteAct(cell_list));
-        for (var i=0; i<cell_list.length; i++) {
+        for (i=0; i<cell_list.length; i++) {
             this.voro.delete_cell(cell_list[i]);
         }
         this.update_geometry(); 

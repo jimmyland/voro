@@ -450,21 +450,19 @@ var VoroSettings = function() {
     this.seed = 'qq';
     this.fill_level = 0.0;
     this.symmetry_type = 'Rotational';
-    this.symmetry_param = 6
+    this.symmetry_param = 6;
     this.toggleSites = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
     };
     this.symmetrify = function() {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational};
-        console.log(typeof (this.symmetry_type));
-        console.log(this.symmetry_type);
         v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
-    }
+    };
     this.delete_what_symmetrify_added = function() {
         v3.disable_symmetry();
         xf_manager.reset();
-    }
+    };
     
     this.regenerate = function() {
         xf_manager.reset();
@@ -630,7 +628,7 @@ function init() {
 
     var symset = datgui.addFolder('Symmetry Settings');
     symset.add(settings,'symmetry_type', ['Mirror', 'Rotational']);
-    symset.add(settings,'symmetry_param').min(2).step(1);;
+    symset.add(settings,'symmetry_param').min(2).step(1);
     symset.add(settings,'symmetrify');
     symset.add(settings,'delete_what_symmetrify_added');
     symset.open();
