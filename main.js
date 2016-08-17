@@ -458,10 +458,12 @@ var VoroSettings = function() {
     this.symmetrify = function() {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational};
         v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
+        addToUndoQIfNeeded();
     };
     this.delete_what_symmetrify_added = function() {
         v3.disable_symmetry();
         xf_manager.reset();
+        addToUndoQIfNeeded();
     };
     
     this.regenerate = function() {
