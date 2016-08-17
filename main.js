@@ -443,21 +443,6 @@ var Generators = {
 };
 
 var VoroSettings = function() {
-    this.all_modes = ['camera', 'toggle', 'add/delete', 'move', 'move neighbor'];
-    this.mode_index = function(name) {
-        for (var i=0; i<this.all_modes.length; i++) {
-            if (name === this.all_modes[i])
-                return i;
-        }
-        return null;
-    };
-    this.next_mode = function() {
-        var i = this.mode_index(this.mode);
-        if (i !== null) {
-            this.mode = this.all_modes[(i+1)%this.all_modes.length];
-            return;
-        }
-    };
     this.mode = 'move';
     // this.generator = 'uniform random';
     this.generator = 'gyrobifastigia';
@@ -678,17 +663,6 @@ function onDocumentKeyDown( event ) {
         } else {
             undo_q.undo();
         }
-    }
-
-    if (event.keyCode === 'K'.charCodeAt()) {
-        v3.voro.sanity('manual check');
-    }
-    if (event.keyCode === 'S'.charCodeAt()) {
-        // v3.enable_symmetry(new v3.symmetries.Mirror());
-        v3.enable_symmetry(new v3.symmetries.Rotational(6));
-    }
-    if (event.keyCode === 'D'.charCodeAt()) {
-        v3.disable_symmetry();
     }
     
     xf_manager.keydown(event);
