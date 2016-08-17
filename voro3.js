@@ -395,8 +395,9 @@ var Voro3 = function () {
         if (this.active_sym) {
             if (!skip_sym) { // add extra points 
                 this.make_sym_cell(this.sym_map, this.active_sym, cell);
+                var cell_id = this.voro.stable_id(cell);
+                this.track_act(new UpdateSymAct([cell_id].concat(this.sym_map[cell_id].linked), []));
             }
-            this.track_act(new UpdateSymAct([this.voro.stable_id(cell)], []));
         }
         this.track_act(new AddAct([cell],[pt],[state]));
         return cell;
@@ -683,10 +684,9 @@ var Voro3 = function () {
                 delete this.sym_map[keys_to_kill[i]];
             }
         }
-        this.track_act(new DeleteAct(cell_list));
-        for (i=0; i<cell_list.length; i++) {
-            this.voro.delete_cell(cell_list[i]);
-        }
+        var act = new DeleteAct(cell_list);
+        this.track_act(act);
+        act.redo();
         this.update_geometry(); 
     };
     this.cell_pos = function(cell) {
