@@ -160,7 +160,6 @@ var Voro3 = function () {
     };
     var UpdateSymAct = function(add_ids, delete_ids) {
         var collect_values = function(ids) {
-            console.log("collecting ids: " + ids);
             var v = {};
             for (var i=0; i<ids.length; i++) {
                 v[ids[i]] = that.sym_map[ids[i]];
@@ -168,14 +167,12 @@ var Voro3 = function () {
             return v;
         };
         var clean_ids = function(ids) {
-            console.log("cleaning ids: " + ids);
             for (var i=0; i<ids.length; i++) {
                 delete that.sym_map[ids[i]];
             }
         };
         var restore_values = function(vals) {
             for (var id in vals) {
-                console.log("restoring id: " + id);
                 that.sym_map[id] = vals[id];
             }
         };
@@ -188,7 +185,7 @@ var Voro3 = function () {
         this.redo = function() {
             clean_ids(delete_ids);
             restore_values(add_values);
-        }
+        };
     };
 
 
@@ -683,7 +680,7 @@ var Voro3 = function () {
             keys_to_kill.push(this.voro.stable_id(cell));
             this.track_act(new UpdateSymAct([], keys_to_kill));
             for (i=0; i<keys_to_kill.length; i++) {
-                delete this.sym_map[keys_to_kill[id]];
+                delete this.sym_map[keys_to_kill[i]];
             }
         }
         this.track_act(new DeleteAct(cell_list));

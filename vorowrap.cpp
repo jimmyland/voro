@@ -798,12 +798,12 @@ struct Voro {
     }
     
     size_t stable_id(int cell) {
-
         if (!cell_to_id.count(cell)) {
             auto id = tracked_ids++;
             cell_to_id[cell] = id;
             id_to_cell[id] = cell;
         }
+        assert(id_to_cell[cell_to_id[cell]] == cell);
         return cell_to_id[cell];
     }
     // use this to re-associate cells to ids, e.g. if you undo a deletion.
@@ -822,6 +822,7 @@ struct Voro {
         if (!id_to_cell.count(id)) {
             return -1;
         } else {
+            assert(cell_to_id[id_to_cell[id]] == id);
             return id_to_cell[id];
         }
     }
@@ -855,6 +856,7 @@ protected:
         if (cell_to_id.count(new_index)) {
             auto id_to_remove = cell_to_id[new_index];
             id_to_cell.erase(id_to_remove);
+            cell_to_id.erase(new_index);
         }
         if (cell_to_id.count(old_index)) {
             auto id = cell_to_id[old_index];
