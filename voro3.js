@@ -158,9 +158,38 @@ var Voro3 = function () {
             that.active_sym = old_op;
         };
     };
-    // var UpdateSymAct = function(add_to_map, delete_from_map) {
-
-    // }
+    var UpdateSymAct = function(add_ids, delete_ids) {
+        var collect_values = function(ids) {
+            console.log("collecting ids: " + ids);
+            var v = {};
+            for (var i=0; i<ids.length; i++) {
+                v[ids[i]] = that.sym_map[ids[i]];
+            }
+            return v;
+        };
+        var clean_ids = function(ids) {
+            console.log("cleaning ids: " + ids);
+            for (var i=0; i<ids.length; i++) {
+                delete that.sym_map[ids[i]];
+            }
+        };
+        var restore_values = function(vals) {
+            for (var id in vals) {
+                console.log("restoring id: " + id);
+                that.sym_map[id] = vals[id];
+            }
+        };
+        var add_values = collect_values(add_ids);
+        var delete_values = collect_values(delete_ids);
+        this.undo = function() {
+            restore_values(delete_values);
+            clean_ids(add_ids);
+        };
+        this.redo = function() {
+            clean_ids(delete_ids);
+            restore_values(add_values);
+        }
+    };
 
 
     this.undo = function(seq) {
@@ -366,8 +395,11 @@ var Voro3 = function () {
             state = true;
         }
         var cell = this.voro.add_cell(pt, state);
-        if (this.active_sym && !skip_sym) { // if sym active, add extra points
-            this.make_sym_cell(this.sym_map, this.active_sym, cell);
+        if (this.active_sym) {
+            if (!skip_sym) { // add extra points 
+                this.make_sym_cell(this.sym_map, this.active_sym, cell);
+            }
+            this.track_act(new UpdateSymAct([this.voro.stable_id(cell)], []));
         }
         this.track_act(new AddAct([cell],[pt],[state]));
         return cell;
@@ -411,10 +443,8 @@ var Voro3 = function () {
                     for (var ii=0; ii<slist.length; ii++) {
                         p = this.active_sym.op(p);
                         var index_to_add = this.voro.index_from_id(slist[ii]);
-                        if (index_to_add >= 0) { // todo: remove this if condition once we have shadow points implemented
-                            sym_pts.push(p);
-                            sym_cells.push(index_to_add);
-                        }
+                        sym_pts.push(p);
+                        sym_cells.push(index_to_add);
                     }
                     did_sym_for[pid] = true;
                 }
@@ -577,7 +607,6 @@ var Voro3 = function () {
         if (cell < 0) {
             return;
         }
-        // todo add sym previews
         this.voro.gl_add_wires(cell);
         if (this.active_sym && !sym_flag) {
             var l = this.ordered_sym_list(cell);
@@ -645,13 +674,17 @@ var Voro3 = function () {
         var i;
         if (this.active_sym) {
             var slist = this.ordered_sym_list(cell);
+            var keys_to_kill = [];
             for (i=0; i<slist.length; i++) {
                 var sid = slist[i];
                 cell_list.push(this.voro.index_from_id(sid));
-                //delete this.sym_map[sid]; // todo: add this line when we track symmetry state across undo/redo properly
+                keys_to_kill.push(sid);
             }
-            //var id = this.voro.stable_id(cell); // todo: add this line when we track symetry state across undo/redo properly
-            //delete this.sym_map[id]; // todo: add this line when we track symmetry state across undo/redo properly
+            keys_to_kill.push(this.voro.stable_id(cell));
+            this.track_act(new UpdateSymAct([], keys_to_kill));
+            for (i=0; i<keys_to_kill.length; i++) {
+                delete this.sym_map[keys_to_kill[id]];
+            }
         }
         this.track_act(new DeleteAct(cell_list));
         for (i=0; i<cell_list.length; i++) {
