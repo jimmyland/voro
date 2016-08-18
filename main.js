@@ -97,7 +97,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         this.positions = new Float32Array(this.max_points*3);
         this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         this.geom.setDrawRange(0, 0);
-        this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0xff00ff, depthTest: false, depthWrite: false } );
+        this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0x00ffff, depthTest: false, depthWrite: false } );
         this.mat.visible = false;
         this.pts = new THREE.Points(this.geom, this.mat);
         this.geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), 100000); // just make it huge; we don't care about the bounding sphere.
@@ -230,9 +230,13 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.positions = new Float32Array(this.max_points*3);
             this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         }
+        // reset all transforms; we'll rebuild attachments from scratch
+        this.pts.scale.set(1,1,1);
+        this.pts.quaternion.set(0,0,0,1);
+        this.pts.updateMatrix();
+        this.pts.updateMatrixWorld(true);
 
         // set the cell positions
-        this.geom.setDrawRange(0, cells.length);
         var center = [0,0,0];
         var p0 = this.v3.cell_pos(cells[0]);
         center = p0; // center at p0 for now; todo: revisit where the center of the selection should be?  1st cell clicked OR centroid of cells OR other?
@@ -243,7 +247,6 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.positions[i*3+1] = pi[1]-center[1];
             this.positions[i*3+2] = pi[2]-center[2];
         }
-        this.geom.attributes.position.needsUpdate = true;
 
         // position and hook up the whole pointcloud
         this.pts.position.set(center[0], center[1], center[2]);
