@@ -895,7 +895,7 @@ var Voro3 = function () {
         // if we're done, check sanity
         if (chaos_limit !== null && chaos_limit === 0) {
             console.log("chaos over -- checking sanity at end ...");
-            this.voro.set_sanity_level(9001);
+            this.voro.set_sanity_level(1);
             sanity = this.sanity("after chaos");
             console.log("sanity = " + sanity);
         }
