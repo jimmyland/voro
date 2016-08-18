@@ -634,7 +634,7 @@ function init() {
 
     var symset = datgui.addFolder('Symmetry Settings');
     symset.add(settings,'symmetry_type', ['Mirror', 'Rotational']);
-    symset.add(settings,'symmetry_param').min(2).step(1);
+    symset.add(settings,'symmetry_param').max(12).min(2).step(1);
     symset.add(settings,'symmetrify');
     symset.add(settings,'delete_what_symmetrify_added');
     symset.open();
