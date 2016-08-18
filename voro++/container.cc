@@ -276,22 +276,79 @@ inline bool container_base::put_remap(int &ijk,double &x,double &y,double &z) {
 	return true;
 }
     
-bool container_base::already_in_block(double x, double y, double z, double threshold, int except_cell) {
+inline bool container_base::put_remap_with_offset(int &ijk,double &x,double &y,double &z, int off[3]) {
+    int l;
+    
+    ijk=step_int((x-ax)*xsp)+off[0];
+    if(xperiodic) {l=step_mod(ijk,nx);x+=boxx*(l-ijk);ijk=l;}
+    else if(ijk<0||ijk>=nx) return false;
+    
+    int j=step_int((y-ay)*ysp)+off[1];
+    if(yperiodic) {l=step_mod(j,ny);y+=boxy*(l-j);j=l;}
+    else if(j<0||j>=ny) return false;
+    
+    int k=step_int((z-az)*zsp)+off[2];
+    if(zperiodic) {l=step_mod(k,nz);z+=boxz*(l-k);k=l;}
+    else if(k<0||k>=nz) return false;
+    
+    ijk+=nx*j+nxy*k;
+    return true;
+}
+
+int container_base::already_in_container(double x, double y, double z, double threshold, int except_cell) {
     int ijk;
     
-    bool inblock = false;
+    int n_in_dim[] = {1,1,1};
+    int offs[3][2] = {{0,0},{0,0},{0,0}};
+    double diffs[] = {fmod(x-ax+boxx*.5, boxx)-boxx*.5, fmod(y-ay+boxy*.5, boxy)-boxy*.5, fmod(z-az+boxz*.5, boxz)-boxz*.5};
+    for (int i=0; i<3; i++) {
+        if (diffs[i]*diffs[i] < threshold) {
+            offs[i][n_in_dim[i]] = (diffs[i]<0) ? 1 : -1;
+            n_in_dim[i]++;
+        }
+    }
+
+    int off[3] = {0,0,0};
+    for (int i=0; i<n_in_dim[0]; i++) {
+        off[0] = offs[0][i];
+        for (int j=0; j<n_in_dim[1]; j++) {
+            off[1] = offs[1][j];
+            for (int k=0; k<n_in_dim[2]; k++) {
+                off[2] = offs[2][k];
+                double xx = x, yy = y, zz = z;
+                if(put_remap_with_offset(ijk,xx,yy,zz,off)) {
+                    for (int ii=0; ii<co[ijk]; ii++) {
+                        if (id[ijk][ii] == except_cell) { continue; }
+                        double *pp = p[ijk]+ii*ps;
+                        double dx = *(pp++) - xx;
+                        double dy = *(pp++) - yy;
+                        double dz = *(pp++) - zz;
+                        double dsq = dx*dx+dy*dy+dz*dz;
+                        if (dsq < threshold) { return id[ijk][ii]; }
+                    }
+
+                }
+            }
+        }
+    }
+    return -1;
+}
+    
+int container_base::already_in_block(double x, double y, double z, double threshold, int except_cell) {
+    int ijk;
+    
     if(put_remap(ijk,x,y,z)) {
         for (int i=0; i<co[ijk]; i++) {
-            if (id[ijk][i] == except_cell) continue;
+            if (id[ijk][i] == except_cell) { continue; }
             double *pp = p[ijk]+i*ps;
             double dx = *(pp++) - x;
             double dy = *(pp++) - y;
             double dz = *(pp++) - z;
             double dsq = dx*dx+dy*dy+dz*dz;
-            inblock = inblock || (dsq < threshold);
+            if (dsq < threshold) { return id[ijk][i]; }
         }
     }
-    return inblock;
+    return -1;
 }
 
 /** Takes a position vector and attempts to remap it into the primary domain.

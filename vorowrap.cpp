@@ -32,7 +32,14 @@ using namespace emscripten;
 //              these inconsistencies make maintaining the diagram over time much more difficult
 //                  - cell shapes begin to depend on insertion order
 //                  - it seems that cells can be created in ways that would break the sanity check? e.g., broken back-links
-#define SHADOW_THRESHOLD .00001
+#define SHADOW_SEP_DIST .003
+#define SHADOW_THRESHOLD (SHADOW_SEP_DIST*SHADOW_SEP_DIST)
+
+inline void jitter(glm::vec3 &pt, double amt) {
+    pt.x+=amt*(rand()%10000)/10000.0;
+    pt.y+=amt*(rand()%10000)/10000.0;
+    pt.z+=amt*(rand()%10000)/10000.0;
+}
 
 #ifdef INSANITY
 #define SANITY(WHEN) {}
@@ -431,8 +438,9 @@ struct Voro {
                                 cache.create(cells[i].pos, gl_computed.vorocell);
                                 auto &vs = gl_computed.info[i]->cache;
                                 valid = compare_vecs(vs.neighbors, cache.neighbors, "neighbors", i) && valid;
-                                valid = compare_vecs(vs.faces, cache.faces, "faces", i) && valid;
-    //                            valid = compare_vecs(vs.vertices, cache.vertices, "vertices", i) && valid;
+//                                bool fvalid = compare_vecs(vs.faces, cache.faces, "faces", i);
+//                                valid = fvalid && valid;
+//                                valid = compare_vecs(vs.vertices, cache.vertices, "vertices", i) && valid;
                             }
                         }
                     }
@@ -560,34 +568,32 @@ struct Voro {
     void build_container() {
         clear_computed(); // clear out any existing computation
         
-        // Use a pre_container to automatically figure out the right settings for the container we create
-        voro::pre_container pcon(b_min.x,b_max.x,b_min.y,b_max.y,b_min.z,b_max.z,false,false,false);
-        for (int i=0; i<cells.size(); i++) {
-            pcon.put(i,cells[i].pos.x,cells[i].pos.y,cells[i].pos.z);
-        }
-        
-        // Set up the number of blocks that the container is divided into
-        int n_x, n_y, n_z;
-        pcon.guess_optimal(n_x,n_y,n_z);
-        
-        // Set up the container class and import the particles from the pre-container
-        con = new voro::container(pcon.ax,pcon.bx,pcon.ay,pcon.by,pcon.az,pcon.bz,n_x,n_y,n_z,false,false,false,10);
-        pcon.setup(*con);
+        auto d = b_max-b_min;
+        float ilscale = pow(double(cells.size())/(voro::optimal_particles*d.x*d.y*d.z),1.0/3.0);
+        auto n = d*ilscale;
+        con = new voro::container(b_min.x,b_max.x,b_min.y,b_max.y,b_min.z,b_max.z,int(n.x+1),int(n.y+1),int(n.z+1),false,false,false,10);
         
         // build links
         assert(links.size() == 0);
         links.resize(cells.size());
-        voro::c_loop_all vl(*con);
-        if(vl.start()) do {
-            links[vl.pid()].set(vl);
-        } while(vl.inc());
+        for (int i=0; i<cells.size(); i++) {
+            auto &link = links[i];
+            auto &pt = cells[i].pos;
+            while (con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD) >= 0) {
+                jitter(pt, SHADOW_SEP_DIST);
+            }
+            bool ret = con->put(i, pt.x, pt.y, pt.z, link.ijk, link.q);
+            if (!ret) { link = CellConLink(); } // reset link if put fails
+        }
+    }
+    
+    int cell_at_pos(glm::vec3 pt) {
+        return con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD);
     }
     
     int add_cell(glm::vec3 pt, int type) {
-        if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD)) {
-            // todo: implement a proper notion of shadowing, not this hack.
-            cout << "not adding cell; it's too close!" << endl;
-            return -1;
+        while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD) >= 0) {
+            jitter(pt, SHADOW_SEP_DIST);
         }
         int id = int(cells.size());
         
@@ -618,10 +624,8 @@ struct Voro {
             cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
             return false;
         }
-        if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell)) {
-            // todo: implement shadowing
-            cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
-            return false;
+        while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
+            jitter(pt, SHADOW_SEP_DIST);
         }
         
         cells[cell].pos = pt;
@@ -655,9 +659,8 @@ struct Voro {
             }
             
             glm::vec3 pt(posns[i][0].as<float>(), posns[i][1].as<float>(), posns[i][2].as<float>());
-            if (con && con->already_in_block(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell)) {
-                cout << "can't move cell on top of another cell until shadowing is implemented" << endl;
-                continue;
+            while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
+                jitter(pt, SHADOW_SEP_DIST);
             }
             
             cells[cell].pos = pt;
@@ -795,12 +798,12 @@ struct Voro {
     }
     
     size_t stable_id(int cell) {
-
         if (!cell_to_id.count(cell)) {
             auto id = tracked_ids++;
             cell_to_id[cell] = id;
             id_to_cell[id] = cell;
         }
+        assert(id_to_cell[cell_to_id[cell]] == cell);
         return cell_to_id[cell];
     }
     // use this to re-associate cells to ids, e.g. if you undo a deletion.
@@ -819,6 +822,7 @@ struct Voro {
         if (!id_to_cell.count(id)) {
             return -1;
         } else {
+            assert(cell_to_id[id_to_cell[id]] == id);
             return id_to_cell[id];
         }
     }
@@ -837,7 +841,7 @@ protected:
     
     voro::container *con;
     int sanity_level; // level of error checking.  define "INSANITY" for zero error checking
-    // note: the below three vectors MUST be kept in 1:1, ordered correspondence with the cells vector
+    // note: links vector MUST be kept in 1:1, ordered correspondence with the cells vector
     vector<CellConLink> links; // link cells to container
     GLBufferManager gl_computed;
     
@@ -852,6 +856,7 @@ protected:
         if (cell_to_id.count(new_index)) {
             auto id_to_remove = cell_to_id[new_index];
             id_to_cell.erase(id_to_remove);
+            cell_to_id.erase(new_index);
         }
         if (cell_to_id.count(old_index)) {
             auto id = cell_to_id[old_index];
@@ -1085,6 +1090,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_pos", &Voro::cell_pos)
     .function("cell_type", &Voro::cell_type)
     .function("cell", &Voro::cell)
+    .function("cell_at_pos", &Voro::cell_at_pos)
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
     .function("gl_build", &Voro::gl_build)
