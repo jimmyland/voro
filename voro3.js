@@ -438,9 +438,9 @@ var Voro3 = function () {
                     var p = pts_arr[i];
                     sym_pts.push(p);
                     sym_cells.push(cell);
-                    for (var ii=0; ii<slist.length; ii++) {
-                        p = this.active_sym.op(p);
-                        var index_to_add = this.voro.index_from_id(slist[ii]);
+                    for (var ii=0; ii<slist[0].length; ii++) {
+                        p = this.active_sym.op(p, slist[1]+ii);
+                        var index_to_add = this.voro.index_from_id(slist[0][ii]);
                         sym_pts.push(p);
                         sym_cells.push(index_to_add);
                     }
@@ -514,7 +514,7 @@ var Voro3 = function () {
     this.symmetries = {
         Mirror: function() {
             this.iters = 1;
-            this.op = function(pt) {
+            this.op = function(pt, i) {
                 return [-pt[0], pt[1], pt[2]];
             };
         },
@@ -523,8 +523,29 @@ var Voro3 = function () {
             this.theta = 2.0*Math.PI / rotations;
             this.cos = Math.cos(this.theta);
             this.sin = Math.sin(this.theta);
-            this.op = function(pt) {
+            this.op = function(pt, i) {
                 var pnew = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
+                return pnew;
+            };
+        },
+        Scale: function(scales) {
+            this.iters = scales-1;
+            this.scale = 0.9
+            var invert = function(s) {
+                var inv = 1.0/s;
+                var acc = 1.0;
+                for (var i=0; i<scales-1; i++) {
+                    acc = acc*inv;
+                }
+                return acc;
+            }
+            this.inverse = invert(this.scale);
+            this.op = function(pt, i) {
+                var s = this.scale;
+                if ((i+1)%scales===0) {
+                    s = this.inverse;
+                }
+                var pnew = [pt[0]*s, pt[1]*s, pt[2]*s];
                 return pnew;
             };
         }
@@ -557,7 +578,7 @@ var Voro3 = function () {
         var p = cell.pos;
         var type = cell.type;
         for (var iter=0; iter<sym_op.iters; iter++) {
-            p = sym_op.op(p);
+            p = sym_op.op(p,iter);
             var existing_cell = this.voro.cell_at_pos(p);
             if (existing_cell >= 0 && existing_cell != cell_ind) {
                 var existing_id = this.voro.stable_id(existing_cell);
@@ -608,8 +629,8 @@ var Voro3 = function () {
         this.voro.gl_add_wires(cell);
         if (this.active_sym && !sym_flag) {
             var l = this.ordered_sym_list(cell);
-            for (var i=0; i<l.length; i++) {
-                this.add_preview(this.voro.index_from_id(l[i]), true);
+            for (var i=0; i<l[0].length; i++) {
+                this.add_preview(this.voro.index_from_id(l[0][i]), true);
             }
         }
         this.preview_lines.visible = true;
@@ -631,13 +652,13 @@ var Voro3 = function () {
         var pid = this.sym_map[id].primary;
         var linked = this.sym_map[pid].linked;
         if (id === pid) {
-            return linked;
+            return [linked, 0];
         } else {
             var ind = linked.indexOf(id);
             var l = linked.slice(ind+1,linked.length);
             l.push(pid);
             l = l.concat(linked.slice(0,ind));
-            return l;
+            return [l, ind+1];
         }
     };
     this.set_cell = function(cell, state, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
@@ -647,8 +668,8 @@ var Voro3 = function () {
         if (!sym_flag) {
             if (this.active_sym) {
                 var slist = this.ordered_sym_list(cell);
-                for (var i=0; i<slist.length; i++) {
-                    this.set_cell(this.voro.index_from_id(slist[i]), state);
+                for (var i=0; i<slist[0].length; i++) {
+                    this.set_cell(this.voro.index_from_id(slist[0][i]), state);
                 }
             }
         }
@@ -660,8 +681,8 @@ var Voro3 = function () {
         if (!sym_flag) {
             if (this.active_sym) {
                 var slist = this.ordered_sym_list(cell);
-                for (var i=0; i<slist.length; i++) {
-                    this.toggle_cell(this.voro.index_from_id(slist[i]), true);
+                for (var i=0; i<slist[0].length; i++) {
+                    this.toggle_cell(this.voro.index_from_id(slist[0][i]), true);
                 }
             }
             this.update_geometry();
@@ -673,8 +694,8 @@ var Voro3 = function () {
         if (this.active_sym) {
             var slist = this.ordered_sym_list(cell);
             var keys_to_kill = [];
-            for (i=0; i<slist.length; i++) {
-                var sid = slist[i];
+            for (i=0; i<slist[0].length; i++) {
+                var sid = slist[0][i];
                 cell_list.push(this.voro.index_from_id(sid));
                 keys_to_kill.push(sid);
             }
