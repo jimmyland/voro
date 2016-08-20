@@ -93,10 +93,8 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.init_geom = function() {
         // init geom, mat, pts, positions to represent a point cloud w/ no points initially
-        this.geom = new THREE.BufferGeometry();
+        this.geom = new THREE.Geometry();
         this.positions = new Float32Array(this.max_points*3);
-        this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
-        this.geom.setDrawRange(0, 0);
         this.mat = new THREE.PointsMaterial( { size: 0.2, color: 0x00ffff, depthTest: false, depthWrite: false } );
         this.mat.visible = false;
         this.pts = new THREE.Points(this.geom, this.mat);
@@ -146,7 +144,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.deselect();
         }
         
-        if (this.mat.visible) {
+        if (this.controls.visible) {
             if (event.keyCode === 'W'.charCodeAt()) {
                 this.controls.setMode("translate");
             }
@@ -177,8 +175,8 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.over_axis = function() { return this.controls && this.controls.axis; };
     this.dragging = function() { return this.controls && this.controls.visible && this.controls._dragging; };
-    this.dragging_custom = function() { return this.mat && this.mat.visible && this.plane; };
-    this.active = function() { return this.cells.length > 0 && this.mat && this.mat.visible && this.plane; };
+    this.dragging_custom = function() { return this.mat && this.plane; };
+    this.active = function() { return this.cells.length > 0 && this.mat && this.plane; };
 
     this.drag_custom = function(mouse) {
         if (this.controls) {
@@ -205,7 +203,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
     this.move_cells = function() { // assume this.cells is 1:1 w/ the points in this.geom
         this.pts.updateMatrixWorld();
-        var p = this.geom.attributes.position.array;
+        var p = this.positions;
         var v = new THREE.Vector3();
         var posns = [];
         for (var i=0; i<this.cells.length; i++) {
@@ -226,9 +224,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
         // re-alloc verts if needed
         if (cells.length > this.max_points) {
             this.max_points = Math.max(this.max_points*2, cells.length);
-            this.geom.removeAttribute('position');
             this.positions = new Float32Array(this.max_points*3);
-            this.geom.addAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         }
         // reset all transforms; we'll rebuild attachments from scratch
         this.pts.scale.set(1,1,1);
@@ -250,7 +246,6 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
         // position and hook up the whole pointcloud
         this.pts.position.set(center[0], center[1], center[2]);
-        this.mat.visible = true;
         this.controls.attach(this.pts);
     };
 
