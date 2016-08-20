@@ -452,14 +452,15 @@ var VoroSettings = function() {
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
-    this.symmetry_type = 'Rotational';
-    this.symmetry_param = 4;
+    this.symmetry_type = 'Dihedral';
+    this.symmetry_param = 3;
     this.toggleSites = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
     };
     this.symmetrify = function() {
-        var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, Scale: v3.symmetries.Scale};
+        var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
+                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
         v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
         xf_manager.reset();
         addToUndoQIfNeeded();
@@ -633,7 +634,7 @@ function init() {
     datgui.add(settings,'toggleSites');
 
     var symset = datgui.addFolder('Symmetry Settings');
-    symset.add(settings,'symmetry_type', ['Mirror', 'Rotational', 'Scale']);
+    symset.add(settings,'symmetry_type', ['Mirror', 'Rotational', 'Scale', 'Dihedral']);
     symset.add(settings,'symmetry_param').max(12).min(2).step(1);
     symset.add(settings,'symmetrify');
     symset.add(settings,'delete_what_symmetrify_added');
@@ -668,6 +669,12 @@ function onDocumentKeyDown( event ) {
             undo_q.undo();
         }
     }
+
+    // debugging key does custom debug-related stuff
+    // if (event.keyCode == "D".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+    //     v3.alloc_geometry(v3.geometry);
+    //     v3.update_geometry();
+    // }
     
     xf_manager.keydown(event);
     // not sure this feature was actually useful ...

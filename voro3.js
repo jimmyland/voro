@@ -528,6 +528,20 @@ var Voro3 = function () {
                 return pnew;
             };
         },
+        Dihedral: function(rotations) {
+            this.iters = 2*rotations-1;
+            this.theta = 2.0*Math.PI / rotations;
+            this.cos = Math.cos(this.theta);
+            this.sin = Math.sin(this.theta);
+            this.op = function(pt, i) {
+                // always mirror
+                pt = [pt[0]*this.cos+pt[1]*this.sin, pt[0]*this.sin-pt[1]*this.cos, pt[2]];
+                if ((i % 2) === 1) { // alternately rotate
+                    pt = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
+                }
+                return pt;
+            };
+        },
         Scale: function(scales) {
             this.iters = scales-1;
             this.scale = 0.9
