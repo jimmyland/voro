@@ -728,8 +728,13 @@ function addToUndoQIfNeeded() {
 
 function doAddDelClick(button, mouse) {
     if (settings.mode === 'add/delete' || settings.mode === 'delete') {
-        if (button === 2 || settings.mode === 'delete') {
-            var cell = v3.raycast(mouse, camera, raycaster);
+        if (button === 2 || settings.mode === 'delete' || settings.mode === 'delete neighbor') {
+            var cell;
+            if ((button === 2 && settings.mode === 'delete') || settings.mode === 'delete neighbor') {
+                cell = v3.raycast_neighbor(mouse, camera, raycaster);
+            } else {
+                cell = v3.raycast(mouse, camera, raycaster);
+            }
             v3.delete_cell(cell);
             xf_manager.deselect();
         } else {
