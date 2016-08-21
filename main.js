@@ -728,9 +728,9 @@ function addToUndoQIfNeeded() {
 
 function doAddDelClick(button, mouse) {
     if (settings.mode === 'add/delete' || settings.mode === 'delete') {
-        if (button === 2 || settings.mode === 'delete' || settings.mode === 'delete neighbor') {
+        if (settings.mode === 'delete') {
             var cell;
-            if ((button === 2 && settings.mode === 'delete') || settings.mode === 'delete neighbor') {
+            if (button === 2) {
                 cell = v3.raycast_neighbor(mouse, camera, raycaster);
             } else {
                 cell = v3.raycast(mouse, camera, raycaster);
@@ -740,7 +740,8 @@ function doAddDelClick(button, mouse) {
         } else {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
-                var added_cell = v3.add_cell(pt);
+                var state = (button === 2) ? 0 : 1;
+                var added_cell = v3.add_cell(pt, state);
                 xf_manager.attach([added_cell]);
             }
         }
