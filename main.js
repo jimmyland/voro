@@ -460,8 +460,8 @@ var VoroSettings = function() {
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
-    this.delete_what_symmetrify_added = function() {
-        v3.disable_symmetry();
+    this.bake_symmetry = function() {
+        v3.bake_symmetry();
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
@@ -632,7 +632,7 @@ function init() {
     symset.add(settings,'symmetry_type', ['Mirror', 'Rotational', 'Scale', 'Dihedral']);
     symset.add(settings,'symmetry_param').max(12).min(2).step(1);
     symset.add(settings,'symmetrify');
-    symset.add(settings,'delete_what_symmetrify_added');
+    symset.add(settings,'bake_symmetry');
     symset.open();
     
     var procgen = datgui.addFolder('Proc. Gen. Settings');

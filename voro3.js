@@ -514,7 +514,7 @@ var Voro3 = function () {
     this.symmetries = {
         Mirror: function() {
             this.iters = 1;
-            this.op = function(pt, i) {
+            this.op = function(pt) {
                 return [-pt[0], pt[1], pt[2]];
             };
         },
@@ -523,7 +523,7 @@ var Voro3 = function () {
             this.theta = 2.0*Math.PI / rotations;
             this.cos = Math.cos(this.theta);
             this.sin = Math.sin(this.theta);
-            this.op = function(pt, i) {
+            this.op = function(pt) {
                 var pnew = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
                 return pnew;
             };
@@ -544,7 +544,7 @@ var Voro3 = function () {
         },
         Scale: function(scales) {
             this.iters = scales-1;
-            this.scale = 0.9
+            this.scale = 0.9;
             var invert = function(s) {
                 var inv = 1.0/s;
                 var acc = 1.0;
@@ -552,7 +552,7 @@ var Voro3 = function () {
                     acc = acc*inv;
                 }
                 return acc;
-            }
+            };
             this.inverse = invert(this.scale);
             this.op = function(pt, i) {
                 var s = this.scale;
@@ -567,15 +567,10 @@ var Voro3 = function () {
     this.sym_map = {};
     this.active_sym = null;
 
-    this.disable_symmetry = function() {
+    this.bake_symmetry = function() {
         if (this.active_sym) {
             this.track_act(new SetSymAct(null, {}));
             this.active_sym = null;
-            for (var id in this.sym_map) {
-                if (this.sym_map[id].primary != id) {
-                    this.delete_cell(this.voro.index_from_id(parseInt(id)));
-                }
-            }
             this.sym_map = {};
         }
     };
@@ -613,7 +608,7 @@ var Voro3 = function () {
     };
 
     this.enable_symmetry = function(sym_op) {
-        this.disable_symmetry();
+        this.bake_symmetry();
         var orig_cells = this.voro.cell_count();
         
         // build a mapping of linked points
