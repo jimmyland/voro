@@ -24,14 +24,7 @@ using namespace emscripten;
 #define INSANITY
 // define this to 1 to add the shared faces of neighboring cells that are both toggled 'on'; if the cells are solid, 0 is preferred
 #define ADD_ALL_FACES_ALL_THE_TIME 0
-// the minimum squared distance between two cells.  If you try to move or add a cell closer to another cell than this threshold, the move
-// or add may be prevented.  (TODO: instead of preventing the move or add, keep the cell out of the diagram but track the cell explicitly as 'shadowed')
-//      note on shadowing: this is needed b/c:
-//          1. cells that are directly on top of one another would break things
-//          2. cells that are very very close to one another create inconsistencies due to floating point error.
-//              these inconsistencies make maintaining the diagram over time much more difficult
-//                  - cell shapes begin to depend on insertion order
-//                  - it seems that cells can be created in ways that would break the sanity check? e.g., broken back-links
+// the minimum squared distance between two cells.  If you try to move or add a cell closer to another cell than this threshold, the cell will be 'jittered' away from the colliding cell
 #define SHADOW_SEP_DIST .003
 #define SHADOW_THRESHOLD (SHADOW_SEP_DIST*SHADOW_SEP_DIST)
 
@@ -314,6 +307,7 @@ struct GLBufferManager {
     void compute_cell(Voro &src, int cell); // compute caches for all cells and add tris for non-zero cells
 
     void compute_all(Voro &src, int tricap, int wirecap, int sitescap);
+    void compute_on(Voro &src, int tricap, int wirecap, int sitescap);
     
     void add_cell_tris(Voro &src, int cell, CellToTris &c2t);
    
@@ -330,6 +324,8 @@ struct GLBufferManager {
         }
         tri_count--;
     }
+    
+    void ensure_computed(Voro &src, int cell); // if src is ready to compute things, ensures that the cell is computed
     
     void swapnpop_cell(Voro &src, int cell, int lasti);
     void move_cell(Voro &src, int cell);
@@ -628,6 +624,8 @@ struct Voro {
             jitter(pt, SHADOW_SEP_DIST);
         }
         
+        gl_computed.ensure_computed(*this, cell);
+        
         cells[cell].pos = pt;
         
         if (!links.empty()) {
@@ -657,6 +655,8 @@ struct Voro {
                 cout << "move_cell called w/ invalid cell (index out of range): " << cell << endl;
                 continue;
             }
+            
+            gl_computed.ensure_computed(*this, cell);
             
             glm::vec3 pt(posns[i][0].as<float>(), posns[i][1].as<float>(), posns[i][2].as<float>());
             while (con && con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD, cell) >= 0) {
@@ -688,8 +688,15 @@ struct Voro {
             cout << "trying to delete out of range " << cell << " vs " << cells.size() << endl;
             return false;
         }
-
+        
         int end_ind = int(cells.size())-1;
+        
+        // if we're deleting a cell that wasn't computed, but we've built links and all, compute it so we have valid nbr info there
+        gl_computed.ensure_computed(*this, cell);
+        if (end_ind != cell) {
+            gl_computed.ensure_computed(*this, end_ind);
+        }
+        
         cells[cell] = cells[end_ind];
         update_stable_id(end_ind, cell);
         cells.pop_back();
@@ -717,7 +724,7 @@ struct Voro {
     
     void gl_build(int max_tris_guess, int max_wire_verts_guess, int max_sites_guess) {
         // populate gl_computed with current whole voronoi diagram
-        gl_computed.compute_all(*this, max_tris_guess, max_wire_verts_guess, max_sites_guess);
+        gl_computed.compute_on(*this, max_tris_guess, max_wire_verts_guess, max_sites_guess);
         
     }
     uintptr_t gl_vertices() {
@@ -899,6 +906,31 @@ void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitesc
     }
 }
 
+void GLBufferManager::compute_on(Voro &src, int tricap, int wirecap, int sitescap) {
+    if (!src.con) {
+        src.build_container();
+    }
+    init(src.cells.size(), tricap, wirecap, sitescap);
+    
+    assert(src.cells.size()==src.links.size());
+    for (size_t i=0; i < src.cells.size(); i++) {
+        if (src.cells[i].type != 0) {
+            compute_cell(src, i);
+            if (info[i]) {
+                for (auto ni : info[i]->cache.neighbors) {
+                    if (ni >= 0) {
+                        compute_cell(src, ni);
+                    }
+                }
+            }
+        }
+    }
+    for (size_t i=0; i < src.cells.size(); i++) {
+        update_site(src, i);
+    }
+}
+
+
 void GLBufferManager::add_wires(Voro &src, int cell) {
     assert(cell >= 0 && cell < info.size());
     if (!info[cell]) {
@@ -961,6 +993,7 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
     }
     
     if (src.cells[cell].type == 0) {
+        update_site(src, cell);
         return;
     }
     
@@ -980,6 +1013,12 @@ void GLBufferManager::recompute_neighbors(Voro &src, int cell) {
                 compute_cell(src, ni);
             }
         }
+    }
+}
+
+void GLBufferManager::ensure_computed(Voro &src, int cell) {
+    if (!src.links.empty() && !info[cell]) {
+        compute_cell(src, cell);
     }
 }
 
