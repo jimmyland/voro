@@ -875,6 +875,13 @@ var Voro3 = function () {
         var sanity = true;
 
         if (chaos_limit===1000) this.voro.set_sanity_level(0);
+
+        var rpos = function() {
+            return [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
+        }
+        var rcell = function() {
+            return Math.random()*that.voro.cell_count();
+        }
         
         if (chaos_limit === null || chaos_limit-- > 0) {
             var choice = Math.random()*4;
@@ -893,19 +900,20 @@ var Voro3 = function () {
                 cell = Math.floor(Math.random()*this.voro.cell_count());
                 this.voro.delete_cell(cell);
             } else if (Math.floor(choice) === 2) {
-                this.voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-                this.voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-                this.voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
-                this.voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], true);
+                this.voro.add_cell(rpos(), true);
+                this.voro.add_cell(rpos(), true);
+                this.voro.add_cell(rpos(), true);
+                this.voro.add_cell(rpos(), true);
                 this.voro.add_cell([1,1,1], true);
                 this.voro.add_cell([1+Math.random()*.001,1+Math.random()*.001,1+Math.random()*.001], true);
                 this.voro.add_cell([0,Math.random()*.1-.05,0], true);
                 this.voro.add_cell([0,Math.random()*1000-500,0], true);
             } else {
-                this.voro.move_cell(Math.random()*this.voro.cell_count(),[Math.random()*20-10,Math.random()*20-10,Math.random()*20-10]);
-                this.voro.move_cell(Math.random()*this.voro.cell_count(),[0,Math.random()*1000-500,0]);
+                this.voro.move_cell(rcell(),rpos());
+                this.voro.move_cell(rcell(),[0,Math.random()*1000-500,0]);
                 this.voro.move_cell(0,[0,Math.random()*40-20,0]);
-                var pos = [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
+                this.voro.move_cells([rcell(),rcell(),rcell()], [rpos(),rpos(),rpos()]);
+                var pos = rpos();
                 cell = this.voro.add_cell(pos, true);
                 this.voro.move_cell(cell,pos);
                 pos[0] += 0.01;
