@@ -997,20 +997,19 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
         if (!ADD_ALL_FACES_ALL_THE_TIME) { // re-add neighbors faces to manage internal faces
             // (we could try to optimize this to just look at shared faces but this seems 'fast enough' for me now)
             for (int ni : info[cell]->cache.neighbors) {
-                if (ni >= 0 && info[ni]) {
-                    update_site(src, ni);
-                    if (src.cells[ni].type) {
-                        clear_cell_tris(*info[ni]);
-                        add_cell_tris(src, ni, *info[ni]);
+                if (ni >= 0) {
+                    if (!info[ni]) {
+                        compute_cell(src, ni);
+                    } else {
+                        update_site(src, ni);
+                        if (src.cells[ni].type) {
+                            clear_cell_tris(*info[ni]);
+                            add_cell_tris(src, ni, *info[ni]);
+                        }
                     }
                 }
             }
         }
-    }
-    
-    if (src.cells[cell].type == 0) {
-        update_site(src, cell);
-        return;
     }
     
     if (!info[cell]) {
@@ -1019,6 +1018,7 @@ void GLBufferManager::set_cell(Voro &src, int cell, int oldtype) {
         add_cell_tris(src, cell, *info[cell]);
         update_site(src, cell);
     }
+    
 }
 
 void GLBufferManager::recompute_neighbors(Voro &src, int cell) {
