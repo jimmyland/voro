@@ -144,6 +144,8 @@ struct GLBufferManager {
     
     GLBufferManager() : wire_vert_count(0), wire_max_verts(0), tri_count(0), max_tris(0), cell_inds(0) {}
     
+    explicit operator bool() { return !info.empty(); }
+    
     bool sanity(string when, bool doassert=true) {
         bool valid = true;
         for (int ci=0; ci<tri_count; ci++) {
@@ -501,6 +503,11 @@ struct Voro {
         cells.clear();
     }
     
+    // clears out just the buffers + cached cell computations used for rendering
+    void clear_gl() {
+        gl_computed.clear();
+    }
+    
     // clears out all computed structures of the voronoi diagram.
     void clear_computed() {
         delete con; con = 0;
@@ -584,6 +591,7 @@ struct Voro {
     }
     
     int cell_at_pos(glm::vec3 pt) {
+        assert(con);
         return con->already_in_container(pt.x, pt.y, pt.z, SHADOW_THRESHOLD);
     }
     
@@ -752,6 +760,9 @@ struct Voro {
     uintptr_t gl_cell_site_sizes() {
         return reinterpret_cast<uintptr_t>(&gl_computed.cell_site_sizes[0]);
     }
+    bool gl_is_live() {
+        return !!gl_computed;
+    }
     int gl_max_sites() {
         return gl_computed.max_sites;
     }
@@ -918,7 +929,7 @@ void GLBufferManager::compute_on(Voro &src, int tricap, int wirecap, int sitesca
             compute_cell(src, i);
             if (info[i]) {
                 for (auto ni : info[i]->cache.neighbors) {
-                    if (ni >= 0) {
+                    if (ni >= 0 && !info[ni]) {
                         compute_cell(src, ni);
                     }
                 }
@@ -1017,12 +1028,13 @@ void GLBufferManager::recompute_neighbors(Voro &src, int cell) {
 }
 
 void GLBufferManager::ensure_computed(Voro &src, int cell) {
-    if (!src.links.empty() && !info[cell]) {
+    if (*this && !src.links.empty() && !info[cell]) {
         compute_cell(src, cell);
     }
 }
 
 void GLBufferManager::swapnpop_cell(Voro &src, int cell, int lasti) {
+    if (!(*this)) return;
     vector<int> to_recompute;
     if (info[cell]) {
         to_recompute = info[cell]->cache.neighbors;
@@ -1074,7 +1086,7 @@ void GLBufferManager::update_site(Voro &src, int cell) {
     if (info[cell]) {
         for (auto ni : info[cell]->cache.neighbors) {
             if (ni >= 0) {
-                size += float(src.cells[ni].type > 0);
+                size = float(size > 0 || src.cells[ni].type > 0);
             }
         }
     }
@@ -1101,6 +1113,7 @@ void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
 }
 
 void GLBufferManager::add_cell(Voro &src) {
+    if (!(*this)) return;
     int id = (int)info.size();
     info.push_back(0);
     if (info.size() > max_sites) {
@@ -1139,6 +1152,9 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_cell_sites", &Voro::gl_cell_sites)
     .function("gl_cell_site_sizes", &Voro::gl_cell_site_sizes)
     .function("gl_max_sites", &Voro::gl_max_sites)
+    .function("gl_is_live", &Voro::gl_is_live)
+    .function("clear_gl", &Voro::clear_gl)
+    .function("clear_computed", &Voro::clear_computed)
     .function("cell_count", &Voro::cell_count)
     .function("toggle_cell", &Voro::toggle_cell)
     .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)

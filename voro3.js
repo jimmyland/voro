@@ -187,17 +187,35 @@ var Voro3 = function () {
             restore_values(add_values);
         };
     };
+    var StopGLAct = function() {
+        this.undo = function() {
+            that.voro.gl_build(that.est_max_tris, that.est_max_preview_verts, that.est_max_cell_sites);
+        };
+        this.redo = function() {
+            that.voro.clear_gl();
+        };
+    };
+    var StartGLAct = function() {
+        this.redo = function() {
+            that.voro.gl_build(that.est_max_tris, that.est_max_preview_verts, that.est_max_cell_sites);
+        };
+        this.undo = function() {
+            that.voro.clear_gl();
+        };
+    };
 
 
     this.undo = function(seq) {
         for (var i=seq.length-1; i>=0; i--) {
             seq[i].undo(this);
         }
+        assert(this.voro.gl_is_live());
     };
     this.redo = function(seq) {
         for (var i=0; i<seq.length; i++) {
             seq[i].redo(this);
         }
+        assert(this.voro.gl_is_live());
     };
 
     this.pop_acts = function() { // retrieves and clears all accumulated actions (e.g. since last call to pop_acts)
@@ -586,6 +604,7 @@ var Voro3 = function () {
         var cell = this.voro.cell(cell_ind);
         var p = cell.pos;
         var type = cell.type;
+        var type_override;
         for (var iter=0; iter<sym_op.iters; iter++) {
             p = sym_op.op(p,iter);
             var existing_cell = this.voro.cell_at_pos(p);
@@ -595,7 +614,12 @@ var Voro3 = function () {
                     sym_map[id].linked.push(existing_id);
                     sym_map[existing_id] = {};
                     sym_map[existing_id].primary = id;
-                    this.set_cell(existing_cell, this.voro.cell_type(cell_ind), true);
+                    var old_type = this.voro.cell_type(existing_cell);
+                    if (type > old_type) {
+                        this.set_cell(existing_cell, type, true);
+                    } else if (type < old_type) {
+                        type_override = old_type;
+                    }
                     continue;
                 }
             }
@@ -605,9 +629,19 @@ var Voro3 = function () {
             sym_map[new_id] = {};
             sym_map[new_id].primary = id;
         }
+        if (type_override) {
+            this.set_cell(cell_ind, type_override, true);
+            var linked = sym_map[id].linked;
+            for (var slink=0; slink<linked.length; slink++) {
+                var index = this.voro.index_from_id(linked[slink]);
+                this.set_cell(index, type_override, true);
+            }
+        }
     };
 
     this.enable_symmetry = function(sym_op) {
+        this.voro.clear_gl();
+        this.track_act(new StopGLAct());
         this.bake_symmetry();
         var orig_cells = this.voro.cell_count();
         
@@ -618,12 +652,14 @@ var Voro3 = function () {
         }
 
         this.track_act(new SetSymAct(sym_op, sym_map));
+        this.track_act(new StartGLAct());
 
         // setting these two activates the symmetry
         this.sym_map = sym_map;
         this.active_sym = sym_op;
 
         // update view
+        this.voro.gl_build(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
         this.update_geometry();
     };
 
@@ -878,10 +914,10 @@ var Voro3 = function () {
 
         var rpos = function() {
             return [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
-        }
+        };
         var rcell = function() {
             return Math.random()*that.voro.cell_count();
-        }
+        };
         
         if (chaos_limit === null || chaos_limit-- > 0) {
             var choice = Math.random()*4;
