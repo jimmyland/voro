@@ -471,7 +471,6 @@ var VoroSettings = function() {
         v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
         undo_q.clear();
         render();
-        v3.update_geometry(); // TODO: figure out why needsUpdate won't work until after we've rendered, requiring this extra line
     };
 
     this.filename = 'filename';
@@ -542,18 +541,16 @@ function wait_for_ready() {
 wait_for_ready();
 
 
-
-function init() {
-    Math.seedrandom('qq');
+function setup_scene() {
+    if (v3) {
+        v3.nuke(scene);
+    }
     
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
     camera.position.z = 30;
 
-
-
-    // create voro structure w/ bounding box
     v3 = new Voro3();
     undo_q = new UndoQueue();
     
@@ -586,7 +583,23 @@ function init() {
     var bb_edges = new THREE.EdgesHelper(bounding_box_mesh);
     scene.add(bb_edges);
 
+    controls = new THREE.TrackballControls( camera, renderer.domElement );
+    controls.rotateSpeed = 10.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 1.8;
+    controls.noZoom = false;
+    controls.noPan = false;
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+    controls.keys = [ 65, 83, 68 ];
+    controls.addEventListener( 'change', render );
 
+    xf_manager = new XFManager(scene, camera, renderer.domElement, v3, override_cam_controls);
+}
+
+
+
+function init() {
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( window.innerWidth, window.innerHeight );
     renderer.setPixelRatio( window.devicePixelRatio );
@@ -603,19 +616,6 @@ function init() {
 
     
     container.appendChild( renderer.domElement );
-    
-    controls = new THREE.TrackballControls( camera, renderer.domElement );
-    controls.rotateSpeed = 10.0;
-    controls.zoomSpeed = 1.2;
-    controls.panSpeed = 1.8;
-    controls.noZoom = false;
-    controls.noPan = false;
-    controls.staticMoving = true;
-    controls.dynamicDampingFactor = 0.3;
-    controls.keys = [ 65, 83, 68 ];
-    controls.addEventListener( 'change', render );
-
-    xf_manager = new XFManager(scene, camera, renderer.domElement, v3, override_cam_controls);
     
     datgui = new dat.GUI();
     settings = new VoroSettings();
@@ -645,6 +645,7 @@ function init() {
 
     procgen.open();
     
+    setup_scene();
     settings.regenerate();
     
     animate();

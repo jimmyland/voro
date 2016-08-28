@@ -388,7 +388,7 @@ struct Voro {
     Voro(glm::vec3 bound_min, glm::vec3 bound_max)
         : b_min(bound_min), b_max(bound_max), con(0), sanity_level(SANITY_FULL), tracked_ids(0) {}
     ~Voro() {
-        clear_computed();
+        clear_all();
     }
     
     template<typename T> bool compare_vecs(vector<T> a, vector<T> b, string name, int tag) {
@@ -496,6 +496,11 @@ struct Voro {
         }
         assert(valid);
         return valid;
+    }
+    
+    void clear_all() {
+        clear_computed();
+        clear_input();
     }
     
     // clears the input from which the voronoi diagram would be build (the point set)
@@ -1155,6 +1160,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_is_live", &Voro::gl_is_live)
     .function("clear_gl", &Voro::clear_gl)
     .function("clear_computed", &Voro::clear_computed)
+    .function("clear_all", &Voro::clear_all)
     .function("cell_count", &Voro::cell_count)
     .function("toggle_cell", &Voro::toggle_cell)
     .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)

@@ -259,6 +259,7 @@ var Voro3 = function () {
     };
     
     this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level) {
+        this.nuke(scene);
         this.create_voro(min_point, max_point);
         
         Math.seedrandom(seed);
@@ -279,6 +280,7 @@ var Voro3 = function () {
     };
 
     this.generate_from_buffer = function(scene, buffer) {
+        this.nuke(scene);
         var was_tracking = this.action_tracking;
         this.start_tracking(false);
         var valid = this.create_from_raw_buffer(buffer);
@@ -295,6 +297,28 @@ var Voro3 = function () {
 
         return true;
     };
+
+    // tries to destroy every trace of the current voronoi diagram
+    this.nuke = function(scene) {
+        if (scene) {
+            scene.remove(this.mesh);
+            scene.remove(this.preview_lines);
+            scene.remove(this.sites_points);
+        }
+        if (this.geometry) {
+            this.geometry.dispose();
+            this.material.dispose();
+            this.preview_geometry.dispose();
+            this.preview_material.dispose();
+            this.sites_geometry.dispose();
+            this.sites_material.dispose();
+        }
+        if (this.voro) {
+            this.voro.clear_all();
+            this.voro.delete();
+            this.voro = null;
+        }
+    }
 
     this.create_gl_objects = function(scene) {
         this.geometry = this.init_geometry(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
@@ -764,12 +788,6 @@ var Voro3 = function () {
     this.sanity = function(name) {
         return this.voro.sanity(name||"unlabelled sanity check");
     };
-
-    this.delete = function() {
-        this.voro.delete();
-    };
-
-
 
 
     // export functions
