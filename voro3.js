@@ -361,6 +361,9 @@ var Voro3 = function () {
         if (realloc_only && array === this.cached_geometry_array) {
             return;
         }
+        if (this.cached_geometry_array) {
+            geometry.dispose();
+        }
         this.cached_geometry_array = array;
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
@@ -386,6 +389,9 @@ var Voro3 = function () {
         if (realloc_only && array === this.cached_preview_array) {
             return;
         }
+        if (this.cached_preview_array) {
+            geometry.dispose();
+        }
         this.cached_preview_array = array;
         var vertices = new THREE.BufferAttribute(array, 3);
         geometry.addAttribute('position', vertices);
@@ -410,6 +416,9 @@ var Voro3 = function () {
         var sizes_array = Module.HEAPF32.subarray(sizes_ptr/4, sizes_ptr/4 + max_verts);
         if (realloc_only && array === this.cached_sites_array && sizes_array === this.caches_sites_sizes_array) {
             return;
+        }
+        if (this.cached_sites_array || this.caches_sites_sizes_array) {
+            geometry.dispose();
         }
         this.cached_sites_array = array;
         this.caches_sites_sizes_array = sizes_array;
