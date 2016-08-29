@@ -972,7 +972,7 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
     if (type == 0) return;
     
     for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
-        if ((src.cells[c.neighbors[ni]].type != type) || ADD_ALL_FACES_ALL_THE_TIME) {
+        if (c.neighbors[ni] < 0 || (src.cells[c.neighbors[ni]].type != type) || ADD_ALL_FACES_ALL_THE_TIME) {
             // make a fan of triangles to cover the face
             int vicount = (i+c.faces[i]+1)-(i+1);
             int vs[3] = {c.faces[i+1], 0, c.faces[i+2]};
