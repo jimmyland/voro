@@ -79,11 +79,12 @@
         
         <script type="x-shader/x-vertex" id="sites_vertshader">
         attribute float size;
+        uniform float scale;
         varying float alpha;
 
         void main() {
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = size * ( 10.0 / -mvPosition.z );
+            gl_PointSize = scale * size * ( 10.0 / -mvPosition.z );
             gl_Position = projectionMatrix * mvPosition;
             alpha = clamp(size, 0.0, 1.0);
         }

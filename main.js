@@ -276,7 +276,7 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 var Generators = {
     "uniform random": function(numpts, voro) {
         voro.add_cell([0,0,0], true);
-        for (var i=0; i<numpts; i++) {
+        for (var i=0; i<numpts-1; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
         }
         
@@ -449,6 +449,7 @@ var VoroSettings = function() {
     this.fill_level = 0.0;
     this.symmetry_type = 'Dihedral';
     this.symmetry_param = 3;
+    this.siteScale = 1;
     this.toggleSites = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
@@ -627,6 +628,7 @@ function init() {
     datgui.add(settings,'save');
     datgui.add(settings,'load');
     datgui.add(settings,'toggleSites');
+    datgui.add(settings,'siteScale');
 
     var symset = datgui.addFolder('Symmetry Settings');
     symset.add(settings,'symmetry_type', ['Mirror', 'Rotational', 'Scale', 'Dihedral']);
@@ -741,6 +743,7 @@ function doAddDelClick(button, mouse) {
         } else {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
+                pt = v3.bb_project(pt);
                 var state = (button === 2) ? 0 : 1;
                 var added_cell = v3.add_cell(pt, state);
                 xf_manager.attach([added_cell]);
@@ -902,6 +905,7 @@ function onDocumentTouchEnd( event ) {
 
 function render() {
     xf_manager.update();
+    v3.sites_material.uniforms.scale.value = settings.siteScale;
     renderer.render( scene, camera );
 }
 

@@ -257,6 +257,21 @@ var Voro3 = function () {
         this.sym_map = {};
         this.active_sym = null;
     };
+
+    // takes and returns a THREE.Vector3 for historical reasons; projects it into the Voro's bounding box
+    this.bb_project = function(pt) {
+        var eps = .0001;
+        var p = [pt.x, pt.y, pt.z];
+        for (var i=0; i<3; i++) {
+            if (p[i] < this.min_point[i] + eps) {
+                p[i] = this.min_point[i] + eps;
+            }
+            if (p[i] > this.max_point[i] - eps) {
+                p[i] = this.max_point[i] - eps;
+            }
+        }
+        return new THREE.Vector3(p[0], p[1], p[2]);
+    };
     
     this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level) {
         this.nuke(scene);
@@ -318,7 +333,7 @@ var Voro3 = function () {
             this.voro.delete();
             this.voro = null;
         }
-    }
+    };
 
     this.create_gl_objects = function(scene) {
         this.geometry = this.init_geometry(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
@@ -338,7 +353,7 @@ var Voro3 = function () {
         this.preview_lines.visible = false;
 
         this.sites_geometry = this.init_sites();
-        var uniforms = {color: {value: new THREE.Color(0xffffff)}};
+        var uniforms = {color: {value: new THREE.Color(0xffffff)}, scale: {value: 1}};
         this.sites_material = new THREE.ShaderMaterial( {
             uniforms:       uniforms,
             vertexShader:   document.getElementById( 'sites_vertshader' ).textContent,
