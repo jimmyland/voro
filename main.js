@@ -454,6 +454,11 @@ var VoroSettings = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
     };
+    this.set_sites_from_form = function(f) {
+        v3.sites_points.visible = 'show' in f;
+        this.siteScale = f.sites_scale;
+        render();
+    }
     this.symmetrify = function() {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
                     Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
