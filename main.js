@@ -274,14 +274,14 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
 
 var Generators = {
-    "uniform random": function(numpts, voro) {
+    "Random": function(numpts, voro) {
         voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts-1; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
         }
         
     },
-    "regular grid": function(numpts, voro) {
+    "Cubes": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
@@ -340,7 +340,7 @@ var Generators = {
             voro.add_cell(pt, radfinal < 4);
         }
     },
-    "hexagonal prisms": function(numpts, voro) {
+    "Hexagonal Prisms": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
@@ -352,7 +352,7 @@ var Generators = {
             }
         }
     },
-    "triangular prisms": function(numpts, voro) {
+    "Triangular Prisms": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -367,7 +367,7 @@ var Generators = {
             }
         }
     },
-    "truncated octahedra": function(numpts, voro) {
+    "Truncated Octahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -380,7 +380,7 @@ var Generators = {
             }
         }
     },
-    "gyrobifastigia": function(numpts, voro) {
+    "Gyrobifastigia": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -395,7 +395,7 @@ var Generators = {
             }
         }
     },
-    "rhombic dodecahedra": function(numpts, voro) {
+    "Rhombic Dodecahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
@@ -410,7 +410,7 @@ var Generators = {
             }
         }
     },
-    "elongated dodecahedra": function(numpts, voro) {
+    "Elongated Dodecahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
@@ -443,7 +443,7 @@ var Generators = {
 var VoroSettings = function() {
     this.mode = 'move';
     // this.generator = 'uniform random';
-    this.generator = 'gyrobifastigia';
+    this.generator = 'Gyrobifastigia';
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
@@ -473,6 +473,13 @@ var VoroSettings = function() {
         undo_q.clear();
         render();
     };
+
+    this.generate_from_form = function(values) {
+        this.generator = values.generator;
+        this.numpts = values.numpts;
+        this.seed = values.seed;
+        this.regenerate();
+    }
 
     this.filename = 'filename';
     this.exportAsSTL = function() {
