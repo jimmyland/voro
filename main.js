@@ -1,6 +1,6 @@
 // main test code for running the vorojs functions + showing results via threejs
 // currently just a chopped up version of a basic threejs example
-/* global THREE, Detector, saveAs, fromByteArray, toByteArray, $, ready_for_emscripten_calls, Voro3, dat */
+/* global THREE, Detector, saveAs, fromByteArray, toByteArray, $, ready_for_emscripten_calls, Voro3 */
 /*jshint -W008 */
 /*jslint devel: true, indent: 4, maxerr: 50 */
 "use strict";
@@ -23,7 +23,6 @@ var v3;
 var xf_manager;
 var undo_q;
 
-var datgui;
 var settings;
 
 var UndoAct = function(prev_sel_inds, post_sel_inds, voro_act_seq) {
@@ -274,14 +273,14 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
 
 
 var Generators = {
-    "uniform random": function(numpts, voro) {
+    "Random": function(numpts, voro) {
         voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts-1; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
         }
         
     },
-    "regular grid": function(numpts, voro) {
+    "Cubes": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
@@ -340,7 +339,7 @@ var Generators = {
             voro.add_cell(pt, radfinal < 4);
         }
     },
-    "hexagonal prisms": function(numpts, voro) {
+    "Hexagonal Prisms": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts));
         for (var i=0; i<n+1; i++) {
@@ -352,7 +351,7 @@ var Generators = {
             }
         }
     },
-    "triangular prisms": function(numpts, voro) {
+    "Triangular Prisms": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -367,7 +366,7 @@ var Generators = {
             }
         }
     },
-    "truncated octahedra": function(numpts, voro) {
+    "Truncated Octahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -380,7 +379,7 @@ var Generators = {
             }
         }
     },
-    "gyrobifastigia": function(numpts, voro) {
+    "Gyrobifastigia": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
@@ -395,7 +394,7 @@ var Generators = {
             }
         }
     },
-    "rhombic dodecahedra": function(numpts, voro) {
+    "Rhombic Dodecahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
@@ -410,7 +409,7 @@ var Generators = {
             }
         }
     },
-    "elongated dodecahedra": function(numpts, voro) {
+    "Elongated Dodecahedra": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
@@ -423,7 +422,7 @@ var Generators = {
             }
         }
     },
-    "cubes with pillows": function(numpts, voro) {
+    "Cubes with Pillows": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
@@ -443,7 +442,7 @@ var Generators = {
 var VoroSettings = function() {
     this.mode = 'move';
     // this.generator = 'uniform random';
-    this.generator = 'gyrobifastigia';
+    this.generator = 'Gyrobifastigia';
     this.numpts = 1000;
     this.seed = 'qq';
     this.fill_level = 0.0;
@@ -454,10 +453,22 @@ var VoroSettings = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
     };
+    this.set_sites_from_form = function(f) {
+        v3.sites_points.visible = 'show' in f;
+        this.siteScale = f.sites_scale;
+        render();
+    }
     this.symmetrify = function() {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
                     Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
         v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
+        xf_manager.reset();
+        addToUndoQIfNeeded();
+    };
+    this.symmetrify_from_form = function(vals) {
+        var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
+                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
+        v3.enable_symmetry(new fmap[vals.symmetry_mode](vals.sym_param));
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
@@ -473,6 +484,13 @@ var VoroSettings = function() {
         undo_q.clear();
         render();
     };
+
+    this.generate_from_form = function(values) {
+        this.generator = values.generator;
+        this.numpts = values.numpts;
+        this.seed = values.seed;
+        this.regenerate();
+    }
 
     this.filename = 'filename';
     this.exportAsSTL = function() {
@@ -618,35 +636,7 @@ function init() {
     
     container.appendChild( renderer.domElement );
     
-    datgui = new dat.GUI();
-    settings = new VoroSettings();
-    
-    datgui.add(settings,'filename');
-    datgui.add(settings,'exportAsSTL');
-    datgui.add(settings,'downloadRaw');
-    datgui.add(settings,'uploadRaw');
-    datgui.add(settings,'save');
-    datgui.add(settings,'load');
-    datgui.add(settings,'toggleSites');
-    datgui.add(settings,'siteScale');
-
-    var symset = datgui.addFolder('Symmetry Settings');
-    symset.add(settings,'symmetry_type', ['Mirror', 'Rotational', 'Scale', 'Dihedral']);
-    symset.add(settings,'symmetry_param').max(12).min(2).step(1);
-    symset.add(settings,'symmetrify');
-    symset.add(settings,'bake_symmetry');
-    symset.open();
-    
-    var procgen = datgui.addFolder('Proc. Gen. Settings');
-    
-    procgen.add(settings,'seed');
-    procgen.add(settings,'numpts').min(1);
-    procgen.add(settings,'generator',Object.keys(Generators));
-
-    procgen.add(settings,'regenerate');
-
-    procgen.open();
-    
+    settings = new VoroSettings();    
     setup_scene();
     settings.regenerate();
     
