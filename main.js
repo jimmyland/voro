@@ -422,7 +422,7 @@ var Generators = {
             }
         }
     },
-    "cubes with pillows": function(numpts, voro) {
+    "Cubes with Pillows": function(numpts, voro) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
