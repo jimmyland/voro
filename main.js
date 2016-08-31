@@ -1,6 +1,6 @@
 // main test code for running the vorojs functions + showing results via threejs
 // currently just a chopped up version of a basic threejs example
-/* global THREE, Detector, saveAs, fromByteArray, toByteArray, $, ready_for_emscripten_calls, Voro3, dat */
+/* global THREE, Detector, saveAs, fromByteArray, toByteArray, $, ready_for_emscripten_calls, Voro3 */
 /*jshint -W008 */
 /*jslint devel: true, indent: 4, maxerr: 50 */
 "use strict";
@@ -23,7 +23,6 @@ var v3;
 var xf_manager;
 var undo_q;
 
-var datgui;
 var settings;
 
 var UndoAct = function(prev_sel_inds, post_sel_inds, voro_act_seq) {
@@ -637,35 +636,7 @@ function init() {
     
     container.appendChild( renderer.domElement );
     
-    datgui = new dat.GUI();
-    settings = new VoroSettings();
-    
-    datgui.add(settings,'filename');
-    datgui.add(settings,'exportAsSTL');
-    datgui.add(settings,'downloadRaw');
-    datgui.add(settings,'uploadRaw');
-    datgui.add(settings,'save');
-    datgui.add(settings,'load');
-    datgui.add(settings,'toggleSites');
-    datgui.add(settings,'siteScale');
-
-    var symset = datgui.addFolder('Symmetry Settings');
-    symset.add(settings,'symmetry_type', ['Mirror', 'Rotational', 'Scale', 'Dihedral']);
-    symset.add(settings,'symmetry_param').max(12).min(2).step(1);
-    symset.add(settings,'symmetrify');
-    symset.add(settings,'bake_symmetry');
-    symset.open();
-    
-    var procgen = datgui.addFolder('Proc. Gen. Settings');
-    
-    procgen.add(settings,'seed');
-    procgen.add(settings,'numpts').min(1);
-    procgen.add(settings,'generator',Object.keys(Generators));
-
-    procgen.add(settings,'regenerate');
-
-    procgen.open();
-    
+    settings = new VoroSettings();    
     setup_scene();
     settings.regenerate();
     
