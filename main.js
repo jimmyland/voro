@@ -616,7 +616,9 @@ function setup_scene() {
     xf_manager = new XFManager(scene, camera, renderer.domElement, v3, override_cam_controls);
 }
 
-
+function focusOver() {
+    $('#container').focus();
+}
 
 function init() {
     renderer = new THREE.WebGLRenderer();
@@ -630,8 +632,9 @@ function init() {
     container.addEventListener( 'touchmove', onDocumentTouchMove, false );
     container.addEventListener( 'touchend', onDocumentTouchEnd, false );
     container.addEventListener( 'mousedown', onDocumentMouseDown, false );
-    document.addEventListener( 'keydown', onDocumentKeyDown, false );
+    container.addEventListener( 'keydown', onDocumentKeyDown, false );
     container.addEventListener( 'mouseup', onDocumentMouseUp, false );
+    container.addEventListener( 'mouseover', focusOver, false );
 
     
     container.appendChild( renderer.domElement );
