@@ -133,7 +133,8 @@ struct CellToTris {
 struct Voro;
 
 struct GLBufferManager {
-    vector<float> vertices, wire_vertices, cell_sites, cell_site_sizes;
+    vector<float> vertices, wire_vertices, cell_sites, cell_site_sizes, colors;
+    bool want_colors;
     int tri_count, max_tris, max_sites;
     int wire_vert_count, wire_max_verts;
     vector<int> cell_inds; // map from tri indices to cell indices
@@ -142,12 +143,20 @@ struct GLBufferManager {
     
     vector<CellToTris*> info;
     
-    GLBufferManager() : wire_vert_count(0), wire_max_verts(0), tri_count(0), max_tris(0), cell_inds(0) {}
+    GLBufferManager() : wire_vert_count(0), wire_max_verts(0), tri_count(0), max_tris(0), cell_inds(0), want_colors(false) {}
     
     explicit operator bool() { return !info.empty(); }
     
     bool sanity(string when, bool doassert=true) {
         bool valid = true;
+        if (vertices.size() != colors.size() && want_colors) {
+            valid = false;
+            cout << "want vertex colors, but they're not matched to vertices" << endl;
+        }
+        if (!colors.empty() && !want_colors) {
+            valid = false;
+            cout << "don't want vertex colors, but somehow we still have " << colors.size() << " of them" << endl;
+        }
         for (int ci=0; ci<tri_count; ci++) {
             if (cell_inds[ci] < 0 || cell_inds[ci] >= info.size()) {
                 valid = false;
@@ -202,6 +211,9 @@ struct GLBufferManager {
         vertices.resize(max_tris*9);
         cell_inds.resize(max_tris);
         cell_internal_inds.resize(max_tris);
+        if (want_colors) {
+            colors.resize(vertices.size());
+        }
     }
     void resize_wire_buffers() {
         wire_vertices.resize(wire_max_verts*3);
@@ -210,10 +222,13 @@ struct GLBufferManager {
         cell_sites.resize(max_sites*3);
         cell_site_sizes.resize(max_sites);
     }
-
-    void init(int numCells, int triCapacity, int wiresCapacity, int sitesCapacity) {
+    void set_want_colors(Voro &src, bool yes_colors); // call to change whether you want colors
+    void update_colors(Voro &src); // call whenever the palette changes to fix all existing colors
+    
+    void init(int numCells, int triCapacity, int wiresCapacity, int sitesCapacity, bool want_colors) {
         clear();
         
+        this->want_colors = want_colors;
         max_tris = triCapacity;
         wire_max_verts = wiresCapacity;
         max_sites = numCells*2;
@@ -279,7 +294,7 @@ struct GLBufferManager {
     }
     
     
-    inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t, int f) {
+    inline bool add_tri(const vector<double> &input_v, int* vs, int cell, CellToTris &c2t, int f, const glm::vec3 &color) {
         if (tri_count+1 >= max_tris) {
             max_tris *= 2;
             resize_buffers();
@@ -291,6 +306,17 @@ struct GLBufferManager {
             for (int ii=0; ii<3; ii++) {
                 *v = input_v[ibase+ii];
                 v++;
+            }
+        }
+        if (want_colors) {
+            assert(vertices.size() == colors.size());
+            float *c = &colors[0] + tri_count*9;
+            for (int vii=0; vii<3; vii++) {
+                int ibase = vs[vii]*3;
+                for (int ii=0; ii<3; ii++) {
+                    *c = color[ii];
+                    c++;
+                }
             }
         }
         cell_inds[tri_count] = cell;
@@ -308,8 +334,8 @@ struct GLBufferManager {
     
     void compute_cell(Voro &src, int cell); // compute caches for all cells and add tris for non-zero cells
 
-    void compute_all(Voro &src, int tricap, int wirecap, int sitescap);
-    void compute_on(Voro &src, int tricap, int wirecap, int sitescap);
+    void compute_all(Voro &src, int tricap, int wirecap, int sitescap, bool want_colors);
+    void compute_on(Voro &src, int tricap, int wirecap, int sitescap, bool want_colors);
     
     void add_cell_tris(Voro &src, int cell, CellToTris &c2t);
    
@@ -319,6 +345,12 @@ struct GLBufferManager {
             assert(ts > 0);
             for (int ii=0; ii<9; ii++) {
                 vertices[tri*9+ii] = vertices[ts*9+ii];
+            }
+            if (want_colors) {
+                assert(vertices.size() == colors.size());
+                for (int ii=0; ii<9; ii++) {
+                    colors[tri*9+ii] = colors[ts*9+ii];
+                }
             }
             cell_inds[tri] = cell_inds[ts];
             cell_internal_inds[tri] = cell_internal_inds[ts];
@@ -370,6 +402,7 @@ struct GLBufferManager {
         wire_vertices.clear();
         cell_sites.clear();
         cell_site_sizes.clear();
+        colors.clear();
         
         tri_count = max_tris = max_sites = 0;
         
@@ -737,7 +770,7 @@ struct Voro {
     
     void gl_build(int max_tris_guess, int max_wire_verts_guess, int max_sites_guess) {
         // populate gl_computed with current whole voronoi diagram
-        gl_computed.compute_on(*this, max_tris_guess, max_wire_verts_guess, max_sites_guess);
+        gl_computed.compute_on(*this, max_tris_guess, max_wire_verts_guess, max_sites_guess, has_colors());
         
     }
     uintptr_t gl_vertices() {
@@ -780,6 +813,21 @@ struct Voro {
     int cell_count() {
         return cells.size();
     }
+    uintptr_t gl_colors() {
+        return reinterpret_cast<uintptr_t>(&gl_computed.colors[0]);
+    }
+    bool has_colors() {
+        return !palette.empty();
+    }
+    
+    inline glm::vec3 get_color(int type) {
+        if (type < 0 || type >= palette.size()) {
+            return glm::vec3(1,1,1);
+        } else {
+            return palette[type];
+        }
+    }
+    
     void set_sanity_level(int sanity) {
         sanity_level = sanity;
     }
@@ -861,6 +909,7 @@ protected:
         glm::vec3 bounds[2];
     };
     vector<Cell> cells;
+    vector<glm::vec3> palette;
     
     voro::container *con;
     int sanity_level; // level of error checking.  define "INSANITY" for zero error checking
@@ -910,11 +959,11 @@ void GLBufferManager::compute_cell(Voro &src, int cell) { // compute caches for 
     update_site(src, cell);
 }
 
-void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitescap) {
+void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitescap, bool want_colors) {
     if (!src.con) {
         src.build_container();
     }
-    init(src.cells.size(), tricap, wirecap, sitescap);
+    init(src.cells.size(), tricap, wirecap, sitescap, want_colors);
     
     assert(src.cells.size()==src.links.size());
     for (size_t i=0; i < src.cells.size(); i++) {
@@ -922,11 +971,11 @@ void GLBufferManager::compute_all(Voro &src, int tricap, int wirecap, int sitesc
     }
 }
 
-void GLBufferManager::compute_on(Voro &src, int tricap, int wirecap, int sitescap) {
+void GLBufferManager::compute_on(Voro &src, int tricap, int wirecap, int sitescap, bool want_colors) {
     if (!src.con) {
         src.build_container();
     }
-    init(src.cells.size(), tricap, wirecap, sitescap);
+    init(src.cells.size(), tricap, wirecap, sitescap, want_colors);
     
     assert(src.cells.size()==src.links.size());
     for (size_t i=0; i < src.cells.size(); i++) {
@@ -970,6 +1019,7 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
     CellCache &c = c2t.cache;
     int type = src.cells[cell].type;
     if (type == 0) return;
+    glm::vec3 color = src.get_color(type);
     
     for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
         if (c.neighbors[ni] < 0 || (src.cells[c.neighbors[ni]].type != type) || ADD_ALL_FACES_ALL_THE_TIME) {
@@ -979,7 +1029,7 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
             for (int j = i+3; j < i+c.faces[i]+1; j++) { // facev
                 vs[1] = c.faces[j];
                 
-                add_tri(c.vertices, vs, cell, c2t, ni);
+                add_tri(c.vertices, vs, cell, c2t, ni, color);
                 
                 vs[2] = vs[1];
             }
@@ -1098,6 +1148,27 @@ void GLBufferManager::update_site(Voro &src, int cell) {
     update_site_size(size, cell);
 }
 
+void GLBufferManager::set_want_colors(Voro &src, bool yes_colors) {
+    if (yes_colors == want_colors) {
+        return; // no change
+    }
+    want_colors = yes_colors;
+    colors.resize(want_colors ? vertices.size() : 0);
+    
+    update_colors(src);
+}
+
+void GLBufferManager::update_colors(Voro &src) {
+    if (want_colors) { // fill in the current colors
+        for (size_t i=0; i<cell_inds.size(); i++) {
+            glm::vec3 c = src.get_color(cell_inds[i]);
+            for (size_t ii=0; ii<3; ii++) {
+                colors[i*3+ii] = c[ii];
+            }
+        }
+    }
+}
+
 void GLBufferManager::move_cells(Voro &src, const unordered_set<int> &cells) {
     unordered_set<int> computed;
     for (int cell : cells) {
@@ -1179,6 +1250,8 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_wire_vert_count", &Voro::gl_wire_vert_count)
     .function("gl_wire_vertices", &Voro::gl_wire_vertices)
     .function("gl_wire_max_verts", &Voro::gl_wire_max_verts)
+    .function("gl_colors", &Voro::gl_colors)
+    .function("has_colors", &Voro::has_colors)
     .function("debug_print_block", &Voro::debug_print_block)
     .function("stable_id", &Voro::stable_id)
     .function("set_stable_id", &Voro::set_stable_id)
