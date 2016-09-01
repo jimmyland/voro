@@ -138,17 +138,19 @@
                 <h4 class="modal-title" id="saveModalLabel">Save to Disk</h4>
               </div>
               <div class="modal-body">
-              <form class="form-inline" id="saveForm">
+              <form class="form-inline" id="saveForm" onsubmit="$('#saveModal').modal('hide'); return doSave();">
               <div class="form-inline">
                 <label>Filename:</label>
                 <input type="text" class="form-control" id="file" value="untitled" name="file">
               </div>
+
               </form>
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="settings.filename = getFormVals('#saveForm').file; settings.downloadRaw();">Save</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="doSave();">Save</button>
               </div>
+              <script>function doSave() { settings.filename = getFormVals('#saveForm').file; settings.downloadRaw(); return false; } </script>
             </div>
           </div>
         </div>
