@@ -692,6 +692,17 @@ struct Voro {
         SANITY("after move_cell");
         return true;
     }
+    void set_palette(val p) {
+        int len = p["length"].as<int>();
+        palette.clear();
+        for (int i=0; i<len; i++) {
+            glm::vec3 color(p[i][0].as<float>(), p[i][1].as<float>(), p[i][2].as<float>());
+            palette.push_back(color);
+        }
+        if (gl_computed) {
+            gl_computed.set_want_colors(*this, has_colors());
+        }
+    }
     bool move_cells(val cells_to_move, val posns) { // similar to a delete+add, but w/ no swapping and less recomputation'
         int len = cells_to_move["length"].as<int>();
         unordered_set<int> moved_cells;
@@ -821,10 +832,10 @@ struct Voro {
     }
     
     inline glm::vec3 get_color(int type) {
-        if (type < 0 || type >= palette.size()) {
+        if (type < 1 || type+1 >= palette.size()) {
             return glm::vec3(1,1,1);
         } else {
-            return palette[type];
+            return palette[type-1];
         }
     }
     
@@ -1161,7 +1172,7 @@ void GLBufferManager::set_want_colors(Voro &src, bool yes_colors) {
 void GLBufferManager::update_colors(Voro &src) {
     if (want_colors) { // fill in the current colors
         for (size_t i=0; i<cell_inds.size(); i++) {
-            glm::vec3 c = src.get_color(cell_inds[i]);
+            glm::vec3 c = src.get_color(src.cells[cell_inds[i]].type);
             for (size_t ii=0; ii<3; ii++) {
                 colors[i*3+ii] = c[ii];
             }
@@ -1252,6 +1263,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("gl_wire_max_verts", &Voro::gl_wire_max_verts)
     .function("gl_colors", &Voro::gl_colors)
     .function("has_colors", &Voro::has_colors)
+    .function("set_palette", &Voro::set_palette)
     .function("debug_print_block", &Voro::debug_print_block)
     .function("stable_id", &Voro::stable_id)
     .function("set_stable_id", &Voro::set_stable_id)

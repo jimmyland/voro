@@ -21,6 +21,7 @@ var Voro3 = function () {
     this.tracked_acts = [];
     this.action_tracking = false;
     var that = this;
+    this.palette = [];
 
     this.start_tracking = function(yes) {
         if (yes === undefined || yes) {
@@ -233,6 +234,15 @@ var Voro3 = function () {
             this.tracked_acts.push(act);
         }
     };
+    this.set_palette = function(palette) {
+        // todo: track palette changes for update
+        this.palette = palette;
+        this.voro.set_palette(palette);
+        this.update_geometry();
+    };
+    this.palette_length = function() {
+        return this.palette.length;
+    };
 
     
     this.add_to_scene = function(scene) {
@@ -335,9 +345,21 @@ var Voro3 = function () {
         }
     };
 
+    this.set_vertex_colors = function() {
+        if (this.material) {
+            if (this.voro.has_colors()) {
+                this.material.vertexColors = THREE.VertexColors;
+            } else {
+                this.material.vertexColors = THREE.NoColors;
+            }
+            this.material.needsUpdate = true;
+        }
+    };
+
     this.create_gl_objects = function(scene) {
         this.geometry = this.init_geometry(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
-        this.material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
+        this.material = new THREE.MeshPhongMaterial( { vertexColors: THREE.NoColors, color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
+        this.set_vertex_colors();
         //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
         if (this.mesh) {
             scene.remove(this.mesh);
@@ -373,15 +395,27 @@ var Voro3 = function () {
         this.verts_ptr = this.voro.gl_vertices();
         var max_tris = this.voro.gl_max_tris();
         var array = Module.HEAPF32.subarray(this.verts_ptr/4, this.verts_ptr/4 + max_tris*3*3);
-        if (realloc_only && array === this.cached_geometry_array) {
+        var want_colors = this.voro.has_colors();
+        var colors_array;
+        if (want_colors) {
+            var colors_ptr = this.voro.gl_colors();
+            colors_array = Module.HEAPF32.subarray(colors_ptr/4, colors_ptr/4 + max_tris*3*3);
+        }
+        if (realloc_only && array === this.cached_geometry_array && colors_array === this.cached_colors_array) {
             return;
         }
-        if (this.cached_geometry_array) {
+        if (this.cached_geometry_array || this.cached_colors_array) {
             geometry.dispose();
         }
+        this.cached_colors_array = colors_array;
         this.cached_geometry_array = array;
-        var vertices = new THREE.BufferAttribute(array, 3);
-        geometry.addAttribute('position', vertices);
+        geometry.addAttribute('position', new THREE.BufferAttribute(array, 3));
+        if (want_colors) {
+            geometry.addAttribute('color', new THREE.BufferAttribute(colors_array, 3));
+        } else {
+            geometry.removeAttribute('color');
+        }
+        this.set_vertex_colors();
     };
     this.init_geometry = function(est_max_tris, est_max_preview_verts, est_max_cell_sites) {
         var geometry = new THREE.BufferGeometry();
