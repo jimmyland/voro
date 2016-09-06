@@ -669,6 +669,9 @@ function onDocumentKeyDown( event ) {
             v3.set_palette([]);
         v3.update_geometry();
     }
+    if (event.keyCode == "U".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+        v3.incr_active_type();
+    }
     
     xf_manager.keydown(event);
     // not sure this feature was actually useful ...

@@ -22,6 +22,7 @@ var Voro3 = function () {
     this.action_tracking = false;
     var that = this;
     this.palette = [];
+    this.active_type = 1;
 
     this.start_tracking = function(yes) {
         if (yes === undefined || yes) {
@@ -80,12 +81,12 @@ var Voro3 = function () {
         this.undo = function() { add.redo(); };
         this.redo = function() { add.undo(); };
     };
-    var ToggleAct = function(cells) {
+    var ToggleAct = function(cells, active_type) {
         var cell_ids = that.inds_to_ids(cells);
         this.redo = function() {
             var inds = that.ids_to_inds(cell_ids);
             for (var i=0; i<inds.length; i++) {
-                that.voro.toggle_cell(inds[i]);
+                that.voro.toggle_cell(inds[i], active_type);
             }
         };
         this.undo = this.redo;
@@ -236,6 +237,7 @@ var Voro3 = function () {
     };
     this.set_palette = function(palette) {
         // todo: track palette changes for update
+        // this.track_act(new SetPaletteAct(this.palette, palette)); // todo fill in
         this.palette = palette;
         this.voro.set_palette(palette);
         this.update_geometry();
@@ -412,6 +414,7 @@ var Voro3 = function () {
         geometry.addAttribute('position', new THREE.BufferAttribute(array, 3));
         if (want_colors) {
             geometry.addAttribute('color', new THREE.BufferAttribute(colors_array, 3));
+
         } else {
             geometry.removeAttribute('color');
         }
@@ -489,7 +492,7 @@ var Voro3 = function () {
     
     this.add_cell_list_noup = function (pt, state, skip_sym) {
         if (state === undefined) {
-            state = true;
+            state = this.active_type;
         }
         var cell = this.voro.add_cell(pt, state);
         if (this.active_sym) {
@@ -503,6 +506,9 @@ var Voro3 = function () {
         return cell;
     };
     this.add_cell = function (pt_3, state) {
+        if (state && typeof(state) === 'boolean') {
+            state = this.active_type;
+        }
         var pt = [pt_3.x, pt_3.y, pt_3.z];
         var c = this.add_cell_list_noup(pt, state);
         this.update_geometry();
@@ -803,8 +809,8 @@ var Voro3 = function () {
     };
     this.toggle_cell = function(cell, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
         if (cell < 0) { return; }
-        this.track_act(new ToggleAct([cell]));
-        this.voro.toggle_cell(cell);
+        this.track_act(new ToggleAct([cell], this.active_type));
+        this.voro.toggle_cell(cell, this.active_type);
         if (!sym_flag) {
             if (this.active_sym) {
                 var slist = this.ordered_sym_list(cell);
@@ -928,6 +934,15 @@ var Voro3 = function () {
         }
 
         return buffer;
+    };
+
+    this.incr_active_type = function() {
+        if (!this.active_type) {
+            this.active_type = 1;
+        }
+        if (this.palette_length() > 0) {
+            this.active_type = ((this.active_type) % this.palette_length()) + 1;
+        }
     };
 
     this.create_from_raw_buffer = function(buffer) {

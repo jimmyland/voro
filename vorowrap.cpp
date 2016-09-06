@@ -832,7 +832,8 @@ struct Voro {
     }
     
     inline glm::vec3 get_color(int type) {
-        if (type < 1 || type+1 >= palette.size()) {
+        assert((type >= 1 && type <= palette.size()) || palette.empty());
+        if (type < 1 || type > palette.size()) {
             return glm::vec3(1,1,1);
         } else {
             return palette[type-1];
@@ -842,12 +843,12 @@ struct Voro {
     void set_sanity_level(int sanity) {
         sanity_level = sanity;
     }
-    void toggle_cell(int cell) {
+    void toggle_cell(int cell, int nonzero_type) {
         if (cell < 0 || cell >= cells.size())
             return;
         
         int oldtype = cells[cell].type;
-        cells[cell].type = !oldtype;
+        cells[cell].type = oldtype ? 0 : nonzero_type;
         gl_computed.set_cell(*this, cell, oldtype);
     }
     void set_cell(int cell, int type) {
@@ -1033,15 +1034,18 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
     glm::vec3 color = src.get_color(type);
     
     for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
-        if (c.neighbors[ni] < 0 || (src.cells[c.neighbors[ni]].type != type) || ADD_ALL_FACES_ALL_THE_TIME) {
+        int nbr = c.neighbors[ni];
+        int nbr_type = ni < 0 ? 0 : src.cells[c.neighbors[ni]].type;
+
+        if (c.neighbors[ni] < 0 || (nbr_type == 0) || ADD_ALL_FACES_ALL_THE_TIME) {
+            glm::vec3 owning_color = type >= nbr_type ? color : src.get_color(nbr_type);
+            
             // make a fan of triangles to cover the face
             int vicount = (i+c.faces[i]+1)-(i+1);
             int vs[3] = {c.faces[i+1], 0, c.faces[i+2]};
             for (int j = i+3; j < i+c.faces[i]+1; j++) { // facev
                 vs[1] = c.faces[j];
-                
-                add_tri(c.vertices, vs, cell, c2t, ni, color);
-                
+                add_tri(c.vertices, vs, cell, c2t, ni, owning_color);
                 vs[2] = vs[1];
             }
         }
@@ -1171,10 +1175,13 @@ void GLBufferManager::set_want_colors(Voro &src, bool yes_colors) {
 
 void GLBufferManager::update_colors(Voro &src) {
     if (want_colors) { // fill in the current colors
-        for (size_t i=0; i<cell_inds.size(); i++) {
-            glm::vec3 c = src.get_color(src.cells[cell_inds[i]].type);
-            for (size_t ii=0; ii<3; ii++) {
-                colors[i*3+ii] = c[ii];
+        for (size_t i=0; i<tri_count; i++) {
+            int cell = cell_inds[i];
+            int nbr = vert2cell_neighbor(i*3);
+            int type_src = nbr > 0 && src.cells[nbr].type > src.cells[cell].type ? nbr : cell;
+            glm::vec3 c = src.get_color(src.cells[type_src].type);
+            for (size_t ii=0; ii<9; ii++) {
+                colors[i*9+ii] = c[ii%3];
             }
         }
     }
