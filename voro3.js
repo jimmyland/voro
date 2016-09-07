@@ -381,7 +381,6 @@ var Voro3 = function () {
         this.geometry = this.init_geometry(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
         this.material = new THREE.MeshPhongMaterial( { vertexColors: THREE.NoColors, color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
         this.set_vertex_colors();
-        //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
         if (this.mesh) {
             scene.remove(this.mesh);
         }
