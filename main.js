@@ -457,7 +457,7 @@ var VoroSettings = function() {
         v3.sites_points.visible = 'show' in f;
         this.siteScale = f.sites_scale;
         render();
-    }
+    };
     this.symmetrify = function() {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
                     Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
@@ -490,7 +490,7 @@ var VoroSettings = function() {
         this.numpts = values.numpts;
         this.seed = values.seed;
         this.regenerate();
-    }
+    };
 
     this.filename = 'filename';
     this.exportAsSTL = function() {
@@ -662,10 +662,16 @@ function onDocumentKeyDown( event ) {
     }
 
     // debugging key does custom debug-related stuff
-    // if (event.keyCode == "D".charCodeAt() && (event.ctrlKey || event.metaKey)) {
-    //     v3.alloc_geometry(v3.geometry);
-    //     v3.update_geometry();
-    // }
+    if (event.keyCode == "I".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+        if (v3.palette_length() === 0)
+            v3.set_palette([[.5,.5,.5],[1,0,0],[0,0,1]]);
+        else
+            v3.set_palette([]);
+        v3.update_geometry();
+    }
+    if (event.keyCode == "U".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+        v3.incr_active_type();
+    }
     
     xf_manager.keydown(event);
     // not sure this feature was actually useful ...
@@ -674,6 +680,10 @@ function onDocumentKeyDown( event ) {
     //     controls.alignToAxis(axis);
     //     xf_manager.deselect();
     // }
+
+    // if the keypresses did anything worthy of the undo Q, ensure it's captured seprately.
+    addToUndoQIfNeeded();
+
     render();
 }
 

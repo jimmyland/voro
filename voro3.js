@@ -21,6 +21,8 @@ var Voro3 = function () {
     this.tracked_acts = [];
     this.action_tracking = false;
     var that = this;
+    this.palette = [];
+    this.active_type = 1;
 
     this.start_tracking = function(yes) {
         if (yes === undefined || yes) {
@@ -79,12 +81,12 @@ var Voro3 = function () {
         this.undo = function() { add.redo(); };
         this.redo = function() { add.undo(); };
     };
-    var ToggleAct = function(cells) {
+    var ToggleAct = function(cells, active_type) {
         var cell_ids = that.inds_to_ids(cells);
         this.redo = function() {
             var inds = that.ids_to_inds(cell_ids);
             for (var i=0; i<inds.length; i++) {
-                that.voro.toggle_cell(inds[i]);
+                that.voro.toggle_cell(inds[i], active_type);
             }
         };
         this.undo = this.redo;
@@ -203,6 +205,27 @@ var Voro3 = function () {
             that.voro.clear_gl();
         };
     };
+    var SetPaletteAct = function(old_pal, new_pal) {
+        this.set = function(pal) {
+            that.palette = pal;
+            that.voro.set_palette(pal);
+            that.update_geometry();
+        };
+        this.redo = function() {
+            this.set(new_pal);
+        };
+        this.undo = function() {
+            this.set(old_pal);
+        };
+    };
+    var SetActiveTypeAct = function(old_color, new_color) {
+        this.redo = function() {
+            that.active_type = new_color;
+        };
+        this.undo = function() {
+            that.active_type = old_color;
+        };
+    };
 
 
     this.undo = function(seq) {
@@ -232,6 +255,14 @@ var Voro3 = function () {
         if (this.action_tracking) {
             this.tracked_acts.push(act);
         }
+    };
+    this.set_palette = function(palette) {
+        var act = new SetPaletteAct(this.palette, palette);
+        this.track_act(act);
+        act.redo();
+    };
+    this.palette_length = function() {
+        return this.palette.length;
     };
 
     
@@ -335,10 +366,21 @@ var Voro3 = function () {
         }
     };
 
+    this.set_vertex_colors = function() {
+        if (this.material) {
+            if (this.voro.has_colors()) {
+                this.material.vertexColors = THREE.VertexColors;
+            } else {
+                this.material.vertexColors = THREE.NoColors;
+            }
+            this.material.needsUpdate = true;
+        }
+    };
+
     this.create_gl_objects = function(scene) {
         this.geometry = this.init_geometry(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
-        this.material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
-        //    material = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true } ) ;
+        this.material = new THREE.MeshPhongMaterial( { vertexColors: THREE.NoColors, color: 0xaaaaaa, specular: 0x111111, shininess: 5, shading: THREE.FlatShading } ) ;
+        this.set_vertex_colors();
         if (this.mesh) {
             scene.remove(this.mesh);
         }
@@ -373,15 +415,27 @@ var Voro3 = function () {
         this.verts_ptr = this.voro.gl_vertices();
         var max_tris = this.voro.gl_max_tris();
         var array = Module.HEAPF32.subarray(this.verts_ptr/4, this.verts_ptr/4 + max_tris*3*3);
-        if (realloc_only && array === this.cached_geometry_array) {
+        var want_colors = this.voro.has_colors();
+        var colors_array;
+        if (want_colors) {
+            var colors_ptr = this.voro.gl_colors();
+            colors_array = Module.HEAPF32.subarray(colors_ptr/4, colors_ptr/4 + max_tris*3*3);
+        }
+        if (realloc_only && array === this.cached_geometry_array && colors_array === this.cached_colors_array) {
             return;
         }
-        if (this.cached_geometry_array) {
+        if (this.cached_geometry_array || this.cached_colors_array) {
             geometry.dispose();
         }
+        this.cached_colors_array = colors_array;
         this.cached_geometry_array = array;
-        var vertices = new THREE.BufferAttribute(array, 3);
-        geometry.addAttribute('position', vertices);
+        geometry.addAttribute('position', new THREE.BufferAttribute(array, 3));
+        if (want_colors) {
+            geometry.addAttribute('color', new THREE.BufferAttribute(colors_array, 3));
+        } else {
+            geometry.removeAttribute('color');
+        }
+        this.set_vertex_colors();
     };
     this.init_geometry = function(est_max_tris, est_max_preview_verts, est_max_cell_sites) {
         var geometry = new THREE.BufferGeometry();
@@ -455,7 +509,7 @@ var Voro3 = function () {
     
     this.add_cell_list_noup = function (pt, state, skip_sym) {
         if (state === undefined) {
-            state = true;
+            state = this.active_type;
         }
         var cell = this.voro.add_cell(pt, state);
         if (this.active_sym) {
@@ -469,6 +523,9 @@ var Voro3 = function () {
         return cell;
     };
     this.add_cell = function (pt_3, state) {
+        if (state && typeof(state) === 'boolean') {
+            state = this.active_type;
+        }
         var pt = [pt_3.x, pt_3.y, pt_3.z];
         var c = this.add_cell_list_noup(pt, state);
         this.update_geometry();
@@ -769,8 +826,8 @@ var Voro3 = function () {
     };
     this.toggle_cell = function(cell, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
         if (cell < 0) { return; }
-        this.track_act(new ToggleAct([cell]));
-        this.voro.toggle_cell(cell);
+        this.track_act(new ToggleAct([cell], this.active_type));
+        this.voro.toggle_cell(cell, this.active_type);
         if (!sym_flag) {
             if (this.active_sym) {
                 var slist = this.ordered_sym_list(cell);
@@ -837,6 +894,7 @@ var Voro3 = function () {
     // v1: [int32 file_type_id_number=1619149277] [int32 ver=1]
     //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
+    //       [int32 palette size] {[float32 r] [float32 g] [float32 b]}*count}
     this.get_binary_raw_buffer = function() {
         var key, k, i, t;
         var num_cells = this.voro.cell_count();
@@ -861,7 +919,8 @@ var Voro3 = function () {
             type_starts[key] = start;
             start += typeblock_header_size+type_counts[key]*cell_size;
         }
-        var total_size = start;
+        var palette_start = start;
+        var total_size = start + 4 + this.palette_length()*3*4;
         
         var buffer = new ArrayBuffer(total_size);
         var view = new DataView(buffer);
@@ -893,7 +952,28 @@ var Voro3 = function () {
             type_place_in_arr[t] = place_in_arr + cell_size;
         }
 
+        view.setInt32(palette_start, this.palette_length(), true);
+        for (i=0; i<this.palette.length; i++) {
+            var arr_s = palette_start + 4 + i*3*4;
+            view.setFloat32(arr_s+0, this.palette[i][0], true);
+            view.setFloat32(arr_s+4, this.palette[i][1], true);
+            view.setFloat32(arr_s+8, this.palette[i][2], true);
+        }
+
         return buffer;
+    };
+
+    this.incr_active_type = function() {
+        if (!this.active_type) {
+            this.active_type = 1;
+        }
+        var new_type = 1;
+        if (this.palette_length() > 0) {
+            new_type = ((this.active_type) % this.palette_length()) + 1;
+        }
+        var act = new SetActiveTypeAct(this.active_type, new_type);
+        this.track_act(act);
+        act.redo();
     };
 
     this.create_from_raw_buffer = function(buffer) {
@@ -937,6 +1017,18 @@ var Voro3 = function () {
                 var z = view.getFloat32(cur_pos, true); cur_pos += 4;
                 this.voro.add_cell([x,y,z], type);
             }
+        }
+
+        if (cur_pos < view.byteLength) {
+            var p_len = view.getInt32(cur_pos, true); cur_pos += 4;
+            this.palette = [];
+            for (i=0; i<p_len; i++) {
+                var r = view.getFloat32(cur_pos, true); cur_pos += 4;
+                var g = view.getFloat32(cur_pos, true); cur_pos += 4;
+                var b = view.getFloat32(cur_pos, true); cur_pos += 4;
+                this.palette.push([r,g,b]);
+            }
+            this.set_palette(this.palette);
         }
 
         return true;
