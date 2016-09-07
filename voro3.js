@@ -432,7 +432,6 @@ var Voro3 = function () {
         geometry.addAttribute('position', new THREE.BufferAttribute(array, 3));
         if (want_colors) {
             geometry.addAttribute('color', new THREE.BufferAttribute(colors_array, 3));
-
         } else {
             geometry.removeAttribute('color');
         }
