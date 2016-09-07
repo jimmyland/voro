@@ -896,6 +896,7 @@ var Voro3 = function () {
     // v1: [int32 file_type_id_number=1619149277] [int32 ver=1]
     //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
+    //       [int32 palette size] {[float32 r] [float32 g] [float32 b]}*count}
     this.get_binary_raw_buffer = function() {
         var key, k, i, t;
         var num_cells = this.voro.cell_count();
@@ -920,7 +921,8 @@ var Voro3 = function () {
             type_starts[key] = start;
             start += typeblock_header_size+type_counts[key]*cell_size;
         }
-        var total_size = start;
+        var palette_start = start;
+        var total_size = start + 4 + this.palette_length()*3*4;
         
         var buffer = new ArrayBuffer(total_size);
         var view = new DataView(buffer);
@@ -950,6 +952,14 @@ var Voro3 = function () {
             view.setFloat32(place_in_arr+4, c.pos[1], true);
             view.setFloat32(place_in_arr+8, c.pos[2], true);
             type_place_in_arr[t] = place_in_arr + cell_size;
+        }
+
+        view.setInt32(palette_start, this.palette_length(), true);
+        for (i=0; i<this.palette.length; i++) {
+            var arr_s = palette_start + 4 + i*3*4;
+            view.setFloat32(arr_s+0, this.palette[i][0], true);
+            view.setFloat32(arr_s+4, this.palette[i][1], true);
+            view.setFloat32(arr_s+8, this.palette[i][2], true);
         }
 
         return buffer;
@@ -1009,6 +1019,18 @@ var Voro3 = function () {
                 var z = view.getFloat32(cur_pos, true); cur_pos += 4;
                 this.voro.add_cell([x,y,z], type);
             }
+        }
+
+        if (cur_pos < view.byteLength) {
+            var p_len = view.getInt32(cur_pos, true); cur_pos += 4;
+            this.palette = [];
+            for (i=0; i<p_len; i++) {
+                var r = view.getFloat32(cur_pos, true); cur_pos += 4;
+                var g = view.getFloat32(cur_pos, true); cur_pos += 4;
+                var b = view.getFloat32(cur_pos, true); cur_pos += 4;
+                this.palette.push([r,g,b]);
+            }
+            this.set_palette(this.palette);
         }
 
         return true;
