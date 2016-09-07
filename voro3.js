@@ -205,6 +205,27 @@ var Voro3 = function () {
             that.voro.clear_gl();
         };
     };
+    var SetPaletteAct = function(old_pal, new_pal) {
+        this.set = function(pal) {
+            that.palette = pal;
+            that.voro.set_palette(pal);
+            that.update_geometry();
+        };
+        this.redo = function() {
+            this.set(new_pal);
+        };
+        this.undo = function() {
+            this.set(old_pal);
+        };
+    };
+    var SetActiveTypeAct = function(old_color, new_color) {
+        this.redo = function() {
+            that.active_type = new_color;
+        };
+        this.undo = function() {
+            that.active_type = old_color;
+        };
+    };
 
 
     this.undo = function(seq) {
@@ -236,11 +257,9 @@ var Voro3 = function () {
         }
     };
     this.set_palette = function(palette) {
-        // todo: track palette changes for update
-        // this.track_act(new SetPaletteAct(this.palette, palette)); // todo fill in
-        this.palette = palette;
-        this.voro.set_palette(palette);
-        this.update_geometry();
+        var act = new SetPaletteAct(this.palette, palette);
+        this.track_act(act);
+        act.redo();
     };
     this.palette_length = function() {
         return this.palette.length;
@@ -940,9 +959,13 @@ var Voro3 = function () {
         if (!this.active_type) {
             this.active_type = 1;
         }
+        var new_type = 1;
         if (this.palette_length() > 0) {
-            this.active_type = ((this.active_type) % this.palette_length()) + 1;
+            new_type = ((this.active_type) % this.palette_length()) + 1;
         }
+        var act = new SetActiveTypeAct(this.active_type, new_type);
+        this.track_act(act);
+        act.redo();
     };
 
     this.create_from_raw_buffer = function(buffer) {

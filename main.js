@@ -680,6 +680,10 @@ function onDocumentKeyDown( event ) {
     //     controls.alignToAxis(axis);
     //     xf_manager.deselect();
     // }
+
+    // if the keypresses did anything worthy of the undo Q, ensure it's captured seprately.
+    addToUndoQIfNeeded();
+
     render();
 }
 
