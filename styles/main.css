@@ -12,3 +12,21 @@ body{
   stroke: currentColor;
   fill: currentColor;
 }
+.sp-dd {
+  display: none;
+}
+.sp-replacer {
+    margin:0;
+    padding: 0px;
+    border: 0px;
+}
+.sp-preview {
+    border: solid 1px;
+    margin-right: 0px;
+}
+.no-selection {
+    -webkit-user-select: none; /* webkit (safari, chrome) browsers */
+    -moz-user-select: none; /* mozilla browsers */
+    -khtml-user-select: none; /* webkit (konqueror) browsers */
+    -ms-user-select: none; /* IE10+ */
+}

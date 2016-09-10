@@ -218,15 +218,6 @@ var Voro3 = function () {
             this.set(old_pal);
         };
     };
-    var SetActiveTypeAct = function(old_color, new_color) {
-        this.redo = function() {
-            that.active_type = new_color;
-        };
-        this.undo = function() {
-            that.active_type = old_color;
-        };
-    };
-
 
     this.undo = function(seq) {
         for (var i=seq.length-1; i>=0; i--) {
@@ -961,19 +952,6 @@ var Voro3 = function () {
         }
 
         return buffer;
-    };
-
-    this.incr_active_type = function() {
-        if (!this.active_type) {
-            this.active_type = 1;
-        }
-        var new_type = 1;
-        if (this.palette_length() > 0) {
-            new_type = ((this.active_type) % this.palette_length()) + 1;
-        }
-        var act = new SetActiveTypeAct(this.active_type, new_type);
-        this.track_act(act);
-        act.redo();
     };
 
     this.create_from_raw_buffer = function(buffer) {

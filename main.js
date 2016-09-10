@@ -19,6 +19,25 @@ function override_cam_controls() { // disable trackball controls
     last_touch_for_camera = false;
 }
 
+function hexToRGBFloat(hex) {
+    var bigint = parseInt(hex.slice(1), 16);
+    var r = (bigint >> 16) & 255;
+    var g = (bigint >> 8) & 255;
+    var b = bigint & 255;
+    return [r/255.0, g/255.0, b/255.0];
+}
+
+function convertPalette() {
+    var pal = $("#showPalette").spectrum("option", "palette");
+    var res = [];
+    for (var outer=0; outer<pal.length; outer++) {
+        for (var inner=0; inner<pal[outer].length; inner++) {
+            res.push(hexToRGBFloat(pal[outer][inner]));
+        }
+    }
+    return res;
+}
+
 var v3;
 var xf_manager;
 var undo_q;
@@ -663,13 +682,17 @@ function onDocumentKeyDown( event ) {
 
     // debugging key does custom debug-related stuff
     if (event.keyCode == "I".charCodeAt() && (event.ctrlKey || event.metaKey)) {
-        if (v3.palette_length() === 0)
-            v3.set_palette([[.5,.5,.5],[1,0,0],[0,0,1]]);
-        else
+        if (v3.palette_length() === 0) {
+            var pal = convertPalette();
+            console.log("pal="+pal);
+            v3.set_palette(pal);
+        } else {
             v3.set_palette([]);
+        }
         v3.update_geometry();
     }
     if (event.keyCode == "U".charCodeAt() && (event.ctrlKey || event.metaKey)) {
+
         v3.incr_active_type();
     }
     
