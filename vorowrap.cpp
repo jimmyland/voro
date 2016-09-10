@@ -1035,17 +1035,15 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
     
     for (int i = 0, ni = 0; i < (int)c.faces.size(); i+=c.faces[i]+1, ni++) {
         int nbr = c.neighbors[ni];
-        int nbr_type = ni < 0 ? 0 : src.cells[c.neighbors[ni]].type;
+        int nbr_type = nbr < 0 ? 0 : src.cells[nbr].type;
 
-        if (c.neighbors[ni] < 0 || (nbr_type == 0) || ADD_ALL_FACES_ALL_THE_TIME) {
-            glm::vec3 owning_color = type >= nbr_type ? color : src.get_color(nbr_type);
-            
+        if (nbr_type == 0 || ADD_ALL_FACES_ALL_THE_TIME) {
             // make a fan of triangles to cover the face
             int vicount = (i+c.faces[i]+1)-(i+1);
             int vs[3] = {c.faces[i+1], 0, c.faces[i+2]};
             for (int j = i+3; j < i+c.faces[i]+1; j++) { // facev
                 vs[1] = c.faces[j];
-                add_tri(c.vertices, vs, cell, c2t, ni, owning_color);
+                add_tri(c.vertices, vs, cell, c2t, ni, color);
                 vs[2] = vs[1];
             }
         }
