@@ -719,7 +719,6 @@ function onDocumentKeyDown( event ) {
     if (event.keyCode == "I".charCodeAt() && (event.ctrlKey || event.metaKey)) {
         if (v3.palette_length() === 0) {
             var pal = convertPalette();
-            console.log("pal="+pal);
             v3.set_palette(pal);
         } else {
             v3.set_palette([]);

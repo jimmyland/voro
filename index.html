@@ -390,14 +390,12 @@
                     var type = 1;
                     for (var outer=0; outer<pal.length; outer++) {
                         for (var inner=0; inner<pal[outer].length; inner++) {
-                            console.log(cur+" vs "+pal[outer][inner]);
                             if (cur == pal[outer][inner]) {
                                 return type;
                             }
                             type++;
                         }
                     }
-                    console.log("not found");
                     return 1;
                 }
                 $("#showPalette").spectrum({
