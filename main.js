@@ -8,8 +8,10 @@
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var scene, camera, renderer;
+var lights;
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
+
 
 var controls;
 var last_touch_for_camera = false;
@@ -578,6 +580,60 @@ function wait_for_ready() {
 }
 wait_for_ready();
 
+function clear_lights() {
+    if (lights) {
+        for (var i=0; i<lights.length; i++) {
+            scene.remove(lights[i]);
+        }
+        lights = [];
+    }
+}
+
+var LightPresets = {
+    "Axis Colors": function() {
+        var l = [];
+        l[0] = new THREE.DirectionalLight( 0xcc9999 );
+        l[1] = new THREE.DirectionalLight( 0x99cc99 );
+        l[2] = new THREE.DirectionalLight( 0x9999cc );
+        
+        l[3] = new THREE.DirectionalLight( 0xff9999 );
+        l[4] = new THREE.DirectionalLight( 0x99ff99 );
+        l[5] = new THREE.DirectionalLight( 0x9999ff );
+        
+        l[0].position.set( 0, 1, 0 );
+        l[1].position.set( 1, 0, 0 );
+        l[2].position.set( 0, 0, 1 );
+        l[3].position.set( 0,-1, 0 );
+        l[4].position.set(-1, 0, 0 );
+        l[5].position.set( 0, 0,-1 );
+        return l;
+    },
+    "Plain Three Light": function() {
+        var l = [];
+        l[0] = new THREE.DirectionalLight( 0x888888 );
+        l[1] = new THREE.DirectionalLight( 0x888888 );
+        l[2] = new THREE.AmbientLight( 0xdddddd );
+        
+        l[0].position.set(  1, .1,-.1 );
+        l[1].position.set( .1,-.1,  1 );
+        return l;
+    },
+    "Solid Color with No Shading": function() {
+        var l = [new THREE.AmbientLight( 0xffffff )]; 
+        l[0].intensity = 1.5;
+        return l;
+    }
+}
+
+function set_lights(light_preset_name) {
+    clear_lights();
+
+    lights = LightPresets[light_preset_name]();
+
+    for (var i=0; i<lights.length; i++) {
+        scene.add(lights[i]);
+    }
+}
 
 function setup_scene() {
     if (v3) {
@@ -592,28 +648,7 @@ function setup_scene() {
     v3 = new Voro3();
     undo_q = new UndoQueue();
     
-    var lights = [];
-    lights[0] = new THREE.DirectionalLight( 0xcc9999 );
-    lights[1] = new THREE.DirectionalLight( 0x99cc99 );
-    lights[2] = new THREE.DirectionalLight( 0x9999cc );
-    
-    lights[3] = new THREE.DirectionalLight( 0xff9999 );
-    lights[4] = new THREE.DirectionalLight( 0x99ff99 );
-    lights[5] = new THREE.DirectionalLight( 0x9999ff );
-    
-    lights[0].position.set( 0, 1, 0 );
-    lights[1].position.set( 1, 0, 0 );
-    lights[2].position.set( 0, 0, 1 );
-    lights[3].position.set( 0,-1, 0 );
-    lights[4].position.set(-1, 0, 0 );
-    lights[5].position.set( 0, 0,-1 );
-    
-    scene.add( lights[0] );
-    scene.add( lights[1] );
-    scene.add( lights[2] );
-    scene.add( lights[3] );
-    scene.add( lights[4] );
-    scene.add( lights[5] );
+    set_lights("Plain Three Light");
     
     var bb_geom = new THREE.BoxGeometry( 20, 20, 20 );
     var bb_mat = new THREE.MeshBasicMaterial( { wireframe: true } );
