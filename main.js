@@ -474,6 +474,9 @@ var VoroSettings = function() {
         v3.sites_points.visible = !v3.sites_points.visible;
         render();
     };
+    this.set_colors_from_form = function (f) {
+        enable_color("color" in f);
+    };
     this.set_sites_from_form = function(f) {
         v3.sites_points.visible = 'show' in f;
         this.siteScale = f.sites_scale;
@@ -584,7 +587,7 @@ function wait_for_ready() {
 }
 $(document).ready( function() {
     wait_for_ready();
-})
+});
 
 
 function clear_lights() {
@@ -630,7 +633,7 @@ var LightPresets = {
         l[0].intensity = 1.5;
         return l;
     }
-}
+};
 
 function set_lights(light_preset_name) {
     clear_lights();
@@ -817,8 +820,7 @@ function doAddDelClick(button, mouse) {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
                 pt = v3.bb_project(pt);
-                var state = (button === 2) ? 0 : 1;
-                var added_cell = v3.add_cell(pt, state);
+                var added_cell = v3.add_cell(pt, (button !== 2));
                 xf_manager.attach([added_cell]);
             }
         }
