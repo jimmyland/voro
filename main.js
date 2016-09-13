@@ -771,13 +771,16 @@ function doToggleClick(button, mouse) {
     }
 }
 
-function doPaintClick(button, mouse) {
-    if (settings.mode === 'paint') {
+function doPaintClickOrMove(buttons, mouse) {
+    if (buttons && settings.mode === 'paint') {
         xf_manager.deselect();
         var cell = v3.raycast(mouse, camera, raycaster);
-        v3.set_cell(cell, v3.active_type);
-        v3.update_geometry();
-        v3.set_preview(-1);
+        if (cell > -1 && v3.cell_type(cell) !== v3.active_type) {
+            v3.set_cell(cell, v3.active_type);
+            v3.update_geometry();
+            v3.set_preview(-1);
+        }
+        
     }
 }
 
@@ -875,7 +878,7 @@ function set_cursor(cell_over) {
 
 function onDocumentMouseDown(event) {
     doToggleClick(event.button, mouse);
-    doPaintClick(event.button, mouse);
+    doPaintClickOrMove(event.buttons, mouse);
     
     doAddDelClick(event.button, mouse);
 
@@ -904,6 +907,7 @@ function onDocumentMouseUp() {
 function onDocumentMouseMove( event ) {
     event.preventDefault();
     doCursorMove(event.clientX, event.clientY);
+    doPaintClickOrMove(event.buttons, mouse);
     var over_moving_controls = xf_manager.over_axis();
     var cell_over = check_allow_trackball(over_moving_controls);
     set_cursor(cell_over);
@@ -979,7 +983,7 @@ function onDocumentTouchEnd( event ) {
 
     if (!last_touch_for_camera) {
         doToggleClick(event.button, mouse);
-        doPaintClick(event.button, mouse);
+        doPaintClickOrMove(event.buttons, mouse);
         
         doAddDelClick(event.button, mouse);
     }
