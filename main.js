@@ -499,9 +499,11 @@ var VoroSettings = function() {
         addToUndoQIfNeeded();
     };
     
-    this.regenerate = function() {
+    this.regenerate = function(has_color) {
         xf_manager.reset();
         v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
+        render();
+        enable_color(has_color);
         undo_q.clear();
         render();
     };
@@ -510,7 +512,7 @@ var VoroSettings = function() {
         this.generator = values.generator;
         this.numpts = values.numpts;
         this.seed = values.seed;
-        this.regenerate();
+        this.regenerate("color" in values);
     };
 
     this.filename = 'filename';
@@ -543,6 +545,7 @@ var VoroSettings = function() {
             if (!valid) {
                 alert("Failed to load the saved voronoi diagram!  It might not have saved correctly, or there might be a bug in the loader!");
             } else {
+                enable_color(v3.palette_length() > 0);
                 undo_q.clear();
             }
         }
@@ -561,6 +564,7 @@ function loadRawVoroFile(evt) {
             if (!valid) {
                 alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
             } else {
+                enable_color(v3.palette_length() > 0);
                 undo_q.clear();
             }
         };
@@ -578,7 +582,10 @@ function wait_for_ready() {
         requestAnimationFrame( wait_for_ready );
     }
 }
-wait_for_ready();
+$(document).ready( function() {
+    wait_for_ready();
+})
+
 
 function clear_lights() {
     if (lights) {
@@ -695,14 +702,22 @@ function init() {
     
     settings = new VoroSettings();    
     setup_scene();
-    settings.regenerate();
+    settings.regenerate(true);
     
     animate();
     render();
 }
 
 
-
+function enable_color(yes) {
+    if (yes) {
+        v3.set_palette(convertPalette());
+        $("#color-tools").show();
+    } else {
+        v3.set_palette([]);
+        $("#color-tools").hide();
+    }
+}
 
 
 function onDocumentKeyDown( event ) {
@@ -713,21 +728,6 @@ function onDocumentKeyDown( event ) {
         } else {
             undo_q.undo();
         }
-    }
-
-    // debugging key does custom debug-related stuff
-    if (event.keyCode == "I".charCodeAt() && (event.ctrlKey || event.metaKey)) {
-        if (v3.palette_length() === 0) {
-            var pal = convertPalette();
-            v3.set_palette(pal);
-        } else {
-            v3.set_palette([]);
-        }
-        v3.update_geometry();
-    }
-    if (event.keyCode == "U".charCodeAt() && (event.ctrlKey || event.metaKey)) {
-
-        v3.incr_active_type();
     }
     
     xf_manager.keydown(event);
@@ -768,6 +768,16 @@ function doToggleClick(button, mouse) {
 
         v3.set_preview(-1);
         // v3.set_preview(nbr_cell); // un-comment to make the next toggle preview pop up right away ... it's more responsive but feels worse to me.
+    }
+}
+
+function doPaintClick(button, mouse) {
+    if (settings.mode === 'paint') {
+        xf_manager.deselect();
+        var cell = v3.raycast(mouse, camera, raycaster);
+        v3.set_cell(cell, v3.active_type);
+        v3.update_geometry();
+        v3.set_preview(-1);
     }
 }
 
@@ -865,6 +875,7 @@ function set_cursor(cell_over) {
 
 function onDocumentMouseDown(event) {
     doToggleClick(event.button, mouse);
+    doPaintClick(event.button, mouse);
     
     doAddDelClick(event.button, mouse);
 
@@ -898,6 +909,22 @@ function onDocumentMouseMove( event ) {
     set_cursor(cell_over);
     
 }
+
+function set_preview_hover() {
+    var prev_cell;
+    if (settings.mode === 'toggle') {
+        prev_cell = v3.raycast_neighbor(mouse, camera, raycaster);
+    } else if (settings.mode === 'paint' || settings.mode === 'toggle neighbor') {
+        prev_cell = v3.raycast(mouse, camera, raycaster);
+        if (settings.mode === 'paint' && prev_cell > -1 && v3.cell_type(prev_cell) === v3.active_type) {
+            prev_cell = -1; // paint would do nothing, so don't preview
+        }
+    }
+    if (prev_cell !== undefined) {
+        v3.set_preview(prev_cell);
+    }
+}
+
 function check_allow_trackball(over_moving_controls) {
     if (over_moving_controls===undefined) over_moving_controls = xf_manager.over_axis();
     var cell = null;
@@ -905,9 +932,8 @@ function check_allow_trackball(over_moving_controls) {
         cell = v3.raycast(mouse, camera, raycaster);
         if (!controls.isActive() || controls.isTouch()) {
             controls.dragEnabled = (cell < 0 || settings.mode === 'camera') && !over_moving_controls;
-            if (!controls.dragEnabled && settings.mode === 'toggle') {
-                var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
-                v3.set_preview(nbr_cell);
+            if (!controls.dragEnabled) {
+                set_preview_hover();
             }
         }
     }
@@ -944,9 +970,8 @@ function onDocumentTouchMove( event ) {
     mouse_from_touch(event);
     doCursorMove(event.touches[0].clientX, event.touches[0].clientY);
 
-    if (!controls.dragEnabled && settings.mode === 'toggle') {
-        var nbr_cell = v3.raycast_neighbor(mouse, camera, raycaster);
-        v3.set_preview(nbr_cell);
+    if (!controls.dragEnabled) {
+        set_preview_hover();
     }
 }
 function onDocumentTouchEnd( event ) {
@@ -954,6 +979,7 @@ function onDocumentTouchEnd( event ) {
 
     if (!last_touch_for_camera) {
         doToggleClick(event.button, mouse);
+        doPaintClick(event.button, mouse);
         
         doAddDelClick(event.button, mouse);
     }

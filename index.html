@@ -318,6 +318,9 @@
                 <label for="seed">Random Number Generator's Seed:</label>
                 <input type="text" class="form-control" id="seed" value="This controls the RNG" name="seed">
               </div>
+              <div class="checkbox">
+                <label><input type="checkbox" name="color" checked>&nbsp;Enable Colors</label>
+              </div>
               </form>
               </div>
               <div class="modal-footer">
@@ -330,7 +333,7 @@
         <script>$('#generateModal').modal('show');</script>
 
 
-        <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; background: #000; position: absolute; top: 0px; padding: 0px;">
+        <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; position: absolute; top: 0px; padding: 0px;">
             <div class="dropdown" style="display: inline-block; padding: 0px;">
               <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">File
               <span class="caret"></span></button>
@@ -357,7 +360,7 @@
               </ul>
             </div>
         </div>
-        <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; background: #000; position: absolute; top: 50px; padding: 0px;">
+        <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; position: absolute; top: 50px; padding: 0px;">
             <div class="btn-group-vertical" style="margin: 0px; padding: 0px;">
               <button type="button" title="select and move cells" class="btn btn-primary active" onclick="settings.mode = 'move';">
               <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-select"></use></svg>
@@ -374,50 +377,54 @@
               <button type="button" title="add cells" class="btn btn-primary" onclick="settings.mode = 'add/delete';">
               <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-add"></use></svg>
               </button>
-              <button type="button" title="delete cells" class="btn btn-primary" onclick="settings.mode = 'delete';">
+              <button type="button" id="lastnoncolorbutton" title="delete cells" class="btn btn-primary" onclick="settings.mode = 'delete';">
               <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-delete"></use></svg>
               </button>
-              <button type="button" title="brush" class="btn btn-primary" onclick="settings.mode = 'brush';">
-              <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-brush"></use></svg>
-              </button>
             </div>
-            <div id="palette" style="color:#fff; font-size: 24px; fill: #ff0000; background: #000;">
-            <svg class="icon" style="color:#FFFFFF; font-size: 24px;"><use xlink:href="#icon-palette"></use></svg>: <input type='text' id="showPalette"/>
-            <script type="text/javascript">
-                function getTypeFromUIPalette() {
-                    var pal = $("#showPalette").spectrum("option", "palette");
-                    var cur = $("#showPalette").spectrum("get");
-                    var type = 1;
-                    for (var outer=0; outer<pal.length; outer++) {
-                        for (var inner=0; inner<pal[outer].length; inner++) {
-                            if (cur == pal[outer][inner]) {
-                                return type;
+            <div id="color-tools" style="background: #088; border-radius: 5px; padding-left: 5px; padding-top: 1px; padding-right: 2px; margin-top: 5px;">
+                <div class="btn-group-vertical" style="margin: 0px; padding: 0px;">
+                <button type="button" id="brushbutton" title="brush" class="btn btn-primary" onclick="settings.mode = 'paint';">
+                  <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-brush"></use></svg>
+                  </button>
+                </div>
+                <div id="palette" style="color:#fff; font-size: 24px; fill: #ff0000;">
+                <svg class="icon" style="color:#FFFFFF; font-size: 24px;"><use xlink:href="#icon-palette"></use></svg>: <input type='text' id="showPalette"/>
+                <script type="text/javascript">
+                    function getTypeFromUIPalette() {
+                        var pal = $("#showPalette").spectrum("option", "palette");
+                        var cur = $("#showPalette").spectrum("get");
+                        var type = 1;
+                        for (var outer=0; outer<pal.length; outer++) {
+                            for (var inner=0; inner<pal[outer].length; inner++) {
+                                if (cur == pal[outer][inner]) {
+                                    return type;
+                                }
+                                type++;
                             }
-                            type++;
                         }
+                        return 1;
                     }
-                    return 1;
-                }
-                $("#showPalette").spectrum({
-                    change: function(color) {
-                        v3.active_type = getTypeFromUIPalette();
-                    },
-                    preferredFormat: "hex",
-                    showPaletteOnly: true,
-                    showPalette: true,
-                    color: '#ffffff',
-                    palette: [
-['#ffffff', '#efff9c', '#9fdbc7', '#fb7d7d', '#ffb69d'], //beach http://www.color-hex.com/color-palette/22804
-['#f29cfd', '#aae8ff', '#c2ffe5', '#d3cecd', '#fff4d6'], //pastels http://www.color-hex.com/color-palette/22703
-['#fffea1', '#ffff5d', '#eac071', '#df9a53', '#df6f21'], //sunny rocks http://www.color-hex.com/color-palette/22910
-['#cbffd0', '#8febbc', '#93d4b8', '#a38a64', '#7b5a33'], //mint choco chip http://www.color-hex.com/color-palette/22829
-['#b3cde0', '#6497b1', '#005b96', '#03396c', '#011f4b'], //blues http://www.color-hex.com/color-palette/1294
-['#32bd07', '#c7c136', '#d22828', '#9a4962', '#1ebbea'], //apple logo colors http://www.color-hex.com/color-palette/22943
-['#722525', '#ab5813', '#a5825e', '#48541c', '#582f14'], //autumn http://www.color-hex.com/color-palette/22655 
-['#383838', '#2d5867', '#1e2e4d', '#000d11', '#2c003a']  //night time http://www.color-hex.com/color-palette/1167  
-                    ]
-                });
-            </script>
+                    $("#showPalette").spectrum({
+                        change: function(color) {
+                            v3.active_type = getTypeFromUIPalette();
+                        },
+                        preferredFormat: "hex",
+                        showPaletteOnly: true,
+                        showPalette: true,
+                        color: '#ffffff',
+                        palette: [
+    ['#ffffff', '#efff9c', '#9fdbc7', '#fb7d7d', '#ffb69d'], //beach http://www.color-hex.com/color-palette/22804
+    ['#f29cfd', '#aae8ff', '#c2ffe5', '#d3cecd', '#fff4d6'], //pastels http://www.color-hex.com/color-palette/22703
+    ['#fffea1', '#ffff5d', '#eac071', '#df9a53', '#df6f21'], //sunny rocks http://www.color-hex.com/color-palette/22910
+    ['#cbffd0', '#8febbc', '#93d4b8', '#a38a64', '#7b5a33'], //mint choco chip http://www.color-hex.com/color-palette/22829
+    ['#b3cde0', '#6497b1', '#005b96', '#03396c', '#011f4b'], //blues http://www.color-hex.com/color-palette/1294
+    ['#32bd07', '#c7c136', '#d22828', '#9a4962', '#1ebbea'], //apple logo colors http://www.color-hex.com/color-palette/22943
+    ['#722525', '#ab5813', '#a5825e', '#48541c', '#582f14'], //autumn http://www.color-hex.com/color-palette/22655 
+    ['#383838', '#2d5867', '#1e2e4d', '#000d11', '#2c003a']  //night time http://www.color-hex.com/color-palette/1167  
+                        ]
+                    });
+                </script>
+            </div>
         </div>
         </div>
         
