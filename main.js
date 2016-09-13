@@ -918,7 +918,7 @@ function set_preview_hover() {
     var prev_cell;
     if (settings.mode === 'toggle') {
         prev_cell = v3.raycast_neighbor(mouse, camera, raycaster);
-    } else if (settings.mode === 'paint' || settings.mode === 'toggle neighbor') {
+    } else if (settings.mode === 'paint' || settings.mode === 'toggle off') {
         prev_cell = v3.raycast(mouse, camera, raycaster);
         if (settings.mode === 'paint' && prev_cell > -1 && v3.cell_type(prev_cell) === v3.active_type) {
             prev_cell = -1; // paint would do nothing, so don't preview
