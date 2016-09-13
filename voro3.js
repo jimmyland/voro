@@ -810,7 +810,7 @@ var Voro3 = function () {
             if (this.active_sym) {
                 var slist = this.ordered_sym_list(cell);
                 for (var i=0; i<slist[0].length; i++) {
-                    this.set_cell(this.voro.index_from_id(slist[0][i]), state);
+                    this.set_cell(this.voro.index_from_id(slist[0][i]), state, true);
                 }
             }
         }
