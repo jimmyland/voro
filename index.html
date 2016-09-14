@@ -300,6 +300,32 @@
           </div>
         </div>
 
+        <div class="modal fade" id="lightingModal" tabindex="-1" role="dialog" aria-labelledby="lightingModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="lightingModalLabel">Symmetry</h4>
+              </div>
+              <div class="modal-body">
+              <form class="form-inline" id="lightingForm">
+              <label for="genfun">Lighting Type:</label><select class="form-control" name="lighting_mode">
+                <option>Plain Three Light</option>
+                <option>Solid Color with No Shading</option>
+                <option>Axis Colors</option>
+              </select>
+              </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="set_lights(getFormVals('#lightingForm').lighting_mode);">Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="modal fade" id="generateModal" tabindex="-1" role="dialog" aria-labelledby="generateModalLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -382,7 +408,8 @@
               <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">View
               <span class="caret"></span></button>
               <ul class="dropdown-menu">
-                <li><a role="button" href="#myModal" data-toggle="modal" data-target="#showSitesModal">Visualize Sites ...</a></li>
+                <li><a role="button" href="#showSitesModal" data-toggle="modal" data-target="#showSitesModal">Visualize Sites ...</a></li>
+                <li><a role="button" href="#lightingModal" data-toggle="modal" data-target="#lightingModal">Lighting ...</a></li>
               </ul>
             </div>
         </div>
