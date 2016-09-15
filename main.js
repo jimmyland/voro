@@ -775,15 +775,16 @@ function doToggleClick(button, mouse) {
 }
 
 function doPaintClickOrMove(buttons, mouse) {
-    if (buttons && settings.mode === 'paint') {
-        xf_manager.deselect();
-        var cell = v3.raycast(mouse, camera, raycaster);
-        if (cell > -1 && v3.cell_type(cell) !== v3.active_type) {
-            v3.set_cell(cell, v3.active_type);
-            v3.update_geometry();
-            v3.set_preview(-1);
+    if (!xf_manager.over_axis() && !controls.isActive()) {
+        if (buttons && settings.mode === 'paint') {
+            xf_manager.deselect();
+            var cell = v3.raycast(mouse, camera, raycaster);
+            if (cell > -1 && v3.cell_type(cell) !== v3.active_type) {
+                v3.set_cell(cell, v3.active_type);
+                v3.update_geometry();
+                v3.set_preview(-1);
+            }       
         }
-        
     }
 }
 
@@ -864,7 +865,9 @@ function set_cursor(cell_over) {
     if (cell_over === undefined) {
         cell_over = v3.raycast(mouse, camera, raycaster);
     }
-    if (xf_manager.dragging() || xf_manager.dragging_custom()) {
+    if (controls.isActive()) {
+        renderer.domElement.style.cursor = "move";
+    } else if (xf_manager.dragging() || xf_manager.dragging_custom()) {
         renderer.domElement.style.cursor = "move";
         renderer.domElement.style.cursor = "grabbing";
         renderer.domElement.style.cursor = "-moz-grabbing";
