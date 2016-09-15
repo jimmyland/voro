@@ -458,10 +458,7 @@
                         return 1;
                     }
                     $("#showPalette").spectrum({
-                        change: function(color) {
-                            v3.active_type = getTypeFromUIPalette();
-                        },
-                        hide: function(color) {
+                        move: function(color) {
                             v3.active_type = getTypeFromUIPalette();
                         },
                         preferredFormat: "hex",
