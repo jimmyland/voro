@@ -970,6 +970,7 @@ function onDocumentTouchStart( event ) {
     event.preventDefault();
 
     mouse_from_touch(event);
+    check_allow_trackball(xf_manager.controls.checkHover(event));
     
     startMove(mouse, false, false);
 
