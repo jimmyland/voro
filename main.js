@@ -987,6 +987,7 @@ function onDocumentTouchMove( event ) {
     doCursorMove(event.touches[0].clientX, event.touches[0].clientY);
 
     if (!controls.dragEnabled) {
+        set_preview_hover();
         doPaintClickOrMove(true, mouse);
     }
 }
