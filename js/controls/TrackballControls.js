@@ -80,7 +80,7 @@ THREE.TrackballControls = function ( object, domElement ) {
 	// methods
     
     this.isActive = function () {
-        return _state != STATE.NONE;
+        return _state != STATE.NONE && _this.dragEnabled;
     }
 
     this.isTouch = function() {

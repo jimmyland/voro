@@ -976,6 +976,10 @@ function onDocumentTouchStart( event ) {
     
     startMove(mouse, false, false);
 
+    if (!controls.dragEnabled) {
+        doPaintClickOrMove(true, mouse);
+    }
+
 }
 function onDocumentTouchMove( event ) {
     event.preventDefault();
@@ -983,15 +987,15 @@ function onDocumentTouchMove( event ) {
     doCursorMove(event.touches[0].clientX, event.touches[0].clientY);
 
     if (!controls.dragEnabled) {
-        set_preview_hover();
+        doPaintClickOrMove(true, mouse);
     }
 }
 function onDocumentTouchEnd( event ) {
     xf_manager.stop_custom();
 
-    if (!last_touch_for_camera) {
+    if (!controls.dragEnabled) {
         doToggleClick(event.button, mouse);
-        doPaintClickOrMove(event.buttons, mouse);
+        doPaintClickOrMove(true, mouse);
         
         
     }
