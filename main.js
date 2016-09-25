@@ -817,6 +817,7 @@ function doAddDelClick(button, mouse) {
             }
             v3.delete_cell(cell);
             xf_manager.deselect();
+            v3.set_preview(-1);
         } else {
             var pt = v3.raycast_pt(mouse, camera, raycaster);
             if (pt) {
@@ -971,6 +972,7 @@ function onDocumentTouchStart( event ) {
 
     mouse_from_touch(event);
     check_allow_trackball(xf_manager.controls.checkHover(event));
+    doAddDelClick(event.button, mouse);
     
     startMove(mouse, false, false);
 
@@ -991,7 +993,7 @@ function onDocumentTouchEnd( event ) {
         doToggleClick(event.button, mouse);
         doPaintClickOrMove(event.buttons, mouse);
         
-        doAddDelClick(event.button, mouse);
+        
     }
 
     event.preventDefault();
