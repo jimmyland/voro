@@ -303,11 +303,11 @@ var Voro3 = function () {
         
         this.start_tracking(false);
         generator_fn(numPts, this.voro);
-        if (fill_level === 0) {
-            this.voro.set_only_centermost(1,0);
-        } else {
-            this.voro.set_fill(fill_level/100.0, Math.random()*2147483648);
-        }
+        // if (fill_level === 0) {
+        //     this.voro.set_only_centermost(1,0);
+        // } else {
+        //     this.voro.set_fill(fill_level/100.0, Math.random()*2147483648);
+        // }
         
         this.create_gl_objects(scene);
         
