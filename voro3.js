@@ -295,14 +295,14 @@ var Voro3 = function () {
         return new THREE.Vector3(p[0], p[1], p[2]);
     };
     
-    this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level) {
+    this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level, jitter) {
         this.nuke(scene);
         this.create_voro(min_point, max_point);
         
         Math.seedrandom(seed);
         
         this.start_tracking(false);
-        generator_fn(numPts, this.voro);
+        generator_fn(numPts, this.voro, jitter);
         if (fill_level === 0) {
             this.voro.set_only_centermost(1,0);
         } else {

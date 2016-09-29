@@ -393,7 +393,23 @@
               </div>
               <div class="form-inline">
                 <label for="seed">Randomization Seed (Type Anything Here): </label>
-                <input type="text" class="form-control" id="seed" value="This controls the RNG" name="seed">
+                <input type="text" class="form-control" id="seed" value="This controls the Random Number Generator" name="seed">
+              </div>
+              <div class="form-inline">
+                <label for="jitter_slider">Randomly Muss Them Up?:&nbsp;&nbsp;</label>
+                <input id="jitter_slider" type="text" name="jitter" data-slider-value="0" data-slider-min="0" data-slider-max="1" data-slider-step=".01" />
+                &nbsp;&nbsp;&nbsp;<span id="jitter_slider_label_val">0</span>
+                <script type="text/javascript">$("#jitter_slider").slider({
+                    min: 0,
+                    max: 1,
+                    value: 0,
+                    step: .01,
+                    tooltip: "hide"
+                });
+                $("#jitter_slider").on("change", function(slideEvt) {
+                    $("#jitter_slider_label_val").text(slideEvt.value.newValue);
+                });
+                </script>
               </div>
               <div class="checkbox">
                 <label><input type="checkbox" name="color" checked>&nbsp;Enable Colors</label>

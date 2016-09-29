@@ -291,169 +291,137 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
     this.init(scene, camera, domEl, v3, override_other_controls);
 };
 
-
+function jittpt(pt, amt) { // return jittered point (by +/- amt)
+    amt *= 2;
+    return [
+        pt[0]+(Math.random()-.5)*amt,
+        pt[1]+(Math.random()-.5)*amt,
+        pt[2]+(Math.random()-.5)*amt
+    ]
+}
 
 var Generators = {
-    "Random": function(numpts, voro) {
+    "Random": function(numpts, voro, jitter_unused) {
         voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts-1; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
         }
         
     },
-    "Cubes": function(numpts, voro) {
+    "Cubes": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts));
+        var ja = (w/n)*jitter;
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], ja), (i+j+k)%2==1);
                 }
             }
         }
 //        var lastcellid = voro.add_cell([0,0,0], true); // add seed to click
     },
-    "degenerating grid": function(numpts, voro) {
-        var w = 9.9;
-        
-        var n = Math.floor(Math.cbrt(numpts));
-        var rfac = 1.0/n;
-        for (var i=0; i<n+1; i++) {
-            for (var j=0; j<n+1; j++) {
-                for (var k=0; k<n+1; k++) {
-                    var r = rfac*j;
-                    voro.add_cell([i*2*w/n-w+Math.random()*r,j*2*w/n-w+Math.random()*r,k*2*w/n-w+Math.random()*r], (i+j+k)%2===1);
-                }
-            }
-        }
-    },
-    "cylindrical columns": function(numpts, voro) {
-        var n = Math.floor(Math.cbrt(numpts));
-        var jitter = .1; // todo: expose jitter as param
-        var w =9.99;
-        voro.add_cell([0,0,0], true);
-        for (var zi=0; zi<2*n+1; zi++) { // z
-            var z = zi*w/n-w;
-            for (var ri=0; ri<n*.5+1; ri++) { // radius
-                var r = ri*(w-4)/(n*.5) + 4;
-                for (var ti=0; ti<n+1; ti++) { // angle
-                    var theta = ti*2*Math.PI/n;
-                    voro.add_cell([r*Math.cos(theta)+Math.random()*jitter, r*Math.sin(theta)+Math.random()*jitter, z+Math.random()*jitter], ((zi%n)-ti)===0);
-                }
-            }
-        }
-    },
-    "spherical spikes": function(numpts, voro) {
-        for (var i = 0; i < numpts; i++) {
-            var pt = [Math.random()*20-10,Math.random()*20-10,Math.random()*20-10];
-            var radtrue = Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]+pt[2]*pt[2]);
-            var rad = .55;//+rndn()*.002;
-            if (i > numpts/2) {
-                rad = .3+.25*(pt[2]+1)*(pt[2]+1)*.1+Math.random()*.05;
-            }
-            if (radtrue > .00000001) {
-                for (var ii=0; ii<3; ii++) {
-                    pt[ii]*=5*rad/radtrue;
-                }
-            }
-            var radfinal = Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]+pt[2]*pt[2]);
-            voro.add_cell(pt, radfinal < 4);
-        }
-    },
-    "Hexagonal Prisms": function(numpts, voro) {
+    "Hexagonal Prisms": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts));
+        var ja = (w/n)*jitter;
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 var offset = (j%2)*(w/n);
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+offset], (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+offset], ja), (i+j+k)%2==1);
                 }
             }
         }
     },
-    "Triangular Prisms": function(numpts, voro) {
+    "Triangular Prisms": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
+        var ja = o*jitter;
         for (var i=0; i<2*n+1; i++) {
             var s = i%4;
             var ox = (s===0||s===1)?0:o;
             var oz = (i%2)*o*.5-o*.25;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], (i+j+k)%2===1);
+                    voro.add_cell(jittpt([i*w/n-w+oz,j*2*w/n-w+ox,k*2*w/n-w], ja), (i+j+k)%2===1);
                 }
             }
         }
     },
-    "Truncated Octahedra": function(numpts, voro) {
+    "Truncated Octahedra": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
+        var ja = o*jitter;
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2===1);
-                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2===1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], ja), (i+j+k)%2===1);
+                    voro.add_cell(jittpt([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w+o], ja), (i+j+k)%2===1);
                 }
             }
         }
     },
-    "Gyrobifastigia": function(numpts, voro) {
+    "Gyrobifastigia": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/2));
         var o = (w/n);
+        var ja = o*jitter;
         for (var i=0; i<2*n+1; i++) {
             var s = i%4;
             var ox = (s===0||s===1)?0:o;
             var oy = (s===0||s===3)?0:o;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], (i+j+k)%2===1);
+                    voro.add_cell(jittpt([i*w/n-w,j*2*w/n-w+ox,k*2*w/n-w+oy], ja), (i+j+k)%2===1);
                 }
             }
         }
     },
-    "Rhombic Dodecahedra": function(numpts, voro) {
+    "Rhombic Dodecahedra": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
+        var ja = o*jitter;
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w,k*2*w/n-w+o], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w+o,k*2*w/n-w+o], (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], ja), (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w+o,j*2*w/n-w+o,k*2*w/n-w], ja), (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w+o,j*2*w/n-w,k*2*w/n-w+o], ja), (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w+o,k*2*w/n-w+o], ja), (i+j+k)%2==1);
                 }
             }
         }
     },
-    "Elongated Dodecahedra": function(numpts, voro) {
+    "Elongated Dodecahedra": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
+        var ja = o*jitter;
         for (var i=0; i<n+1; i++) {
             var oxy = (i%2)*o;
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w+oxy,k*2*w/n-w+oxy], (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w+oxy,k*2*w/n-w+oxy], ja), (i+j+k)%2==1);
                 }
             }
         }
     },
-    "Cubes with Pillows": function(numpts, voro) {
+    "Cubes with Pillows": function(numpts, voro, jitter) {
         var w = 9.9;
         var n = Math.floor(Math.cbrt(numpts/4));
         var o = (w/n);
+        var ja = o*jitter;
         for (var i=0; i<n+1; i++) {
             for (var j=0; j<n+1; j++) {
                 for (var k=0; k<n+1; k++) {
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w+o,j*2*w/n-w,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w+o,k*2*w/n-w], (i+j+k)%2==1);
-                    voro.add_cell([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+o], (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w], ja), (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w+o,j*2*w/n-w,k*2*w/n-w], ja), (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w+o,k*2*w/n-w], ja), (i+j+k)%2==1);
+                    voro.add_cell(jittpt([i*2*w/n-w,j*2*w/n-w,k*2*w/n-w+o], ja), (i+j+k)%2==1);
                 }
             }
         }
@@ -502,9 +470,9 @@ var VoroSettings = function() {
         addToUndoQIfNeeded();
     };
     
-    this.regenerate = function(has_color) {
+    this.regenerate = function(has_color, jitter) {
         xf_manager.reset();
-        v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level);
+        v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level, jitter);
         render();
         enable_color(has_color);
         undo_q.clear();
@@ -515,7 +483,7 @@ var VoroSettings = function() {
         this.generator = values.generator;
         this.numpts = values.numpts;
         this.seed = values.seed;
-        this.regenerate("color" in values);
+        this.regenerate("color" in values, values.jitter);
     };
 
     this.filename = 'filename';
