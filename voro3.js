@@ -446,9 +446,7 @@ var Voro3 = function () {
         geometry.name = 'voro3';
         var num_tris = this.voro.gl_tri_count();
         geometry.setDrawRange(0, num_tris*3);
-        
         geometry.boundingSphere = this.makeBoundingSphere();
-
         return geometry;
     };
     
