@@ -428,6 +428,17 @@ var Voro3 = function () {
         }
         this.set_vertex_colors();
     };
+    this.makeBoundingSphere = function() {
+        var dist = 0;
+        var c = [0,0,0];
+        for (var i=0; i<3; i++) {
+            c[i] = (this.min_point[i]+this.max_point[i])*.5;
+            var diff = this.max_point[i]-this.min_point[i];
+            dist += diff*diff;
+        }
+        dist = Math.sqrt(dist);
+        return new THREE.Sphere(new THREE.Vector3(c[0],c[1],c[2]), dist);
+    }
     this.init_geometry = function(est_max_tris, est_max_preview_verts, est_max_cell_sites) {
         var geometry = new THREE.BufferGeometry();
         this.voro.gl_build(est_max_tris, est_max_preview_verts, est_max_cell_sites);
@@ -435,9 +446,7 @@ var Voro3 = function () {
         geometry.name = 'voro3';
         var num_tris = this.voro.gl_tri_count();
         geometry.setDrawRange(0, num_tris*3);
-        var box = new THREE.Box3(this.min_point, this.max_point);
-        geometry.boundingSphere = box.getBoundingSphere();
-
+        geometry.boundingSphere = this.makeBoundingSphere();
         return geometry;
     };
     
@@ -462,8 +471,7 @@ var Voro3 = function () {
         geometry.name = 'voro3_preview';
         var num_verts = this.voro.gl_wire_vert_count();
         geometry.setDrawRange(0, num_verts);
-        var box = new THREE.Box3(this.min_point, this.max_point);
-        geometry.boundingSphere = box.getBoundingSphere();
+        geometry.boundingSphere = this.makeBoundingSphere();
         return geometry;
     };
 
@@ -493,8 +501,7 @@ var Voro3 = function () {
         geometry.name = 'voro3_sites';
         var num_verts = this.voro.cell_count();
         geometry.setDrawRange(0, num_verts);
-        var box = new THREE.Box3(this.min_point, this.max_point);
-        geometry.boundingSphere = box.getBoundingSphere();
+        geometry.boundingSphere = this.makeBoundingSphere();
         return geometry;
     };
     
