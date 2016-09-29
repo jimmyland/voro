@@ -1,4 +1,4 @@
-/**
+/** MIT Licensed code from ThreeJS; only minorly modified if at all
  * @author alteredq / http://alteredqualia.com/
  * @author mr.doob / http://mrdoob.com/
  */
