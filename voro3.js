@@ -429,12 +429,15 @@ var Voro3 = function () {
         this.set_vertex_colors();
     };
     this.makeBoundingSphere = function() {
-        var min = new THREE.Vector3();
-        var max = new THREE.Vector3();
-        min.fromArray(this.min_point);
-        max.fromArray(this.max_point);
-        var box = new THREE.Box3(min, max);
-        return box.getBoundingSphere();
+        var dist = 0;
+        var c = [0,0,0];
+        for (var i=0; i<3; i++) {
+            c[i] = (this.min_point[i]+this.max_point[i])*.5;
+            var diff = this.max_point[i]-this.min_point[i];
+            dist += diff*diff;
+        }
+        dist = Math.sqrt(dist);
+        return new THREE.Sphere(new THREE.Vector3(c[0],c[1],c[2]), dist);
     }
     this.init_geometry = function(est_max_tris, est_max_preview_verts, est_max_cell_sites) {
         var geometry = new THREE.BufferGeometry();
