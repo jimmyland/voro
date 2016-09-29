@@ -300,7 +300,7 @@
                 <option>Rotational</option>
                 <option>Dihedral</option>
               </select>
-              <div class="form-inline">
+              <div class="form-inline" id="sym_param_section">
                 <label for="sym_param" id="sym_param_name">Symmetry Parameter:</label>
                 <input id="sym_param_slider" type="text" name="sym_param" data-slider-tooltip="hide" data-slider-value="3" data-slider-min="2" data-slider-max="10" data-slider-step="1" />
                 &nbsp;&nbsp;&nbsp;<span id="sym_param_slider_val">3</span>
@@ -312,6 +312,13 @@
                 });
                 $("#sym_param_slider").on("change", function(slideEvt) {
                     $("#sym_param_slider_val").text(slideEvt.value.newValue);
+                });
+
+                $(document).ready(function(){ // hide the param slider on mirror mode, where it does nothing
+                    $("#sym_param_section").toggle($('#symfun').val() !== 'Mirror')
+                    $('#symfun').on('change', function() {
+                        $("#sym_param_section").toggle(this.value !== 'Mirror');
+                    });
                 });
                 </script>
               </div>
