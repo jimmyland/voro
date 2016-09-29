@@ -1,3 +1,5 @@
+(Note: This copy of the library has been modified a bit to make it easier to add/remove/move cells in an existing diagram.  Also, the makefile tied to this project should compile it along with my wrapper code w/ emscripten. -Jimmy Andrews, 2016)
+
 Voro++, a 3D cell-based Voronoi library (http://math.lbl.gov/voro++/)
 By Chris H. Rycroft (UC Berkeley / Lawrence Berkeley Laboratory)
 ================================================================

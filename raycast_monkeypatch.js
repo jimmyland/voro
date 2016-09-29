@@ -1,3 +1,4 @@
+// MIT Licensed code from ThreeJS; slightly modified to work around a bug
 THREE.Mesh.prototype.raycast = ( function () {
 
     var inverseMatrix = new THREE.Matrix4();

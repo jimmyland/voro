@@ -1,4 +1,4 @@
-/**
+/** MIT Licensed code from ThreeJS; only minorly modified if at all
  * @author arodic / https://github.com/arodic
  */
  /*jshint sub:true*/
