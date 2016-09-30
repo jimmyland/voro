@@ -297,11 +297,11 @@ function jittpt(pt, amt) { // return jittered point (by +/- amt)
         pt[0]+(Math.random()-.5)*amt,
         pt[1]+(Math.random()-.5)*amt,
         pt[2]+(Math.random()-.5)*amt
-    ]
+    ];
 }
 
 var Generators = {
-    "Random": function(numpts, voro, jitter_unused) {
+    "Random": function(numpts, voro) {
         voro.add_cell([0,0,0], true);
         for (var i=0; i<numpts-1; i++) {
             voro.add_cell([Math.random()*20-10,Math.random()*20-10,Math.random()*20-10], false);
@@ -852,7 +852,11 @@ function set_cursor(cell_over) {
 
 function onDocumentMouseDown(event) {
     doToggleClick(event.button, mouse);
-    doPaintClickOrMove(event.buttons, mouse);
+    var buttons = event.buttons;
+    if (buttons === undefined) { // safari doesn't know about event.buttons yet
+        buttons = event.button === 0; // this hack allows the sad safari to paint
+    }
+    doPaintClickOrMove(buttons, mouse);
     
     doAddDelClick(event.button, mouse);
 

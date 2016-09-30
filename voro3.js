@@ -438,7 +438,7 @@ var Voro3 = function () {
         }
         dist = Math.sqrt(dist);
         return new THREE.Sphere(new THREE.Vector3(c[0],c[1],c[2]), dist);
-    }
+    };
     this.init_geometry = function(est_max_tris, est_max_preview_verts, est_max_cell_sites) {
         var geometry = new THREE.BufferGeometry();
         this.voro.gl_build(est_max_tris, est_max_preview_verts, est_max_cell_sites);
