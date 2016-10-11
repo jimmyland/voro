@@ -472,10 +472,10 @@ var Generators = {
         var geo = new THREE.IcosahedronGeometry(5, 0); // start from an icosahedron
         var smoothSubdivision = new THREE.SubdivisionModifier(1);
         var noiseAmt = .4; // initial noise magnitude
-        var noiseLevelScale = .8; // factor by which noise decreases at each iteration
+        var noiseLevelScale = .85; // factor by which noise decreases at each iteration
         for (var subditer=0; subditer<4; subditer++) {
-            smoothSubdivision.modify(geo);
             radialNoise(geo, noiseAmt);
+            smoothSubdivision.modify(geo);
             noiseAmt *= noiseLevelScale;
         }
 
@@ -487,7 +487,7 @@ var Generators = {
             c.divideScalar(3.0);
             return c;
         }
-
+        geo.computeFaceNormals();
 
         var p = new THREE.Vector3();
         var zstep = .1;
