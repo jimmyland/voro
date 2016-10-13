@@ -824,6 +824,13 @@ struct Voro {
     int cell_count() {
         return cells.size();
     }
+    int visible_cell_count() {
+        int c = 0;
+        for (size_t i=0; i<cells.size(); i++) {
+            c += (cells[i].type == 0) ? 1 : 0;
+        }
+        return c;
+    }
     uintptr_t gl_colors() {
         return reinterpret_cast<uintptr_t>(&gl_computed.colors[0]);
     }
@@ -1249,6 +1256,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("clear_computed", &Voro::clear_computed)
     .function("clear_all", &Voro::clear_all)
     .function("cell_count", &Voro::cell_count)
+    .function("visible_cell_count", &Voro::visible_cell_count)
     .function("toggle_cell", &Voro::toggle_cell)
     .function("cell_neighbor_from_vertex", &Voro::cell_neighbor_from_vertex)
     .function("cell_from_vertex", &Voro::cell_from_vertex)
