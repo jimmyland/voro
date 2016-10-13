@@ -2,7 +2,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>Emscripten+voronoi test</title>
+        <title>~Voro~  3D Model with Cells</title>
         <meta name="description" content="">
         <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -17,7 +17,6 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js"></script>
         <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css">
         <script src="raycast_monkeypatch.js"></script>
-        <script src="BufferGeometry_monkeypatch.js"></script>
         <script src="js/controls/TrackballControls.js"></script>
         <script src="js/controls/TransformControls.js"></script>
         <script src="js/modifiers/SubdivisionModifier.js"></script>
@@ -139,6 +138,32 @@
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary">Save changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="howtoModal" tabindex="-1" role="dialog" aria-labelledby="howtoModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="howtoModalLabel">WHAT IS THIS?  Cellular 3D Modelling!</h4>
+              </div>
+              <div class="modal-body">
+                Use the tools:<br>
+                Move:
+                <svg class="icon" style="color:#000; font-size: 32px;"><use xlink:href="#icon-select"></use></svg><img src="howto/move_ex.gif" width="150px" style="margin: 1px">
+                <svg class="icon" style="color:#000; font-size: 32px;"><use xlink:href="#icon-select-neighbor"></use></svg><img src="howto/moven_ex.gif" width="150px" style="margin: 1px">  <br>
+                Show/Hide: <svg class="icon" style="color:#000; font-size: 32px;"><use xlink:href="#icon-show"></use></svg>/<svg class="icon" style="color:#000; font-size: 32px;"><use xlink:href="#icon-hide"></use></svg> <img src="howto/showhide_ex.gif" width="150px" style="margin: 1px"> <br> ADD:
+                <svg class="icon" style="color:#000; font-size: 32px;"><use xlink:href="#icon-add"></use></svg> LMB: <img src="howto/add_vis_ex.gif" width="150px" style="margin: 1px"> / RMB: <img src="howto/add_hid_ex.gif" width="150px" style="margin: 1px"><br> DELETE:
+                <svg class="icon" style="color:#000; font-size: 32px;"><use xlink:href="#icon-delete"></use></svg> LMB: <img src="howto/erase_vis_ex.gif" width="150px" style="margin: 1px"> / RMB: <img src="howto/erase_hid_ex.gif" width="150px" style="margin: 1px"><br>
+                Built using <a href="https://threejs.org/" target="_blank">ThreeJS</a> and <a href="http://math.lbl.gov/voro++/" target="_blank">Voro++</a> -- check out the <a href="https://github.com/jimmyland/voro" target="_blank">source on github</a>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
               </div>
             </div>
           </div>
@@ -276,7 +301,7 @@
                 <option>Rotational</option>
                 <option>Dihedral</option>
               </select>
-              <div class="form-inline">
+              <div class="form-inline" id="sym_param_section">
                 <label for="sym_param" id="sym_param_name">Symmetry Parameter:</label>
                 <input id="sym_param_slider" type="text" name="sym_param" data-slider-tooltip="hide" data-slider-value="3" data-slider-min="2" data-slider-max="10" data-slider-step="1" />
                 &nbsp;&nbsp;&nbsp;<span id="sym_param_slider_val">3</span>
@@ -288,6 +313,13 @@
                 });
                 $("#sym_param_slider").on("change", function(slideEvt) {
                     $("#sym_param_slider_val").text(slideEvt.value.newValue);
+                });
+
+                $(document).ready(function(){ // hide the param slider on mirror mode, where it does nothing
+                    $("#sym_param_section").toggle($('#symfun').val() !== 'Mirror')
+                    $('#symfun').on('change', function() {
+                        $("#sym_param_section").toggle(this.value !== 'Mirror');
+                    });
                 });
                 </script>
               </div>
@@ -334,11 +366,11 @@
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
-                <h4 class="modal-title" id="generateModalLabel">Create New Voronoi Diagram</h4>
+                <h4 class="modal-title" id="generateModalLabel">Make Something New</h4>
               </div>
               <div class="modal-body">
               <form class="form-inline" id="generatorForm">
-              <label for="genfun">Initial Voronoi Site Placement:</label><select class="form-control" id="genfun" name="generator">
+              <label for="genfun">What Shapes: </label><select class="form-control" id="genfun" name="generator">
                 <option>Random</option>
                 <option>Cubes</option>
                 <option>Gyrobifastigia</option>
@@ -350,7 +382,7 @@
                 <option>Cubes with Pillows</option>
               </select>
               <div class="form-inline">
-                <label for="numpts_slider">Approx. Desired Number of Sites:</label>
+                <label for="numpts_slider">How Many: </label>
                 <input id="numpts_slider" type="text" name="numpts" data-slider-value="1000" data-slider-min="1" data-slider-max="10000000" data-slider-step="1" />
                 &nbsp;&nbsp;&nbsp;<span id="numpts_slider_label_val">1000</span>
                 <script type="text/javascript">$("#numpts_slider").slider({
@@ -367,8 +399,24 @@
                 </script>
               </div>
               <div class="form-inline">
-                <label for="seed">Random Number Generator's Seed:</label>
-                <input type="text" class="form-control" id="seed" value="This controls the RNG" name="seed">
+                <label for="seed">Randomization Seed (Type Anything Here): </label>
+                <input type="text" class="form-control" id="seed" value="This controls the Random Number Generator" name="seed">
+              </div>
+              <div class="form-inline">
+                <label for="jitter_slider">Randomly Muss Them Up?:&nbsp;&nbsp;</label>
+                <input id="jitter_slider" type="text" name="jitter" data-slider-value="0" data-slider-min="0" data-slider-max="1" data-slider-step=".01" />
+                &nbsp;&nbsp;&nbsp;<span id="jitter_slider_label_val">0</span>
+                <script type="text/javascript">$("#jitter_slider").slider({
+                    min: 0,
+                    max: 1,
+                    value: 0,
+                    step: .01,
+                    tooltip: "hide"
+                });
+                $("#jitter_slider").on("change", function(slideEvt) {
+                    $("#jitter_slider_label_val").text(slideEvt.value.newValue);
+                });
+                </script>
               </div>
               <div class="checkbox">
                 <label><input type="checkbox" name="color" checked>&nbsp;Enable Colors</label>
@@ -384,8 +432,11 @@
         </div>
         <script>$('#generateModal').modal('show');</script>
 
-
-        <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; position: absolute; top: 0px; padding: 0px;">
+        
+        <div id="icons" style="color:#000; font-size: 32px; color: #fff; fill: #ff0000; position: absolute; float: right; top: 0px; right:0; padding: 0px;">
+            <center><a data-toggle="modal" href="#howtoModal">HELP?</a></center>
+        </div>
+        <div id="top-menu" style="color:#000; font-size: 32px; fill: #ff0000; position: absolute; top: 0px; padding: 0px;">
             <div class="dropdown" style="display: inline-block; padding: 0px;">
               <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">File
               <span class="caret"></span></button>
@@ -414,6 +465,7 @@
               </ul>
             </div>
         </div>
+        
         <div id="icons" style="color:#000; font-size: 32px; fill: #ff0000; position: absolute; top: 50px; padding: 0px;">
             <div class="btn-group-vertical" style="margin: 0px; padding: 0px;">
               <button type="button" title="select and move cells" class="btn btn-primary active" onclick="settings.mode = 'move';">
@@ -437,7 +489,7 @@
             </div>
             <div id="color-tools" style="background: #088; border-radius: 5px; padding-left: 5px; padding-top: 1px; padding-right: 2px; margin-top: 5px;">
                 <div class="btn-group-vertical" style="margin: 0px; padding: 0px;">
-                <button type="button" id="brushbutton" title="brush" class="btn btn-primary" onclick="settings.mode = 'paint';">
+                <button type="button" id="brushbutton" title="paint cells" class="btn btn-primary" onclick="settings.mode = 'paint';">
                   <svg class="icon" style="color:#FFFFFF; font-size: 32px;"><use xlink:href="#icon-brush"></use></svg>
                   </button>
                 </div>

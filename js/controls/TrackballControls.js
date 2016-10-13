@@ -1,4 +1,4 @@
-/**
+/** MIT Licensed code from ThreeJS; only minorly modified if at all
  * @author Eberhard Graether / http://egraether.com/
  * @author Mark Lundin 	/ http://mark-lundin.com
  * @author Simone Manini / http://daron1337.github.io
