@@ -632,6 +632,47 @@ var Voro3 = function () {
                 return [-pt[0], pt[1], pt[2]];
             };
         },
+        NMirrors: function(flip_centers) {
+            if (flip_centers.constructor !== Array) {
+                var n = flip_centers;
+                flip_centers = []
+                for (var i=0; i<3; i++) {
+                    if (i<n) {
+                        flip_centers[i] = 0;
+                    } else {
+                        flip_centers[i] = undefined;
+                    }
+                }
+            }
+            this.fcs = flip_centers;
+            var defined_count = 0;
+            this.iters = 1;
+            for (var i=0; i<3; i++) {
+                if (flip_centers[i] != undefined) {
+                    defined_count++;
+                    this.iters *= 2;
+                }
+            }
+            this.iters--;
+            var flip = function(pt, index) {
+                pt[index] = 2*flip_centers[index]-pt[index];
+                return pt;
+            };
+
+            this.ops = []
+            if (defined_count < 3) {
+                for (var i=0; i<3; i++) {
+                    if (flip_centers[i] != undefined) {
+                        this.ops.push(i)
+                    }
+                }
+            } else {
+                this.ops = [0,1,2,1,0,1,2,1] //x,y,z,y,x,y,z,y
+            }
+            this.op = function(pt, i) {
+                return flip(pt.slice(), this.ops[i % this.ops.length]);
+            };
+        },
         Rotational: function(rotations) {
             this.iters = rotations-1;
             this.theta = 2.0*Math.PI / rotations;
