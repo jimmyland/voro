@@ -824,8 +824,12 @@ var Voro3 = function () {
     };
     this.toggle_cell = function(cell, sym_flag) { // sym_flag is true if fn was called from w/in a symmetry op, undefined/falsey o.w.
         if (cell < 0) { return; }
-        this.track_act(new ToggleAct([cell], this.active_type));
-        this.voro.toggle_cell(cell, this.active_type);
+        var t = this.voro.cell_type(cell);
+        if (t === 0) {
+            t = this.active_type;
+        }
+        this.track_act(new ToggleAct([cell], t));
+        this.voro.toggle_cell(cell, t);
         if (!sym_flag) {
             if (this.active_sym) {
                 var slist = this.ordered_sym_list(cell);
