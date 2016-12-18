@@ -295,9 +295,12 @@ var Voro3 = function () {
         return new THREE.Vector3(p[0], p[1], p[2]);
     };
     
-    this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level, jitter) {
+    this.generate = function(scene, min_point, max_point, generator_fn, numPts, seed, fill_level, jitter, palette) {
         this.nuke(scene);
         this.create_voro(min_point, max_point);
+        if (palette) {
+            this.voro.set_palette(palette);
+        }
         
         Math.seedrandom(seed);
         

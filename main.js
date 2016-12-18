@@ -472,7 +472,14 @@ var VoroSettings = function() {
     
     this.regenerate = function(has_color, jitter) {
         xf_manager.reset();
-        v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level, jitter);
+        var pal;
+        if (has_color) {
+            pal = convertPalette();
+            $("#color-tools").show();
+        } else {
+            $("#color-tools").hide();
+        }
+        v3.generate(scene, [-10, -10, -10], [10, 10, 10], Generators[this.generator], this.numpts, this.seed, this.fill_level, jitter, pal);
         render();
         enable_color(has_color);
         undo_q.clear();
