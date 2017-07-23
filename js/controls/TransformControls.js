@@ -696,10 +696,10 @@
 		document.addEventListener( "touchmove", onPointerMove, false );
 
 		document.addEventListener( "mouseup", onPointerUp, false );
-		document.addEventListener( "mouseout", onPointerUp, false );
+//		document.addEventListener( "mouseout", onPointerUp, false );
 		document.addEventListener( "touchend", onPointerUp, false );
 		document.addEventListener( "touchcancel", onPointerUp, false );
-		document.addEventListener( "touchleave", onPointerUp, false );
+//		document.addEventListener( "touchleave", onPointerUp, false );
 
 		this.dispose = function () {
 
@@ -713,10 +713,10 @@
 			document.removeEventListener( "touchmove", onPointerMove );
 
 			document.removeEventListener( "mouseup", onPointerUp );
-			document.removeEventListener( "mouseout", onPointerUp );
+//			document.removeEventListener( "mouseout", onPointerUp );
 			document.removeEventListener( "touchend", onPointerUp );
 			document.removeEventListener( "touchcancel", onPointerUp );
-			document.removeEventListener( "touchleave", onPointerUp );
+//			document.removeEventListener( "touchleave", onPointerUp );
 
 		};
 
