@@ -1,7 +1,6 @@
-/** MIT Licensed code from ThreeJS; only minorly modified if at all
+/**
  * @author arodic / https://github.com/arodic
  */
- /*jshint sub:true*/
 
 ( function () {
 
@@ -234,13 +233,13 @@
 		arrowGeometry.merge( mesh.geometry, mesh.matrix );
 
 		var lineXGeometry = new THREE.BufferGeometry();
-		lineXGeometry.addAttribute( 'position', new THREE.Float32Attribute( [ 0, 0, 0,  1, 0, 0 ], 3 ) );
+		lineXGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  1, 0, 0 ], 3 ) );
 
 		var lineYGeometry = new THREE.BufferGeometry();
-		lineYGeometry.addAttribute( 'position', new THREE.Float32Attribute( [ 0, 0, 0,  0, 1, 0 ], 3 ) );
+		lineYGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 1, 0 ], 3 ) );
 
 		var lineZGeometry = new THREE.BufferGeometry();
-		lineZGeometry.addAttribute( 'position', new THREE.Float32Attribute( [ 0, 0, 0,  0, 0, 1 ], 3 ) );
+		lineZGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 0, 1 ], 3 ) );
 
 		this.handleGizmos = {
 
@@ -373,7 +372,7 @@
 
 			}
 
-			geometry.addAttribute( 'position', new THREE.Float32Attribute( vertices, 3 ) );
+			geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
 			return geometry;
 
 		};
@@ -421,7 +420,7 @@
 			],
 
 			XYZE: [
-				[ new THREE.Mesh( new THREE.Geometry() ) ]// TODO
+				[ new THREE.Mesh() ]// TODO
 			]
 
 		};
@@ -445,7 +444,7 @@
 			var group = {
 
 				handles: this[ "handles" ],
-				pickers: this[ "pickers" ],
+				pickers: this[ "pickers" ]
 
 			};
 
@@ -517,13 +516,13 @@
 		arrowGeometry.merge( mesh.geometry, mesh.matrix );
 
 		var lineXGeometry = new THREE.BufferGeometry();
-		lineXGeometry.addAttribute( 'position', new THREE.Float32Attribute( [ 0, 0, 0,  1, 0, 0 ], 3 ) );
+		lineXGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  1, 0, 0 ], 3 ) );
 
 		var lineYGeometry = new THREE.BufferGeometry();
-		lineYGeometry.addAttribute( 'position', new THREE.Float32Attribute( [ 0, 0, 0,  0, 1, 0 ], 3 ) );
+		lineYGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 1, 0 ], 3 ) );
 
 		var lineZGeometry = new THREE.BufferGeometry();
-		lineZGeometry.addAttribute( 'position', new THREE.Float32Attribute( [ 0, 0, 0,  0, 0, 1 ], 3 ) );
+		lineZGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 0, 1 ], 3 ) );
 
 		this.handleGizmos = {
 
@@ -690,34 +689,34 @@
 		domElement.addEventListener( "mousedown", onPointerDown, false );
 		domElement.addEventListener( "touchstart", onPointerDown, false );
 
-		document.addEventListener( "mousemove", onPointerHover, false );
-		document.addEventListener( "touchmove", onPointerHover, false );
+		domElement.addEventListener( "mousemove", onPointerHover, false );
+		domElement.addEventListener( "touchmove", onPointerHover, false );
 
-		document.addEventListener( "mousemove", onPointerMove, false );
-		document.addEventListener( "touchmove", onPointerMove, false );
+		domElement.addEventListener( "mousemove", onPointerMove, false );
+		domElement.addEventListener( "touchmove", onPointerMove, false );
 
-		document.addEventListener( "mouseup", onPointerUp, false );
-//		document.addEventListener( "mouseout", onPointerUp, false );
-		document.addEventListener( "touchend", onPointerUp, false );
-		document.addEventListener( "touchcancel", onPointerUp, false );
-//		document.addEventListener( "touchleave", onPointerUp, false );
+		domElement.addEventListener( "mouseup", onPointerUp, false );
+		domElement.addEventListener( "mouseout", onPointerUp, false );
+		domElement.addEventListener( "touchend", onPointerUp, false );
+		domElement.addEventListener( "touchcancel", onPointerUp, false );
+		domElement.addEventListener( "touchleave", onPointerUp, false );
 
 		this.dispose = function () {
 
 			domElement.removeEventListener( "mousedown", onPointerDown );
 			domElement.removeEventListener( "touchstart", onPointerDown );
 
-			document.removeEventListener( "mousemove", onPointerHover );
-			document.removeEventListener( "touchmove", onPointerHover );
+			domElement.removeEventListener( "mousemove", onPointerHover );
+			domElement.removeEventListener( "touchmove", onPointerHover );
 
-			document.removeEventListener( "mousemove", onPointerMove );
-			document.removeEventListener( "touchmove", onPointerMove );
+			domElement.removeEventListener( "mousemove", onPointerMove );
+			domElement.removeEventListener( "touchmove", onPointerMove );
 
-			document.removeEventListener( "mouseup", onPointerUp );
-//			document.removeEventListener( "mouseout", onPointerUp );
-			document.removeEventListener( "touchend", onPointerUp );
-			document.removeEventListener( "touchcancel", onPointerUp );
-//			document.removeEventListener( "touchleave", onPointerUp );
+			domElement.removeEventListener( "mouseup", onPointerUp );
+			domElement.removeEventListener( "mouseout", onPointerUp );
+			domElement.removeEventListener( "touchend", onPointerUp );
+			domElement.removeEventListener( "touchcancel", onPointerUp );
+			domElement.removeEventListener( "touchleave", onPointerUp );
 
 		};
 
@@ -800,7 +799,15 @@
 			this.position.copy( worldPosition );
 			this.scale.set( scale, scale, scale );
 
-			eye.copy( camPosition ).sub( worldPosition ).normalize();
+			if ( camera instanceof THREE.PerspectiveCamera ) {
+
+				eye.copy( camPosition ).sub( worldPosition ).normalize();
+
+			} else if ( camera instanceof THREE.OrthographicCamera ) {
+
+				eye.copy( camPosition ).normalize();
+
+			}
 
 			if ( scope.space === "local" ) {
 
@@ -816,14 +823,8 @@
 
 		};
 
-		this.checkHover = function(event) {
-			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
-			var intersect = intersectObjects( pointer, _gizmo[ _mode ].pickers.children );
-
-			return intersect;
-		}
-
 		function onPointerHover( event ) {
+
 			if ( scope.object === undefined || _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
 
 			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
@@ -1107,17 +1108,32 @@
 
 		function onPointerUp( event ) {
 
+			event.preventDefault(); // Prevent MouseEvent on mobile
+
 			if ( event.button !== undefined && event.button !== 0 ) return;
 
 			if ( _dragging && ( scope.axis !== null ) ) {
 
 				mouseUpEvent.mode = _mode;
-				scope.dispatchEvent( mouseUpEvent )
+				scope.dispatchEvent( mouseUpEvent );
 
 			}
 
 			_dragging = false;
-			onPointerHover( event );
+
+			if ( 'TouchEvent' in window && event instanceof TouchEvent ) {
+
+				// Force "rollover"
+
+				scope.axis = null;
+				scope.update();
+				scope.dispatchEvent( changeEvent );
+
+			} else {
+
+				onPointerHover( event );
+
+			}
 
 		}
 
