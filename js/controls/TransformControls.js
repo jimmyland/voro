@@ -1,4 +1,4 @@
-/**
+/**  MIT Licensed code from ThreeJS; minorly modified to make it play nicer w/ the voro editor states
  * @author arodic / https://github.com/arodic
  */
 
@@ -689,34 +689,34 @@
 		domElement.addEventListener( "mousedown", onPointerDown, false );
 		domElement.addEventListener( "touchstart", onPointerDown, false );
 
-		domElement.addEventListener( "mousemove", onPointerHover, false );
-		domElement.addEventListener( "touchmove", onPointerHover, false );
+		document.addEventListener( "mousemove", onPointerHover, false );
+		document.addEventListener( "touchmove", onPointerHover, false );
 
-		domElement.addEventListener( "mousemove", onPointerMove, false );
-		domElement.addEventListener( "touchmove", onPointerMove, false );
+		document.addEventListener( "mousemove", onPointerMove, false );
+		document.addEventListener( "touchmove", onPointerMove, false );
 
-		domElement.addEventListener( "mouseup", onPointerUp, false );
-		domElement.addEventListener( "mouseout", onPointerUp, false );
-		domElement.addEventListener( "touchend", onPointerUp, false );
-		domElement.addEventListener( "touchcancel", onPointerUp, false );
-		domElement.addEventListener( "touchleave", onPointerUp, false );
+		document.addEventListener( "mouseup", onPointerUp, false );
+		document.addEventListener( "mouseout", onPointerUp, false );
+		document.addEventListener( "touchend", onPointerUp, false );
+		document.addEventListener( "touchcancel", onPointerUp, false );
+		document.addEventListener( "touchleave", onPointerUp, false );
 
 		this.dispose = function () {
 
 			domElement.removeEventListener( "mousedown", onPointerDown );
 			domElement.removeEventListener( "touchstart", onPointerDown );
 
-			domElement.removeEventListener( "mousemove", onPointerHover );
-			domElement.removeEventListener( "touchmove", onPointerHover );
+			document.removeEventListener( "mousemove", onPointerHover );
+			document.removeEventListener( "touchmove", onPointerHover );
 
-			domElement.removeEventListener( "mousemove", onPointerMove );
-			domElement.removeEventListener( "touchmove", onPointerMove );
+			document.removeEventListener( "mousemove", onPointerMove );
+			document.removeEventListener( "touchmove", onPointerMove );
 
-			domElement.removeEventListener( "mouseup", onPointerUp );
-			domElement.removeEventListener( "mouseout", onPointerUp );
-			domElement.removeEventListener( "touchend", onPointerUp );
-			domElement.removeEventListener( "touchcancel", onPointerUp );
-			domElement.removeEventListener( "touchleave", onPointerUp );
+			document.removeEventListener( "mouseup", onPointerUp );
+			document.removeEventListener( "mouseout", onPointerUp );
+			document.removeEventListener( "touchend", onPointerUp );
+			document.removeEventListener( "touchcancel", onPointerUp );
+			document.removeEventListener( "touchleave", onPointerUp );
 
 		};
 
@@ -822,6 +822,13 @@
 			_gizmo[ _mode ].highlight( scope.axis );
 
 		};
+ 
+		this.checkHover = function(event) {
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+			var intersect = intersectObjects( pointer, _gizmo[ _mode ].pickers.children );
+
+			return intersect;
+		}
 
 		function onPointerHover( event ) {
 
