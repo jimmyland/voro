@@ -635,11 +635,9 @@ function setup_scene() {
     
     set_lights("Plain Three Light");
     
-    var bb_geom = new THREE.BoxGeometry( 20, 20, 20 );
-    var bb_mat = new THREE.MeshBasicMaterial( { wireframe: true } );
-    var bounding_box_mesh = new THREE.Mesh( bb_geom, bb_mat );
-    var bb_edges = new THREE.EdgesHelper(bounding_box_mesh);
-    scene.add(bb_edges);
+    var bb_geom = new THREE.BoxBufferGeometry( 20, 20, 20 );
+    var bb_edges = new THREE.EdgesGeometry( bb_geom );
+    scene.add( new THREE.LineSegments( bb_edges, new THREE.LineBasicMaterial( { color: 0xffffff } ) ) );
 
     controls = new THREE.TrackballControls( camera, renderer.domElement );
     controls.rotateSpeed = 10.0;

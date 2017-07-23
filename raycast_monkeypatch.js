@@ -68,23 +68,23 @@ THREE.Mesh.prototype.raycast = ( function () {
 
     }
 
-    function checkBufferGeometryIntersection( object, raycaster, ray, positions, uvs, a, b, c ) {
+    function checkBufferGeometryIntersection( object, raycaster, ray, position, uv, a, b, c ) {
 
-        vA.fromArray( positions, a * 3 );
-        vB.fromArray( positions, b * 3 );
-        vC.fromArray( positions, c * 3 );
+        vA.fromBufferAttribute( position, a );
+        vB.fromBufferAttribute( position, b );
+        vC.fromBufferAttribute( position, c );
 
         var intersection = checkIntersection( object, raycaster, ray, vA, vB, vC, intersectionPoint );
 
         if ( intersection ) {
 
-            if ( uvs ) {
+            if ( uv ) {
 
-                uvA.fromArray( uvs, a * 2 );
-                uvB.fromArray( uvs, b * 2 );
-                uvC.fromArray( uvs, c * 2 );
+                uvA.fromBufferAttribute( uv, a );
+                uvB.fromBufferAttribute( uv, b );
+                uvC.fromBufferAttribute( uv, c );
 
-                intersection.uv = uvIntersection( intersectionPoint,  vA, vB, vC,  uvA, uvB, uvC );
+                intersection.uv = uvIntersection( intersectionPoint, vA, vB, vC, uvA, uvB, uvC );
 
             }
 
@@ -127,32 +127,27 @@ THREE.Mesh.prototype.raycast = ( function () {
 
         }
 
-        var uvs, intersection;
+        var intersection;
 
-        if ( geometry instanceof THREE.BufferGeometry ) {
+        if ( geometry.isBufferGeometry ) {
 
             var a, b, c;
             var index = geometry.index;
-            var attributes = geometry.attributes;
-            var positions = attributes.position.array;
-
-            if ( attributes.uv !== undefined ) {
-
-                uvs = attributes.uv.array;
-
-            }
+            var position = geometry.attributes.position;
+            var uv = geometry.attributes.uv;
+            var i, l;
 
             if ( index !== null ) {
 
-                var indices = index.array;
+                // indexed buffer geometry
 
-                for ( var i = 0, l = indices.length; i < l; i += 3 ) {
+                for ( i = 0, l = index.count; i < l; i += 3 ) {
 
-                    a = indices[ i ];
-                    b = indices[ i + 1 ];
-                    c = indices[ i + 2 ];
+                    a = index.getX( i );
+                    b = index.getX( i + 1 );
+                    c = index.getX( i + 2 );
 
-                    intersection = checkBufferGeometryIntersection( this, raycaster, ray, positions, uvs, a, b, c );
+                    intersection = checkBufferGeometryIntersection( this, raycaster, ray, position, uv, a, b, c );
 
                     if ( intersection ) {
 
@@ -163,19 +158,20 @@ THREE.Mesh.prototype.raycast = ( function () {
 
                 }
 
-            } else {
+            } else if ( position !== undefined ) { // HACK: check for undefined position b/c this gets called w/ garbage data when I interact w/ the selection's rotation ball transform control?
 
+                // non-indexed buffer geometry
                 var drawRangeFac = 1;
-                if (material.wireframe) {
-                    drawRangeFac = .5;
-                }
-                for ( var i = geometry.drawRange.start*3*drawRangeFac, l = Math.min(positions.length,(geometry.drawRange.count*drawRangeFac)*3); i < l; i += 9 ) {
+                assert(!material.wireframe); // draw range may need to be cut in half in this case
+                var l = Math.min(position.count,geometry.drawRange.start+geometry.drawRange.count);
 
-                    a = i / 3;
-                    b = a + 1;
-                    c = a + 2;
+                for ( i = geometry.drawRange.start; i < l; i += 3 ) {
 
-                    intersection = checkBufferGeometryIntersection( this, raycaster, ray, positions, uvs, a, b, c );
+                    a = i;
+                    b = i + 1;
+                    c = i + 2;
+
+                    intersection = checkBufferGeometryIntersection( this, raycaster, ray, position, uv, a, b, c );
 
                     if ( intersection ) {
 
@@ -188,21 +184,22 @@ THREE.Mesh.prototype.raycast = ( function () {
 
             }
 
-        } else if ( geometry instanceof THREE.Geometry ) {
+        } else if ( geometry.isGeometry ) {
 
             var fvA, fvB, fvC;
-            var isFaceMaterial = material instanceof THREE.MultiMaterial;
-            var materials = isFaceMaterial === true ? material.materials : null;
+            var isMultiMaterial = Array.isArray( material );
 
             var vertices = geometry.vertices;
             var faces = geometry.faces;
+            var uvs;
+
             var faceVertexUvs = geometry.faceVertexUvs[ 0 ];
             if ( faceVertexUvs.length > 0 ) uvs = faceVertexUvs;
 
             for ( var f = 0, fl = faces.length; f < fl; f ++ ) {
 
                 var face = faces[ f ];
-                var faceMaterial = isFaceMaterial === true ? materials[ face.materialIndex ] : material;
+                var faceMaterial = isMultiMaterial ? material[ face.materialIndex ] : material;
 
                 if ( faceMaterial === undefined ) continue;
 
@@ -247,7 +244,7 @@ THREE.Mesh.prototype.raycast = ( function () {
 
                 if ( intersection ) {
 
-                    if ( uvs ) {
+                    if ( uvs && uvs[ f ] ) {
 
                         var uvs_f = uvs[ f ];
                         uvA.copy( uvs_f[ 0 ] );
