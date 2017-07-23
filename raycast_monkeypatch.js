@@ -158,7 +158,7 @@ THREE.Mesh.prototype.raycast = ( function () {
 
                 }
 
-            } else {
+            } else if ( position !== undefined ) { // HACK: check for undefined position b/c this gets called w/ garbage data when I interact w/ the selection's rotation ball transform control?
 
                 // non-indexed buffer geometry
                 var drawRangeFac = 1;
