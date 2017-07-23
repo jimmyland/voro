@@ -1,4 +1,11 @@
-// MIT Licensed code from ThreeJS; slightly modified to work around a bug
+// MIT Licensed code from ThreeJS; this monkeypatch modifies the Mesh's raycast to work around two issues:
+// (1) raycast ignores geometry draw ranges, 
+// (2) raycast bounding sphere check caches the bounding sphere and doesn't update when geometry changes 
+//         (... and in our case geometry never changes and we never even want the sphere check)
+// There's also a third issue where the raycast will get the wrong result for wireframe materials (draw ranges should be doubled in that case)
+// but for now I think my code doesn't care about that case so I just assert against handling that ...
+//
+// in addition to these fixes, this code also adds "THREE." all over due to the way it's implemented as a monkeypatch.
 THREE.Mesh.prototype.raycast = ( function () {
 
     var inverseMatrix = new THREE.Matrix4();
