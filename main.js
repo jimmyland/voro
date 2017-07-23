@@ -425,13 +425,81 @@ var Generators = {
                 }
             }
         }
+    },
+    "Basic Planetoid": function(numpts, voro) {
+        // helper to add radial noise to all vertices of a geometry
+        var radialNoise = function(geo, amt) {
+            for (var i=0; i<geo.vertices.length; i++) {
+                var v = geo.vertices[i];
+                var len = v.length();
+                geo.vertices[i] = v.addScaledVector(v, (Math.random()-.5)*2*amt/len);
+            }
+        }
+
+        // make a bumpy base geometry as reference
+        var geo = new THREE.IcosahedronGeometry(5, 0); // start from an icosahedron
+        var smoothSubdivision = new THREE.SubdivisionModifier(1);
+        var noiseAmt = .4; // initial noise magnitude
+        var noiseLevelScale = .85; // factor by which noise decreases at each iteration
+        for (var subditer=0; subditer<4; subditer++) {
+            radialNoise(geo, noiseAmt);
+            smoothSubdivision.modify(geo);
+            noiseAmt *= noiseLevelScale;
+        }
+
+        var triCentroid = function(g, f) {
+            var c = new THREE.Vector3(0, 0, 0);
+            c.add(g.vertices[f.a]);
+            c.add(g.vertices[f.b]);
+            c.add(g.vertices[f.c]);
+            c.divideScalar(3.0);
+            return c;
+        }
+        geo.computeFaceNormals();
+
+        var p = new THREE.Vector3();
+        var zstep = .1;
+        for (var i=0; i<geo.faces.length; i++) {
+            var v = triCentroid(geo, geo.faces[i]);
+            var len = v.length();
+            var n = geo.faces[i].normal;
+            for (var zoff=-zstep*.5; zoff<=zstep; zoff+=zstep) {
+                p.copy(v);
+                p.addScaledVector(n, zoff);
+                var t = zoff<0 ? 1 : 0;
+                // console.log("t="+t+";"+[p.x,p.y,p.z]);
+                voro.add_cell([p.x,p.y,p.z], t);
+            }
+        }
+
+        // now use the reference base to add voronoi sites
+        // for (int i = 0; i < (int)subdmesh.faces.size(); i++) {
+        //     Tri &f = subdmesh.faces[i];
+        //     if (f.temp == 0) continue; // skip the river faces
+        //     vec3 v = (subdmesh.verts[f.vi[0]].p + subdmesh.verts[f.vi[1]].p + subdmesh.verts[f.vi[2]].p) / 3.0;
+        //     double len = v.length();
+        //     vec3 n = subdmesh.getNormal(i);
+        //     for (double zoff = -zstep*.5; zoff <= zstep; zoff+=zstep) {
+        //         //if (zoff<0 && f.temp == 0) continue; // skip the river faces
+        //         if (zoff>=0 && len < oceanh) continue; // don't add air points if underwater
+        //         vec3 pt = v+n*zoff;
+        //         vmesh.addCell(pcon, pid, pt, zoff<0, zoff<0?VOX_SOLID:VOX_WATER);
+        //     }
+        // }
+
+        // for (var i=0; i<geo.vertices.length; i++) {
+        //     var v = geo.vertices[i];
+        //     voro.add_cell([v.x,v.y,v.z], 0);
+        // }
+        voro.add_cell([0,0,0], 1); // planet's core
     }
 };
 
 var VoroSettings = function() {
     this.mode = 'move';
     // this.generator = 'uniform random';
-    this.generator = 'Random';
+    this.generator = 'Basic Planetoid';//'Gyrobifastigia';
+//    this.generator = 'Random';
     this.numpts = 50;
     this.seed = 'qq';
     this.fill_level = 0.0;
