@@ -1,4 +1,4 @@
-# ~Voro~
+# Voro
 
 ## Cellular 3D Modeling using Voronoi Diagrams
 
