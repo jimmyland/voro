@@ -24,6 +24,13 @@ var Voro3 = function () {
     this.palette = [];
     this.active_type = 1;
 
+    this.dist2 = function(a,b) {
+        var dx = (a[0]-b[0]);
+        var dy = (a[1]-b[1]);
+        var dz = (a[2]-b[2]);
+        return dx*dx + dy*dy + dz*dz;
+    }
+
     this.start_tracking = function(yes) {
         if (yes === undefined || yes) {
             this.action_tracking = true;
@@ -694,8 +701,45 @@ var Voro3 = function () {
     this.bake_symmetry = function() {
         if (this.active_sym) {
             this.track_act(new SetSymAct(null, {}));
+            var old_map = this.sym_map;
             this.active_sym = null;
             this.sym_map = {};
+            var i;
+
+            // clean up duplicated points that are allllmost on top of each other
+            var bad_dupes = [];
+            var jitters = this.voro.get_jitter_size();
+            var jthresh = jitters*jitters*4;
+            for (var id in old_map) {
+                id = parseInt(id);
+                if (old_map[id].primary === id) {
+                    var refpos = this.voro.cell_pos(this.voro.index_from_id(id));
+                    var linked = old_map[id].linked;
+                    var has_bad_dupes = false;
+                    for (i=0; i<linked.length; i++) {
+                        var ind = this.voro.index_from_id(linked[i]);
+                        var linkpos = this.voro.cell_pos(ind);
+                        if (this.dist2(refpos, linkpos) < jthresh) {
+                            has_bad_dupes = true;
+                            bad_dupes.push(ind);
+                        }
+                    }
+                    if (has_bad_dupes) {
+                        for (i=0; i<linked.length; i++) {
+                            var refpos = this.voro.cell_pos(this.voro.index_from_id(linked[i]));
+                            for (var j=i+1; j<linked.length; j++) {
+                                var ind = this.voro.index_from_id(linked[j]);
+                                var linkpos = this.voro.cell_pos(ind);
+                                if (this.dist2(refpos, linkpos) < jthresh) {
+                                    has_bad_dupes = true;
+                                    bad_dupes.push(ind);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            this.delete_cells(bad_dupes);
         }
     };
 
@@ -843,8 +887,7 @@ var Voro3 = function () {
             this.update_geometry();
         }
     };
-    this.delete_cell = function(cell) {
-        var cell_list = [cell];
+    this.delete_cells = function(cell_list) {
         var i;
         if (this.active_sym) {
             var slist = this.ordered_sym_list(cell);
@@ -864,6 +907,9 @@ var Voro3 = function () {
         this.track_act(act);
         act.redo();
         this.update_geometry(); 
+    }
+    this.delete_cell = function(cell) {
+        this.delete_cells([cell]);
     };
     this.cell_pos = function(cell) {
         return this.voro.cell_pos(cell);

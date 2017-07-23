@@ -441,6 +441,10 @@ struct Voro {
         }
     }
     
+    double get_jitter_size() {
+        return SHADOW_SEP_DIST;
+    }
+    
     bool sanity(string when) {
         bool valid = true;
         
@@ -1273,6 +1277,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("stable_id", &Voro::stable_id)
     .function("set_stable_id", &Voro::set_stable_id)
     .function("index_from_id", &Voro::index_from_id)
+    .function("get_jitter_size", &Voro::get_jitter_size)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
