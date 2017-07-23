@@ -1,4 +1,6 @@
-// MIT Licensed code from ThreeJS; this monkeypatch modifies the Mesh's raycast to work around two issues:
+// MIT Licensed code from ThreeJS with some changes by me (Jimmy) to
+// make this function a monkey patch of Mesh's raycast, in order to work around two issues:
+//
 // (1) raycast ignores geometry draw ranges, 
 // (2) raycast bounding sphere check caches the bounding sphere and doesn't update when geometry changes 
 //         (... and in our case geometry never changes and we never even want the sphere check)
