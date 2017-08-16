@@ -430,9 +430,8 @@ var Generators = {
 
 var VoroSettings = function() {
     this.mode = 'move';
-    // this.generator = 'uniform random';
-    this.generator = 'Random';
-    this.numpts = 50;
+    this.generator = 'Cubes';
+    this.numpts = 90;
     this.seed = 'qq';
     this.fill_level = 0.0;
     this.symmetry_type = 'Dihedral';
@@ -678,7 +677,7 @@ function init() {
     
     settings = new VoroSettings();    
     setup_scene();
-    settings.regenerate(true);
+    settings.regenerate(true, 0);
     
     animate();
     render();
