@@ -32,7 +32,7 @@ You basically just need to open index.html in a browser, BUT for the browser to 
 
 When developing and testing the code, I like to use Chrome and have the developer tools open, and go to the Network tab of the developer tools and make sure 'Disable cache' is checked.  That way, when I edit a javascript file and refresh the browser, it will reliably pick up my changes.
 
-### Code overview:
+## Code overview:
 
 The core voronoi diagram computation code is all from an academic C++ library called voro++, which lives in the voro++ subdirectory.  This code is only minimally changed in this project to allow more efficient editing of an already-constructed diagram -- I added functions to efficiently move and delete cells.
 
