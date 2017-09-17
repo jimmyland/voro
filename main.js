@@ -494,6 +494,7 @@ var VoroSettings = function() {
             this.symmetry_type = values.symmetry_mode;
             this.symmetry_param = values.sym_param_new;
             this.symmetrify();
+            undo_q.clear();
         }
     };
 
