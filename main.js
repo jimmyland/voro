@@ -490,6 +490,11 @@ var VoroSettings = function() {
         this.numpts = values.numpts;
         this.seed = values.seed;
         this.regenerate("color" in values, values.jitter);
+        if (values.symmetry_mode != "No Symmetry") {
+            this.symmetry_type = values.symmetry_mode;
+            this.symmetry_param = values.sym_param_new;
+            this.symmetrify();
+        }
     };
 
     this.filename = 'filename';
