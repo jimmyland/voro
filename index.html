@@ -417,7 +417,7 @@
                     $("#sym_param_slider_val_new").text(slideEvt.value.newValue);
                 });
 
-                $(document).ready(function(){ // hide the param slider on mirror mode, where it does nothing
+                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
                     $("#sym_param_section_new").toggle(!$('#symfun_new').val().match('Mirror|No Symmetry'));
                     $('#symfun_new').on('change', function() {
                         $("#sym_param_section_new").toggle(!this.value.match('Mirror|No Symmetry'));
