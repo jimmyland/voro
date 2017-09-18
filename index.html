@@ -397,6 +397,34 @@
                 });
                 </script>
               </div>
+              <label for="genfun">Symmetry Type:</label><select class="form-control" id="symfun_new" name="symmetry_mode">
+                <option>No Symmetry</option>
+                <option>Mirror</option>
+                <option>Rotational</option>
+                <option>Dihedral</option>
+              </select>
+              <div class="form-inline" id="sym_param_section_new">
+                <label for="sym_param_new" id="sym_param_name_new">Symmetry Parameter:</label>
+                <input id="sym_param_slider_new" type="text" name="sym_param_new" data-slider-tooltip="hide" data-slider-value="3" data-slider-min="2" data-slider-max="10" data-slider-step="1" />
+                &nbsp;&nbsp;&nbsp;<span id="sym_param_slider_val_new">3</span>
+                <script type="text/javascript">$("#sym_param_slider_new").slider({
+                    min: 2,
+                    max: 10,
+                    value: 3,
+                    step: 1
+                });
+                $("#sym_param_slider_new").on("change", function(slideEvt) {
+                    $("#sym_param_slider_val_new").text(slideEvt.value.newValue);
+                });
+
+                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
+                    $("#sym_param_section_new").toggle(!$('#symfun_new').val().match('Mirror|No Symmetry'));
+                    $('#symfun_new').on('change', function() {
+                        $("#sym_param_section_new").toggle(!this.value.match('Mirror|No Symmetry'));
+                    });
+                });
+                </script>
+              </div>
               <div class="form-inline">
                 <label for="seed">Randomization Seed (Type Anything Here): </label>
                 <input type="text" class="form-control" id="seed" value="This controls the Random Number Generator" name="seed">
