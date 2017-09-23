@@ -300,6 +300,29 @@
                 <option>Rotational</option>
                 <option>Dihedral</option>
               </select>
+              <div class="form-inline" id="sym_param_section_mirror">
+                <label for="sym_param_mirror" id="sym_param_name_mirror">Mirror Axes:&nbsp;&nbsp;&nbsp;</label>
+                <input id="sym_param_slider_mirror" type="text" name="sym_param_mirror" data-slider-tooltip="hide" data-slider-value="1" data-slider-min="1" data-slider-max="3" data-slider-step="1" data-slider-ticks="[1,2,3]"' />
+                &nbsp;&nbsp;&nbsp;<span id="sym_param_slider_val_mirror">X</span>
+                <script type="text/javascript">$("#sym_param_slider_mirror").slider({
+                    min: 1,
+                    max: 3,
+                    value: 1,
+                    step: 1
+                });
+                $("#sym_param_slider_mirror").on("change", function(slideEvt) {
+                    var labels = ["X", "X and Y", "X, Y, and Z"];
+                    $("#sym_param_slider_val_mirror").text(labels[slideEvt.value.newValue-1]);
+                });
+
+                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
+                    $("#sym_param_section_mirror").toggle($('#symfun').val() === 'Mirror');
+                    $('#symfun').on('change', function() {
+                        $("#sym_param_section_mirror").toggle(this.value === 'Mirror');
+                    });
+                });
+                </script>
+              </div>
               <div class="form-inline" id="sym_param_section">
                 <label for="sym_param" id="sym_param_name">Symmetry Parameter:</label>
                 <input id="sym_param_slider" type="text" name="sym_param" data-slider-tooltip="hide" data-slider-value="3" data-slider-min="2" data-slider-max="10" data-slider-step="1" />
@@ -403,6 +426,29 @@
                 <option>Rotational</option>
                 <option>Dihedral</option>
               </select>
+              <div class="form-inline" id="sym_param_section_mirror_new">
+                <label for="sym_param_mirror_new" id="sym_param_name_mirror_new">Mirror Axes:&nbsp;&nbsp;&nbsp;</label>
+                <input id="sym_param_slider_mirror_new" type="text" name="sym_param_mirror_new" data-slider-tooltip="hide" data-slider-value="1" data-slider-min="1" data-slider-max="3" data-slider-step="1" data-slider-ticks="[1,2,3]"' />
+                &nbsp;&nbsp;&nbsp;<span id="sym_param_slider_val_mirror_new">X</span>
+                <script type="text/javascript">$("#sym_param_slider_mirror_new").slider({
+                    min: 1,
+                    max: 3,
+                    value: 1,
+                    step: 1
+                });
+                $("#sym_param_slider_mirror_new").on("change", function(slideEvt) {
+                    var labels = ["X", "X and Y", "X, Y, and Z"];
+                    $("#sym_param_slider_val_mirror_new").text(labels[slideEvt.value.newValue-1]);
+                });
+
+                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
+                    $("#sym_param_section_mirror_new").toggle($('#symfun_new').val() === 'Mirror');
+                    $('#symfun_new').on('change', function() {
+                        $("#sym_param_section_mirror_new").toggle(this.value === 'Mirror');
+                    });
+                });
+                </script>
+              </div>
               <div class="form-inline" id="sym_param_section_new">
                 <label for="sym_param_new" id="sym_param_name_new">Symmetry Parameter:</label>
                 <input id="sym_param_slider_new" type="text" name="sym_param_new" data-slider-tooltip="hide" data-slider-value="3" data-slider-min="2" data-slider-max="10" data-slider-step="1" />
