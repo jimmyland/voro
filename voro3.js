@@ -636,10 +636,53 @@ var Voro3 = function () {
     };
 
     this.symmetries = {
-        Mirror: function() {
+        Mirror: function(flip_centers) {
+            // flip_centers is either (1) the number of dimensions to mirror across, OR
+            //  a list of the X, Y, and Z coordinate to mirror across.
+            // You can choose to mirror only across X or only XY, or on XYZ --
+            //  when not mirroring on an axis, that axis's coordinate is just undefined.
+            var i;
+            // convert from a number of axes to a list of flip centers
+            if (flip_centers.constructor !== Array) {
+                var n = flip_centers;
+                flip_centers = [];
+                for (i=0; i<3; i++) {
+                    if (i<n) {
+                        flip_centers[i] = 0;
+                    } else {
+                        flip_centers[i] = undefined;
+                    }
+                }
+            }
+            this.fcs = flip_centers;
+            var defined_count = 0;
             this.iters = 1;
-            this.op = function(pt) {
-                return [-pt[0], pt[1], pt[2]];
+            for (i=0; i<3; i++) {
+                if (flip_centers[i] !== undefined) {
+                    defined_count++;
+                    this.iters *= 2;
+                }
+            }
+            this.iters--;
+            var flip = function(pt, index) {
+                pt[index] = 2*flip_centers[index]-pt[index];
+                return pt;
+            };
+
+            this.ops = [];
+            if (defined_count < 3) {
+                for (i=0; i<3; i++) {
+                    if (flip_centers[i] !== undefined) {
+                        this.ops.push(i);
+                    }
+                }
+            } else { 
+                // an ordering of the axes we flip over so that
+                //  we get a cycle covering all mirrored copies
+                this.ops = [0,1,2,1,0,1,2,1]; //x,y,z,y,x,y,z,y
+            }
+            this.op = function(pt, i) {
+                return flip(pt.slice(), this.ops[i % this.ops.length]);
             };
         },
         Rotational: function(rotations) {
