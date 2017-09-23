@@ -459,7 +459,11 @@ var VoroSettings = function() {
     this.symmetrify_from_form = function(vals) {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
                     Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
-        v3.enable_symmetry(new fmap[vals.symmetry_mode](vals.sym_param));
+        var sym_param = vals.sym_param;
+        if (vals.symmetry_mode === "Mirror") {
+            sym_param = vals.sym_param_mirror;
+        }
+        v3.enable_symmetry(new fmap[vals.symmetry_mode](sym_param));
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
@@ -490,9 +494,12 @@ var VoroSettings = function() {
         this.numpts = values.numpts;
         this.seed = values.seed;
         this.regenerate("color" in values, values.jitter);
-        if (values.symmetry_mode != "No Symmetry") {
+        if (values.symmetry_mode !== "No Symmetry") {
             this.symmetry_type = values.symmetry_mode;
             this.symmetry_param = values.sym_param_new;
+            if (values.symmetry_mode === "Mirror") {
+                this.symmetry_param = values.sym_param_mirror_new;
+            }
             this.symmetrify();
             undo_q.clear();
         }
