@@ -316,7 +316,7 @@
                     $("#sym_param_slider_val_mirror").text(labels[slideEvt.value.newValue-1]);
                 });
 
-                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
+                $(document).ready(function(){ // show the custom mirror param slider on mirror mode
                     $("#sym_param_section_mirror").toggle($('#symfun').val() === 'Mirror');
                     $('#symfun').on('change', function() {
                         $("#sym_param_section_mirror").toggle(this.value === 'Mirror');
@@ -338,7 +338,7 @@
                     $("#sym_param_slider_val").text(slideEvt.value.newValue);
                 });
 
-                $(document).ready(function(){ // hide the param slider on mirror mode, where it does nothing
+                $(document).ready(function(){ // hide the generic param slider on mirror and tetrahedral modes
                     $("#sym_param_section").toggle(!$('#symfun').val().match('Mirror|Tetrahedral'))
                     $('#symfun').on('change', function() {
                         $("#sym_param_section").toggle(!this.value.match('Mirror|Tetrahedral'));
@@ -443,7 +443,7 @@
                     $("#sym_param_slider_val_mirror_new").text(labels[slideEvt.value.newValue-1]);
                 });
 
-                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
+                $(document).ready(function(){ // show the custom mirror param slider on mirror mode
                     $("#sym_param_section_mirror_new").toggle($('#symfun_new').val() === 'Mirror');
                     $('#symfun_new').on('change', function() {
                         $("#sym_param_section_mirror_new").toggle(this.value === 'Mirror');
@@ -465,7 +465,7 @@
                     $("#sym_param_slider_val_new").text(slideEvt.value.newValue);
                 });
 
-                $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
+                $(document).ready(function(){ // hide the generic param slider on mirror, tet, & no-symmetry modes
                     $("#sym_param_section_new").toggle(!$('#symfun_new').val().match('Mirror|No Symmetry|Tetrahedral'));
                     $('#symfun_new').on('change', function() {
                         $("#sym_param_section_new").toggle(!this.value.match('Mirror|No Symmetry|Tetrahedral'));
