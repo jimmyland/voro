@@ -450,17 +450,13 @@ var VoroSettings = function() {
         render();
     };
     this.symmetrify = function() {
-        var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
-                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral,
-                    Tetrahedral: v3.symmetries.Tetrahedral};
+        var fmap = v3.symmetries;
         v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
     this.symmetrify_from_form = function(vals) {
-        var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
-                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral,
-                    Tetrahedral: v3.symmetries.Tetrahedral};
+        var fmap = v3.symmetries;
         var sym_param = vals.sym_param;
         if (vals.symmetry_mode === "Mirror") {
             sym_param = vals.sym_param_mirror;
