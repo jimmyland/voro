@@ -459,7 +459,8 @@ var VoroSettings = function() {
     };
     this.symmetrify_from_form = function(vals) {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
-                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
+                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral,
+                    Tetrahedral: v3.symmetries.Tetrahedral};
         var sym_param = vals.sym_param;
         if (vals.symmetry_mode === "Mirror") {
             sym_param = vals.sym_param_mirror;
