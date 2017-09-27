@@ -451,7 +451,8 @@ var VoroSettings = function() {
     };
     this.symmetrify = function() {
         var fmap = {Mirror: v3.symmetries.Mirror, Rotational: v3.symmetries.Rotational, 
-                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral};
+                    Scale: v3.symmetries.Scale, Dihedral: v3.symmetries.Dihedral,
+                    Tetrahedral: v3.symmetries.Tetrahedral};
         v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
         xf_manager.reset();
         addToUndoQIfNeeded();

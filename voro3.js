@@ -709,6 +709,30 @@ var Voro3 = function () {
                 return pt;
             };
         },
+        Tetrahedral: function() {
+            this.iters = 3
+            var mirrorN = function(v) { // make a mirror transform that mirrors around a plane with normal vector v
+                v.normalize();
+                var m = new THREE.Matrix4();
+                m.set(1-2*v.x*v.x,  -2*v.y*v.x,  -2*v.z*v.x, 0,
+                       -2*v.x*v.y, 1-2*v.y*v.y,  -2*v.z*v.y, 0,
+                       -2*v.x*v.z,  -2*v.y*v.z, 1-2*v.z*v.z, 0,
+                       0, 0, 0, 1);
+                return m;
+            };
+            var tetTransform = new THREE.Matrix4();
+            tetTransform.makeRotationAxis(new THREE.Vector3(0,1,0), 2*Math.PI/3.0);
+            tetTransform.multiply(mirrorN(new THREE.Vector3(-Math.sqrt(3), Math.sqrt(6), 0)));
+            this.xf = tetTransform.toArray();
+            this.op = function(pt, i) {
+                var newpt = [
+                    this.xf[0]*pt[0]+this.xf[1]*pt[1]+this.xf[2]*pt[2],
+                    this.xf[4]*pt[0]+this.xf[5]*pt[1]+this.xf[6]*pt[2],
+                    this.xf[8]*pt[0]+this.xf[9]*pt[1]+this.xf[10]*pt[2]
+                ];
+                return newpt;
+            };
+        },
         Scale: function(scales) {
             this.iters = scales-1;
             this.scale = 0.9;

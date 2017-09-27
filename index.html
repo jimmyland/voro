@@ -299,6 +299,7 @@
                 <option>Mirror</option>
                 <option>Rotational</option>
                 <option>Dihedral</option>
+                <option>Tetrahedral</option>
               </select>
               <div class="form-inline" id="sym_param_section_mirror">
                 <label for="sym_param_mirror" id="sym_param_name_mirror">Mirror Axes:&nbsp;&nbsp;&nbsp;</label>
@@ -338,9 +339,9 @@
                 });
 
                 $(document).ready(function(){ // hide the param slider on mirror mode, where it does nothing
-                    $("#sym_param_section").toggle($('#symfun').val() !== 'Mirror')
+                    $("#sym_param_section").toggle(!$('#symfun').val().match('Mirror|Tetrahedral'))
                     $('#symfun').on('change', function() {
-                        $("#sym_param_section").toggle(this.value !== 'Mirror');
+                        $("#sym_param_section").toggle(!this.value.match('Mirror|Tetrahedral'));
                     });
                 });
                 </script>
@@ -425,6 +426,7 @@
                 <option>Mirror</option>
                 <option>Rotational</option>
                 <option>Dihedral</option>
+                <option>Tetrahedral</option>
               </select>
               <div class="form-inline" id="sym_param_section_mirror_new">
                 <label for="sym_param_mirror_new" id="sym_param_name_mirror_new">Mirror Axes:&nbsp;&nbsp;&nbsp;</label>
@@ -464,9 +466,9 @@
                 });
 
                 $(document).ready(function(){ // hide the param slider on mirror & no-symmetry modes, where it does nothing
-                    $("#sym_param_section_new").toggle(!$('#symfun_new').val().match('Mirror|No Symmetry'));
+                    $("#sym_param_section_new").toggle(!$('#symfun_new').val().match('Mirror|No Symmetry|Tetrahedral'));
                     $('#symfun_new').on('change', function() {
-                        $("#sym_param_section_new").toggle(!this.value.match('Mirror|No Symmetry'));
+                        $("#sym_param_section_new").toggle(!this.value.match('Mirror|No Symmetry|Tetrahedral'));
                     });
                 });
                 </script>
