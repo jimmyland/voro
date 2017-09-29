@@ -543,20 +543,24 @@ var VoroSettings = function() {
 
 };
 
+function loadVoroBuffer(buffer) {
+    xf_manager.reset();
+    var valid = v3.generate_from_buffer(scene, buffer);
+    if (!valid) {
+        alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
+    } else {
+        enable_color(v3.palette_length() > 0);
+        undo_q.clear();
+    }
+}
+
 function loadRawVoroFile(evt) {
     var files = evt.target.files;
 
     if (files.length > 0) {
         var reader = new FileReader();
         reader.onload = function(event) {
-            xf_manager.reset();
-            var valid = v3.generate_from_buffer(scene, event.target.result);
-            if (!valid) {
-                alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
-            } else {
-                enable_color(v3.palette_length() > 0);
-                undo_q.clear();
-            }
+            loadVoroBuffer(event.target.result);
         };
         reader.readAsArrayBuffer(files[0]);
     }
@@ -719,6 +723,21 @@ function onDocumentKeyDown( event ) {
     }
     
     xf_manager.keydown(event);
+    if (event.keyCode == 'T'.charCodeAt()) { // test feature
+        var raw_buf = v3.get_binary_raw_buffer();
+        var b64Str = btoa(
+          new Uint8Array(raw_buf)
+            .reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        this.s = b64Str;
+        console.log("export string: " + this.s);
+    }
+    if (event.keyCode == 'Y'.charCodeAt()) { // test feature
+        var bytes = Uint8Array.from(atob(this.s), function(c) {return c.charCodeAt(0);})
+        
+        loadVoroBuffer(bytes.buffer);
+    }
+
     // not sure this feature was actually useful ...
     // if (event.keyCode >= 'X'.charCodeAt() && event.keyCode <= 'Z'.charCodeAt()) {
     //     var axis = event.keyCode - 'X'.charCodeAt();
