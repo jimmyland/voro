@@ -503,7 +503,11 @@
             </div>
           </div>
         </div>
-        <script>$('#generateModal').modal('show');</script>
+        <script>
+        if (!window.location.search.startsWith("?loadString=")) {
+            $('#generateModal').modal('show');
+        }
+        </script>
 
         
         <div id="icons" style="color:#000; font-size: 32px; color: #fff; fill: #ff0000; position: absolute; float: right; top: 0px; right:0; padding: 0px;">
