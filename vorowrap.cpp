@@ -875,6 +875,18 @@ struct Voro {
         assert(cell>=0 && cell<cells.size());
         return cells[cell].type;
     }
+    bool cell_affects_shape(int cell) {
+        assert(cell>=0 && cell<cells.size());
+        auto cellType = cells[cell].type;
+        if (gl_computed.info[cell]) {
+            for (auto ni : gl_computed.info[cell]->cache.neighbors) {
+                if (ni >= 0 && cells[ni].type != cellType) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     Cell cell(int c) {
         assert(c>=0 && c<cells.size());
         return cells[c];
@@ -1235,6 +1247,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("cell_type", &Voro::cell_type)
     .function("cell", &Voro::cell)
     .function("cell_at_pos", &Voro::cell_at_pos)
+    .function("cell_affects_shape", &Voro::cell_affects_shape)
     .function("add_cell", &Voro::add_cell)
     .function("build_container", &Voro::build_container)
     .function("gl_build", &Voro::gl_build)

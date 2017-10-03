@@ -733,8 +733,9 @@ function onDocumentKeyDown( event ) {
     }
     
     xf_manager.keydown(event);
-    if (event.keyCode == 'T'.charCodeAt()) { // test feature
-        var raw_buf = v3.get_binary_raw_buffer();
+    if (event.keyCode == 'T'.charCodeAt() || event.keyCode == 'U'.charCodeAt()) { // test feature
+        var f = event.keyCode == 'U'.charCodeAt();
+        var raw_buf = v3.get_binary_raw_buffer(f);
         var b64Str = btoa(
           new Uint8Array(raw_buf)
             .reduce((data, byte) => data + String.fromCharCode(byte), '')
