@@ -429,7 +429,7 @@ var Generators = {
 };
 
 var VoroSettings = function() {
-    this.mode = 'move';
+    this.mode = 'toggle';
     this.generator = 'Cubes';
     this.numpts = 90;
     this.seed = 'qq';
