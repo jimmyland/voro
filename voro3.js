@@ -967,11 +967,18 @@ var Voro3 = function () {
     //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
     //       [int32 palette size] {[float32 r] [float32 g] [float32 b]}*count}
-    this.get_binary_raw_buffer = function() {
+    this.get_binary_raw_buffer = function(filter_unused) {
         var key, k, i, t;
         var num_cells = this.voro.cell_count();
+
+        var should_filter = function(i) {
+            return (filter_unused && !that.voro.cell_affects_shape(i));
+        }
         var type_counts = {};
         for (i=0; i<num_cells; i++) {
+            if (should_filter(i)) {
+                continue;
+            }
             t = this.voro.cell(i).type;
             type_counts[t] = type_counts[t] || 0;
             type_counts[t] += 1;
@@ -1015,6 +1022,9 @@ var Voro3 = function () {
         }
 
         for (i=0; i<num_cells; i++) {
+            if (should_filter(i)) {
+                continue;
+            }
             var c = this.voro.cell(i);
             t = c.type;
             var place_in_arr = type_place_in_arr[t];

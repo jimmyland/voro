@@ -541,20 +541,24 @@ var VoroSettings = function() {
 
 };
 
+function loadVoroBuffer(buffer) {
+    xf_manager.reset();
+    var valid = v3.generate_from_buffer(scene, buffer);
+    if (!valid) {
+        alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
+    } else {
+        enable_color(v3.palette_length() > 0);
+        undo_q.clear();
+    }
+}
+
 function loadRawVoroFile(evt) {
     var files = evt.target.files;
 
     if (files.length > 0) {
         var reader = new FileReader();
         reader.onload = function(event) {
-            xf_manager.reset();
-            var valid = v3.generate_from_buffer(scene, event.target.result);
-            if (!valid) {
-                alert("Failed to load this voronoi diagram! It might not be a valid voronoi diagram file, or it might have been corrupted, or there might be a bug in file saving/loading!");
-            } else {
-                enable_color(v3.palette_length() > 0);
-                undo_q.clear();
-            }
+            loadVoroBuffer(event.target.result);
         };
         reader.readAsArrayBuffer(files[0]);
     }
@@ -689,6 +693,16 @@ function init() {
     settings = new VoroSettings();    
     setup_scene();
     settings.regenerate(true, 0);
+    if (window.location.search.startsWith("?loadString=")) {
+        var base64str = window.location.search.slice("?loadString=".length);
+        try {
+            var bytes = Uint8Array.from(atob(base64str), function(c) {return c.charCodeAt(0);});
+            loadVoroBuffer(bytes.buffer);
+            $('#generateModal').modal('hide');
+        } catch (e) {
+            alert("Failed to load shape from URL!");
+        }
+    }
     
     animate();
     render();
@@ -717,6 +731,7 @@ function onDocumentKeyDown( event ) {
     }
     
     xf_manager.keydown(event);
+
     // not sure this feature was actually useful ...
     // if (event.keyCode >= 'X'.charCodeAt() && event.keyCode <= 'Z'.charCodeAt()) {
     //     var axis = event.keyCode - 'X'.charCodeAt();
