@@ -694,7 +694,7 @@ function init() {
     setup_scene();
     settings.regenerate(true, 0);
     if (window.location.search.startsWith("?loadString=")) {
-        var base64str = window.location.search.slice("?loadString=".length);
+        var base64str = decodeURI(window.location.search.slice("?loadString=".length));
         try {
             var bytes = Uint8Array.from(atob(base64str), function(c) {return c.charCodeAt(0);});
             loadVoroBuffer(bytes.buffer);
