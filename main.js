@@ -694,6 +694,8 @@ function init() {
     setup_scene();
     settings.regenerate(true, 0);
     if (window.location.search.startsWith("?loadString=")) {
+        // the unescape() call is to un-mess the URLs because facebook replaces "/" with "%2F"
+        // unescape is deprecated in favore of decodeURI but decodeURI but it doesn't seem to fix the facebook urls TODO look into that.
         var base64str = unescape(window.location.search.slice("?loadString=".length));
         try {
             var bytes = Uint8Array.from(atob(base64str), function(c) {return c.charCodeAt(0);});
