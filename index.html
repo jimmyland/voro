@@ -160,12 +160,10 @@
                     <div class="input-group">
                       <input type="text" class="form-control" value="http://jimmyland.github.io/voro/?load=" id="exportURL">
                       <span class="input-group-btn">
-                        <button class="btn btn-secondary" type="button" id="copybtn" data-clipboard-target="#exportURL"><svg class="icon" style="color:#000;" alt="Copy to clipboard"><use xlink:href="#icon-copy"></use></svg></button>
+                        <button class="btn btn-primary" type="button" id="copybtn" data-clipboard-target="#exportURL"><svg class="icon" style="color:#fff;" alt="Copy to clipboard"><use xlink:href="#icon-copy"></use></svg></button>
                       </span>
                     </div>
-                    <div class="checkbox">
-                        &nbsp;&nbsp;<label><input type="checkbox" name="filterUnused" checked>Skip cells that don't affect the shape</label>
-                    </div>
+                    <br>&nbsp;&nbsp;&nbsp;&nbsp;Copy/paste this link to share a compressed version of your creation!
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -176,11 +174,20 @@
         <script>
         var btn = document.getElementById('copybtn');
         var clipboard = new Clipboard(btn);
+        // tooltip popup code via https://stackoverflow.com/questions/37381640/tooltips-highlight-animation-with-clipboard-js-click/37395225
+        function setTooltip(btn, message) {
+            $(btn).tooltip('hide').attr('data-original-title', message).tooltip('show');
+        }
+        function hideTooltip(btn) {
+            setTimeout(function() {$(btn).tooltip('hide');}, 1000);
+        }
         clipboard.on('success', function(e) {
-            console.log(e);
+            setTooltip(e.trigger, 'Copied!');
+            hideTooltip(e.trigger);
         });
         clipboard.on('error', function(e) {
-            console.log(e);
+            setTooltip(e.trigger, 'Copy the selected text to share!');
+            hideTooltip(e.trigger);
         });
         </script>
 
@@ -549,6 +556,16 @@
         if (!window.location.search.startsWith("?loadString=")) {
             $('#generateModal').modal('show');
         }
+
+        var loadShareURL = function() {
+            var raw_buf = v3.get_binary_raw_buffer(true);
+            var b64Str = btoa(
+              new Uint8Array(raw_buf)
+                .reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+            $('#exportURL').val(window.location.host+window.location.pathname+"?loadString="+b64Str);
+            $('#exportLinkModal').modal('show');
+        };
         </script>
 
         
@@ -565,7 +582,7 @@
                 <li><a role="button" href="#saveModal" data-toggle="modal" data-target="#saveModal">Save ...</a></li>
                 <li><a role="button" href="#exportModal" data-toggle="modal" data-target="#exportModal">Export STL ...</a></li>
                 <!-- todo switch to js on share so we can gen url before show -->
-                <li><a role="button" href="#exportLinkModal" data-toggle="modal" data-target="#exportLinkModal">Share ...</a></li>
+                <li><a role="button" onclick="loadShareURL();">Share ...</a></li>
               </ul>
             </div><div class="dropdown" style="display: inline-block; padding: 0px;">
               <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Edit
