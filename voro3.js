@@ -10,7 +10,7 @@
 
 // e.g. call with
 // v3 = new Voro3([-10, -10, -10], [10, 10, 10]);
-// you MUST CALL v3.delete() if/when you're done using the object but want to stay on the same page to tell the c++ module to free memory
+// you MUST CALL v3.delete() if/when you're done using the object, to tell the c++ module to free memory
 
 
 var Voro3 = function () {
