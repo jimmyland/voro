@@ -635,6 +635,15 @@ var Voro3 = function () {
         return this.voro.cell_neighbor_from_vertex(index);
     };
 
+    // List of all supported symmetries
+    // Note: If any user may have saved a file with one of these symmetries enabled,  
+    //       DO NOT change the symmetry, or you may break their save
+    //       Instead, rename the symmetry (without changing the serialize perma id)
+    //       and create a new symmetry with your desired updates (optionally taking the old name)
+    this.get_symmetry_by_perma_id = function(perma_id) {
+        // TODO: search all syms for the one with the desired perma_id
+        // (note: I guess this may require calling the constructor for each symmetry type?)
+    };
     this.symmetries = {
         Mirror: function(flip_centers) {
             // flip_centers is either (1) the number of dimensions to mirror across, OR
@@ -684,6 +693,12 @@ var Voro3 = function () {
             this.op = function(pt, i) {
                 return flip(pt.slice(), this.ops[i % this.ops.length]);
             };
+            this.serialize = function() {
+                return {
+                    perma_id: 1,
+                    params: [flip_centers]
+                }
+            };
         },
         Rotational: function(rotations) {
             this.iters = rotations-1;
@@ -693,6 +708,12 @@ var Voro3 = function () {
             this.op = function(pt) {
                 var pnew = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
                 return pnew;
+            };
+            this.serialize = function() {
+                return {
+                    perma_id: 2,
+                    params: [rotations]
+                }
             };
         },
         Dihedral: function(rotations) {
@@ -707,6 +728,12 @@ var Voro3 = function () {
                     pt = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
                 }
                 return pt;
+            };
+            this.serialize = function() {
+                return {
+                    perma_id: 3,
+                    params: [rotations]
+                }
             };
         },
         Tetrahedral: function() {
@@ -732,6 +759,12 @@ var Voro3 = function () {
                 ];
                 return newpt;
             };
+            this.serialize = function() {
+                return {
+                    perma_id: 4,
+                    params: []
+                }
+            };
         },
         Scale: function(scales) {
             this.iters = scales-1;
@@ -752,6 +785,12 @@ var Voro3 = function () {
                 }
                 var pnew = [pt[0]*s, pt[1]*s, pt[2]*s];
                 return pnew;
+            };
+            this.serialize = function() {
+                return {
+                    perma_id: 5,
+                    params: [scales]
+                }
             };
         }
     };
