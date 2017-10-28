@@ -963,20 +963,40 @@ var Voro3 = function () {
     };
 
     // custom binary file format
-    // v1: [int32 file_type_id_number=1619149277] [int32 ver=1]
+    // v1: [int32 file_type_id_number=1619149277] [int32 ver=2] (ver 2 adds symmetry info)
     //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
     //       [int32 palette size] {[float32 r] [float32 g] [float32 b]}*count}
+    //       [int32 sym_fn_id] [int32 sym_param_count] {[float32 param]}*sym_param_count
+    // todo map sym fns to stable ids so we can update w/out breaking old; use -1 for no sym
     this.get_binary_raw_buffer = function(filter_unused) {
         var key, k, i, t;
         var num_cells = this.voro.cell_count();
 
         var should_filter = function(i) {
-            return (filter_unused && !that.voro.cell_affects_shape(i));
+            // consider symmetry in filtering -- if sym, filter unless primary + DO NOT filter if any linked cell affects shape
+            if (that.active_sym) {
+                var pid = that.get_sym_pid(i);
+                var id = that.voro.stable_id(cell);
+                if (id !== pid) { // filter if not primary
+                    return true;
+                }
+                if (filter_unused) { // if filtering unused, also check all linked cells -- if any affect shape, don't filter.
+                    var linked = that.sym_map[pid].linked;
+                    for (var linkind=0; linkind<linked.length; linkind++) {
+                        var linkedCell = that.voro.index_from_id(linked[linkind]);
+                        if (that.voro.cell_affects_shape(linkedCell)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            // haven't decided filter based on symmetry; finalize decision based on cell itself
+            return filter_unused && !that.voro.cell_affects_shape(i);
         }
         var type_counts = {};
         for (i=0; i<num_cells; i++) {
-            if (should_filter(i)) {
+            if (should_filter(i)) { 
                 continue;
             }
             t = this.voro.cell(i).type;
@@ -999,12 +1019,15 @@ var Voro3 = function () {
             start += typeblock_header_size+type_counts[key]*cell_size;
         }
         var palette_start = start;
-        var total_size = start + 4 + this.palette_length()*3*4;
+        var palette_size = 4 + this.palette_length()*3*4;
+        var sym_start = start + palette_size;
+        var sym_size = 4 + 4 + 4; // assume sym param count is 1 for now
+        var total_size = start + sym_size;
         
         var buffer = new ArrayBuffer(total_size);
         var view = new DataView(buffer);
         view.setInt32(0, 1619149277, true);
-        view.setInt32(4, 1, true); // version
+        view.setInt32(4, 2, true); // version 2 (with symmetry)
         for (i=0; i<3; i++) {
             view.setFloat32(   8+i*4, this.min_point[i], true);
             view.setFloat32(8+12+i*4, this.max_point[i], true);
@@ -1042,6 +1065,8 @@ var Voro3 = function () {
             view.setFloat32(arr_s+8, this.palette[i][2], true);
         }
 
+        // TODO: get serialization of current symmetry info
+
         return buffer;
     };
 
@@ -1053,7 +1078,7 @@ var Voro3 = function () {
             return false;
         }
         var version = view.getInt32(4, true);
-        if (version != 1) {
+        if (version < 1 || version > 2) {
             console.log("WARNING: tried to load cells from raw buffer but found unknown version id: " + version);
             return false;
         }
