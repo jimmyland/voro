@@ -278,6 +278,7 @@ var Voro3 = function () {
         this.voro = new Module.Voro(this.min_point,this.max_point);
         this.sym_map = {};
         this.active_sym = null;
+        this.active_sym_name = null;
     };
 
     // takes and returns a THREE.Vector3 for historical reasons; projects it into the Voro's bounding box
@@ -323,15 +324,11 @@ var Voro3 = function () {
         this.nuke(scene);
         var was_tracking = this.action_tracking;
         this.start_tracking(false);
-        var valid = this.create_from_raw_buffer(buffer);
+        var valid = this.create_from_raw_buffer(scene, buffer);
         if (!valid) {
             this.start_tracking(was_tracking);
             return false;
         }
-        
-        this.create_gl_objects(scene);
-        
-        this.add_to_scene(scene);
 
         this.start_tracking();
 
@@ -635,26 +632,32 @@ var Voro3 = function () {
         return this.voro.cell_neighbor_from_vertex(index);
     };
 
+
+    this.get_symmetry_by_perma_id = function(perma_id) {
+        for (var key in this.symmetries) {
+            if (this.symmetries[key].id === perma_id) {
+                return key;
+            }
+        }
+        return null;
+    };
+
     // List of all supported symmetries
     // Note: If any user may have saved a file with one of these symmetries enabled,  
     //       DO NOT change the symmetry, or you may break their save
     //       Instead, rename the symmetry (without changing the serialize perma id)
     //       and create a new symmetry with your desired updates (optionally taking the old name)
-    this.get_symmetry_by_perma_id = function(perma_id) {
-        // TODO: search all syms for the one with the desired perma_id
-        // (note: I guess this may require calling the constructor for each symmetry type?)
-    };
     this.symmetries = {
-        Mirror: function(flip_centers) {
-            // flip_centers is either (1) the number of dimensions to mirror across, OR
-            //  a list of the X, Y, and Z coordinate to mirror across.
-            // You can choose to mirror only across X or only XY, or on XYZ --
-            //  when not mirroring on an axis, that axis's coordinate is just undefined.
-            var i;
-            // convert from a number of axes to a list of flip centers
-            if (flip_centers.constructor !== Array) {
-                var n = flip_centers;
-                flip_centers = [];
+        Mirror: {
+            id: 1,
+            f: function(flips_param) {
+                // flips_param is the number of dimensions to mirror across
+                // You can choose to mirror only across X or only XY, or on XYZ
+                var i;
+                // convert from a number of axes to a list of flip centers
+                //  when not mirroring on an axis, that axis's coordinate is just undefined.
+                var n = flips_param;
+                var flip_centers = [];
                 for (i=0; i<3; i++) {
                     if (i<n) {
                         flip_centers[i] = 0;
@@ -662,136 +665,143 @@ var Voro3 = function () {
                         flip_centers[i] = undefined;
                     }
                 }
-            }
-            this.fcs = flip_centers;
-            var defined_count = 0;
-            this.iters = 1;
-            for (i=0; i<3; i++) {
-                if (flip_centers[i] !== undefined) {
-                    defined_count++;
-                    this.iters *= 2;
-                }
-            }
-            this.iters--;
-            var flip = function(pt, index) {
-                pt[index] = 2*flip_centers[index]-pt[index];
-                return pt;
-            };
-
-            this.ops = [];
-            if (defined_count < 3) {
+                this.fcs = flip_centers;
+                var defined_count = 0;
+                this.iters = 1;
                 for (i=0; i<3; i++) {
                     if (flip_centers[i] !== undefined) {
-                        this.ops.push(i);
+                        defined_count++;
+                        this.iters *= 2;
                     }
                 }
-            } else { 
-                // an ordering of the axes we flip over so that
-                //  we get a cycle covering all mirrored copies
-                this.ops = [0,1,2,1,0,1,2,1]; //x,y,z,y,x,y,z,y
+                this.iters--;
+                var flip = function(pt, index) {
+                    pt[index] = 2*flip_centers[index]-pt[index];
+                    return pt;
+                };
+
+                this.ops = [];
+                if (defined_count < 3) {
+                    for (i=0; i<3; i++) {
+                        if (flip_centers[i] !== undefined) {
+                            this.ops.push(i);
+                        }
+                    }
+                } else { 
+                    // an ordering of the axes we flip over so that
+                    //  we get a cycle covering all mirrored copies
+                    this.ops = [0,1,2,1,0,1,2,1]; //x,y,z,y,x,y,z,y
+                }
+                this.op = function(pt, i) {
+                    return flip(pt.slice(), this.ops[i % this.ops.length]);
+                };
+                this.serialize = function() {
+                    return {
+                        params: [flips_param]
+                    };
+                };
             }
-            this.op = function(pt, i) {
-                return flip(pt.slice(), this.ops[i % this.ops.length]);
-            };
-            this.serialize = function() {
-                return {
-                    perma_id: 1,
-                    params: [flip_centers]
-                }
-            };
         },
-        Rotational: function(rotations) {
-            this.iters = rotations-1;
-            this.theta = 2.0*Math.PI / rotations;
-            this.cos = Math.cos(this.theta);
-            this.sin = Math.sin(this.theta);
-            this.op = function(pt) {
-                var pnew = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
-                return pnew;
-            };
-            this.serialize = function() {
-                return {
-                    perma_id: 2,
-                    params: [rotations]
-                }
-            };
+        Rotational: {
+            id: 2,
+            f: function(rotations) {
+                this.iters = rotations-1;
+                this.theta = 2.0*Math.PI / rotations;
+                this.cos = Math.cos(this.theta);
+                this.sin = Math.sin(this.theta);
+                this.op = function(pt) {
+                    var pnew = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
+                    return pnew;
+                };
+                this.serialize = function() {
+                    return {
+                        params: [rotations]
+                    };
+                };
+            }
         },
-        Dihedral: function(rotations) {
-            this.iters = 2*rotations-1;
-            this.theta = 2.0*Math.PI / rotations;
-            this.cos = Math.cos(this.theta);
-            this.sin = Math.sin(this.theta);
-            this.op = function(pt, i) {
-                // always mirror
-                pt = [pt[0]*this.cos+pt[1]*this.sin, pt[0]*this.sin-pt[1]*this.cos, pt[2]];
-                if ((i % 2) === 1) { // alternately rotate
-                    pt = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
-                }
-                return pt;
-            };
-            this.serialize = function() {
-                return {
-                    perma_id: 3,
-                    params: [rotations]
-                }
-            };
+        Dihedral: {
+            id: 3,
+            f: function(rotations) {
+                this.iters = 2*rotations-1;
+                this.theta = 2.0*Math.PI / rotations;
+                this.cos = Math.cos(this.theta);
+                this.sin = Math.sin(this.theta);
+                this.op = function(pt, i) {
+                    // always mirror
+                    pt = [pt[0]*this.cos+pt[1]*this.sin, pt[0]*this.sin-pt[1]*this.cos, pt[2]];
+                    if ((i % 2) === 1) { // alternately rotate
+                        pt = [pt[0]*this.cos-pt[1]*this.sin, pt[0]*this.sin+pt[1]*this.cos, pt[2]];
+                    }
+                    return pt;
+                };
+                this.serialize = function() {
+                    return {
+                        params: [rotations]
+                    };
+                };
+            }
         },
-        Tetrahedral: function() {
-            this.iters = 3
-            var mirrorN = function(v) { // make a mirror transform that mirrors around a plane with normal vector v
-                v.normalize();
-                var m = new THREE.Matrix4();
-                m.set(1-2*v.x*v.x,  -2*v.y*v.x,  -2*v.z*v.x, 0,
-                       -2*v.x*v.y, 1-2*v.y*v.y,  -2*v.z*v.y, 0,
-                       -2*v.x*v.z,  -2*v.y*v.z, 1-2*v.z*v.z, 0,
-                       0, 0, 0, 1);
-                return m;
-            };
-            var tetTransform = new THREE.Matrix4();
-            tetTransform.makeRotationAxis(new THREE.Vector3(0,1,0), 2*Math.PI/3.0);
-            tetTransform.multiply(mirrorN(new THREE.Vector3(-Math.sqrt(3), Math.sqrt(6), 0)));
-            this.xf = tetTransform.toArray();
-            this.op = function(pt, i) {
-                var newpt = [
-                    this.xf[0]*pt[0]+this.xf[1]*pt[1]+this.xf[2]*pt[2],
-                    this.xf[4]*pt[0]+this.xf[5]*pt[1]+this.xf[6]*pt[2],
-                    this.xf[8]*pt[0]+this.xf[9]*pt[1]+this.xf[10]*pt[2]
-                ];
-                return newpt;
-            };
-            this.serialize = function() {
-                return {
-                    perma_id: 4,
-                    params: []
-                }
-            };
+        Tetrahedral: {
+            id: 4,
+            f: function() {
+                this.iters = 3;
+                var mirrorN = function(v) { // make a mirror transform that mirrors around a plane with normal vector v
+                    v.normalize();
+                    var m = new THREE.Matrix4();
+                    m.set(1-2*v.x*v.x,  -2*v.y*v.x,  -2*v.z*v.x, 0,
+                           -2*v.x*v.y, 1-2*v.y*v.y,  -2*v.z*v.y, 0,
+                           -2*v.x*v.z,  -2*v.y*v.z, 1-2*v.z*v.z, 0,
+                           0, 0, 0, 1);
+                    return m;
+                };
+                var tetTransform = new THREE.Matrix4();
+                tetTransform.makeRotationAxis(new THREE.Vector3(0,1,0), 2*Math.PI/3.0);
+                tetTransform.multiply(mirrorN(new THREE.Vector3(-Math.sqrt(3), Math.sqrt(6), 0)));
+                this.xf = tetTransform.toArray();
+                this.op = function(pt) {
+                    var newpt = [
+                        this.xf[0]*pt[0]+this.xf[1]*pt[1]+this.xf[2]*pt[2],
+                        this.xf[4]*pt[0]+this.xf[5]*pt[1]+this.xf[6]*pt[2],
+                        this.xf[8]*pt[0]+this.xf[9]*pt[1]+this.xf[10]*pt[2]
+                    ];
+                    return newpt;
+                };
+                this.serialize = function() {
+                    return {
+                        params: []
+                    };
+                };
+            }
         },
-        Scale: function(scales) {
-            this.iters = scales-1;
-            this.scale = 0.9;
-            var invert = function(s) {
-                var inv = 1.0/s;
-                var acc = 1.0;
-                for (var i=0; i<scales-1; i++) {
-                    acc = acc*inv;
-                }
-                return acc;
-            };
-            this.inverse = invert(this.scale);
-            this.op = function(pt, i) {
-                var s = this.scale;
-                if ((i+1)%scales===0) {
-                    s = this.inverse;
-                }
-                var pnew = [pt[0]*s, pt[1]*s, pt[2]*s];
-                return pnew;
-            };
-            this.serialize = function() {
-                return {
-                    perma_id: 5,
-                    params: [scales]
-                }
-            };
+        Scale: {
+            id: 5,
+            f: function(scales) {
+                this.iters = scales-1;
+                this.scale = 0.9;
+                var invert = function(s) {
+                    var inv = 1.0/s;
+                    var acc = 1.0;
+                    for (var i=0; i<scales-1; i++) {
+                        acc = acc*inv;
+                    }
+                    return acc;
+                };
+                this.inverse = invert(this.scale);
+                this.op = function(pt, i) {
+                    var s = this.scale;
+                    if ((i+1)%scales===0) {
+                        s = this.inverse;
+                    }
+                    var pnew = [pt[0]*s, pt[1]*s, pt[2]*s];
+                    return pnew;
+                };
+                this.serialize = function() {
+                    return {
+                        params: [scales]
+                    };
+                };
+            }
         }
     };
     this.sym_map = {};
@@ -801,6 +811,7 @@ var Voro3 = function () {
         if (this.active_sym) {
             this.track_act(new SetSymAct(null, {}));
             this.active_sym = null;
+            this.active_sym_name = null;
             this.sym_map = {};
         }
     };
@@ -851,7 +862,8 @@ var Voro3 = function () {
         }
     };
 
-    this.enable_symmetry = function(sym_op) {
+    this.enable_symmetry = function(sym_name, sym_param) {
+        var sym_op = new this.symmetries[sym_name].f(sym_param);
         this.voro.clear_gl();
         this.track_act(new StopGLAct());
         this.bake_symmetry();
@@ -869,6 +881,7 @@ var Voro3 = function () {
         // setting these two activates the symmetry
         this.sym_map = sym_map;
         this.active_sym = sym_op;
+        this.active_sym_name = sym_name;
 
         // update view
         this.voro.gl_build(this.est_max_tris, this.est_max_preview_verts, this.est_max_cell_sites);
@@ -1016,7 +1029,7 @@ var Voro3 = function () {
             // consider symmetry in filtering -- if sym, filter unless primary + DO NOT filter if any linked cell affects shape
             if (that.active_sym) {
                 var pid = that.get_sym_pid(i);
-                var id = that.voro.stable_id(cell);
+                var id = that.voro.stable_id(i);
                 if (id !== pid) { // filter if not primary
                     return true;
                 }
@@ -1032,7 +1045,7 @@ var Voro3 = function () {
             }
             // haven't decided filter based on symmetry; finalize decision based on cell itself
             return filter_unused && !that.voro.cell_affects_shape(i);
-        }
+        };
         var type_counts = {};
         for (i=0; i<num_cells; i++) {
             if (should_filter(i)) { 
@@ -1059,9 +1072,9 @@ var Voro3 = function () {
         }
         var palette_start = start;
         var palette_size = 4 + this.palette_length()*3*4;
-        var sym_start = start + palette_size;
+        var sym_start = palette_start + palette_size;
         var sym_size = 4 + 4 + 4; // assume sym param count is 1 for now
-        var total_size = start + sym_size;
+        var total_size = sym_start + sym_size;
         
         var buffer = new ArrayBuffer(total_size);
         var view = new DataView(buffer);
@@ -1104,12 +1117,24 @@ var Voro3 = function () {
             view.setFloat32(arr_s+8, this.palette[i][2], true);
         }
 
-        // TODO: get serialization of current symmetry info
+        var sym = this.active_sym;
+        if (sym) {
+            view.setInt32(sym_start+0, this.symmetries[this.active_sym_name].id, true);
+
+            var symInfo = sym.serialize();
+            assert(symInfo.params.length === 1);
+            view.setInt32(sym_start+4, 1, true);
+            view.setFloat32(sym_start+8, symInfo.params[0], true);
+        } else {
+            view.setInt32(sym_start+0, 0, true);
+            view.setInt32(sym_start+4, 0, true);
+            view.setFloat32(sym_start+8, 0, true);
+        }
 
         return buffer;
     };
 
-    this.create_from_raw_buffer = function(buffer) {
+    this.create_from_raw_buffer = function(scene, buffer) {
         var view = new DataView(buffer);
         var idflag = view.getInt32(0, true);
         if (idflag != 1619149277) {
@@ -1162,6 +1187,27 @@ var Voro3 = function () {
                 this.palette.push([r,g,b]);
             }
             this.set_palette(this.palette);
+        }
+
+        var sym_name = null;
+        var sym_param = null;
+        if (version > 1) { // includes symmetry
+            var sym = view.getInt32(cur_pos, true); cur_pos += 4;
+            if (sym > 0) {
+                sym_name = this.get_symmetry_by_perma_id(sym);
+                var nparams = view.getInt32(cur_pos, true); cur_pos += 4;
+                assert (nparams===1);
+                sym_param = view.getFloat32(cur_pos, true); cur_pos += 4;
+            }
+        }
+
+        // must construct voro objects before enabling symmetry
+        this.create_gl_objects(scene);
+        
+        this.add_to_scene(scene);
+
+        if (sym_name) {
+            this.enable_symmetry(sym_name, sym_param);
         }
 
         return true;
