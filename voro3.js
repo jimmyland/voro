@@ -1019,8 +1019,7 @@ var Voro3 = function () {
     //       {[float32 x] [float32 y] [float32 z]}*3*2 (<- the bounding box min and max points)
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
     //       [int32 palette size] {[float32 r] [float32 g] [float32 b]}*count}
-    //       [int32 sym_fn_id] [int32 sym_param_count] {[float32 param]}*sym_param_count
-    // todo map sym fns to stable ids so we can update w/out breaking old; use 0 for no sym
+    //       [int32 sym_fn_id] [int32 sym_param_count] {[float32 param]}*sym_param_count (use id 0 for no sym)
     this.get_binary_raw_buffer = function(filter_unused) {
         var key, k, i, t;
         var num_cells = this.voro.cell_count();
@@ -1073,7 +1072,10 @@ var Voro3 = function () {
         var palette_start = start;
         var palette_size = 4 + this.palette_length()*3*4;
         var sym_start = palette_start + palette_size;
-        var sym_size = 4 + 4 + 4; // assume sym param count is 1 for now
+        var sym_size = 4;
+        if (this.active_sym) {
+            sym_size = 4*3; // assume sym param count is 1 for now
+        }
         var total_size = sym_start + sym_size;
         
         var buffer = new ArrayBuffer(total_size);
@@ -1120,15 +1122,12 @@ var Voro3 = function () {
         var sym = this.active_sym;
         if (sym) {
             view.setInt32(sym_start+0, this.symmetries[this.active_sym_name].id, true);
-
             var symInfo = sym.serialize();
             assert(symInfo.params.length === 1);
             view.setInt32(sym_start+4, 1, true);
             view.setFloat32(sym_start+8, symInfo.params[0], true);
         } else {
             view.setInt32(sym_start+0, 0, true);
-            view.setInt32(sym_start+4, 0, true);
-            view.setFloat32(sym_start+8, 0, true);
         }
 
         return buffer;
@@ -1193,7 +1192,7 @@ var Voro3 = function () {
         var sym_param = null;
         if (version > 1) { // includes symmetry
             var sym = view.getInt32(cur_pos, true); cur_pos += 4;
-            if (sym > 0) {
+            if (sym !== 0) {
                 sym_name = this.get_symmetry_by_perma_id(sym);
                 var nparams = view.getInt32(cur_pos, true); cur_pos += 4;
                 assert (nparams===1);
