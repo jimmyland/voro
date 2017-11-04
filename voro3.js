@@ -1020,7 +1020,7 @@ var Voro3 = function () {
     //       [int32 types_count] {[int32 type] [int32 count] {[float32 x] [float32 y] [float32 z]}*count}*state_count
     //       [int32 palette size] {[float32 r] [float32 g] [float32 b]}*count}
     //       [int32 sym_fn_id] [int32 sym_param_count] {[float32 param]}*sym_param_count
-    // todo map sym fns to stable ids so we can update w/out breaking old; use -1 for no sym
+    // todo map sym fns to stable ids so we can update w/out breaking old; use 0 for no sym
     this.get_binary_raw_buffer = function(filter_unused) {
         var key, k, i, t;
         var num_cells = this.voro.cell_count();
