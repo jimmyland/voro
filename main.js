@@ -451,7 +451,7 @@ var VoroSettings = function() {
     };
     this.symmetrify = function() {
         var fmap = v3.symmetries;
-        v3.enable_symmetry(new fmap[this.symmetry_type](this.symmetry_param));
+        v3.enable_symmetry(this.symmetry_type, this.symmetry_param);
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
@@ -461,7 +461,7 @@ var VoroSettings = function() {
         if (vals.symmetry_mode === "Mirror") {
             sym_param = vals.sym_param_mirror;
         }
-        v3.enable_symmetry(new fmap[vals.symmetry_mode](sym_param));
+        v3.enable_symmetry(vals.symmetry_mode, sym_param);
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
