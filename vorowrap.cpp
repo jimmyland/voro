@@ -413,6 +413,15 @@ struct GLBufferManager {
     }
 };
 
+
+// simple index mesh struct, to be used for export to an index mesh format
+struct SimpleTriMesh {
+	std::vector<int> triangles;
+	std::vector<float> vertices;
+	std::vector<int> palette; // optional, indicates pallete index per triangle
+}
+
+
 enum { SANITY_MINIMAL, SANITY_FULL, SANITY_EXCESSIVE };
 
 struct Voro {
@@ -923,6 +932,43 @@ struct Voro {
     }
 
 
+    SimpleTriMesh exportAsIndexMesh(const val &indexBufferArray, const val &vertexBufferArray) { // Temp incorrect implementation to test
+    	SimpleTriMesh m;
+    	compute_all();
+    }
+
+    /* TODO: 
+
+-for each face of each voronoi cell, match to the corresponding face of the neighboring cell
+-(old code didn't do this: SAFETY CHECK -- ensure that the face actually has the same number of points)
+-for a starting vertex in one face, find the closest vertex on the neighbor cell's corresponding face by distance (just iterate through all the verts on the corresponding face and take the closest) (SAFETY CHECK -- ensure it's actually very close)
+-now go through all the vertices on corresponding face and match them up -- they should be in opposite order on the two faces. use a union-find style merge to glom them into single ids
+	-NOTE this should work because voro already gives you a nice index buffer format for the vertices+faces in a given cell! It's just across neighbors that you need to make them consistent.
+
+    void exportAsIndexMesh(const val &indexBufferArray, const val &vertexBufferArray) { // TODO: is the const correct here?  it's following the ref ...
+    	
+		vector<a union find data type thingy -- probably just a position vec and a parent index> mergedVerts;
+		vector<vector whatever> mappingFromCellAndLocalVertIndexToGlobalMergedVertIndex;
+
+    	for each cell {
+    		if nothing of this cell is drawn, skip it
+
+    		for each face {
+				get the corresponding face of the neighboring cell through this face (if it exists)
+				correspond the vertices, and merge them
+					--> populate a mapping from cell_index, vertex_index to merged_global_vertex_index
+    		}
+			
+    	}
+
+    	copyToVector(indexBufferArray, triangles_index_std_vector);
+    	copyToVector(vertexBufferArray, vertices_std_vector);
+
+    }
+	You should consider resizing the vector (by calling resize) befor passing it to the function, because it's size won't be set automatically, which might harm some of the vector functionality (functions like size, begin, end, etc.)
+    */
+
+
 protected:
     friend class GLBufferManager;
     
@@ -1237,6 +1283,13 @@ EMSCRIPTEN_BINDINGS(voro) {
         .element(&glm::vec3::y)
         .element(&glm::vec3::z)
         ;
+    register_vector<int>("VectorInt");
+	register_vector<float>("VectorFloat");
+    class_<SimpleTriMesh>("SimpleTriMesh")
+	    .property("vertices", &SimpleTriMesh::vertices)
+	    .property("faces", &SimpleTriMesh::faces)
+	    .property("palette", &SimpleTriMesh::palette)
+	    ;
     value_object<Cell>("Cell")
         .field("pos", &Cell::pos)
         .field("type", &Cell::type)
