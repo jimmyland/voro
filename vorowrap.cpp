@@ -413,13 +413,12 @@ struct GLBufferManager {
     }
 };
 
-
 // simple index mesh struct, to be used for export to an index mesh format
 struct SimpleTriMesh {
 	std::vector<int> triangles;
-	std::vector<float> vertices;
+	std::vector<double> vertices;
 	std::vector<int> palette; // optional, indicates pallete index per triangle
-}
+};
 
 
 enum { SANITY_MINIMAL, SANITY_FULL, SANITY_EXCESSIVE };
@@ -932,41 +931,214 @@ struct Voro {
     }
 
 
-    SimpleTriMesh exportAsIndexMesh(const val &indexBufferArray, const val &vertexBufferArray) { // Temp incorrect implementation to test
-    	SimpleTriMesh m;
-    	compute_all();
+    SimpleTriMesh export_index_mesh() { // TODO: also export color information (via palette of simplemesh?)
+        SimpleTriMesh m; // TODO: consider a more general format, not just tri mesh!
+        
+        vector<vector<pair<int,int>>> cnf; // cnf==CellNeighborFace: cnf[cell_index] = unordered vector of pair<neighbor cell index, index of face in cell that goes to that neighbor>
+        vector<vector<pair<int,int>>> clg; // clg==CellLocalGlobal: clg[cell_index] = unordered vector of pair<local_vertex_index, global_vertex_index>
+        cnf.resize(cells.size());
+        clg.resize(cells.size());
+        
+        auto findPair = [](vector<pair<int, int>> &pairs, int target) {
+            for (int i=0, n=(int)pairs.size(); i<n; i++) {
+                if (pairs[i].first == target) {
+                    return i;
+                }
+            }
+            return -1;
+        };
+        
+        auto getOrAddCNF = [&](int cell, int neighborIndex, int localFaceIndex) {
+            int pairi = findPair(cnf[cell], neighborIndex);
+            if (pairi > -1) {
+                return cnf[cell][pairi].second;
+            }
+            
+            // face not found; add to neigbor a back ref to this cell's face index
+            cnf[neighborIndex].push_back(pair<int,int>(cell, localFaceIndex));
+            return -1;
+        };
+        
+        auto tovec = [](const vector<double> &vts, int i) {
+            return glm::vec3(vts[i*3], vts[i*3+1], vts[i*3+2]);
+        };
+        
+        vector<int> gvp; // global vertex parent indices
+        vector<double> gv; // global vertices (x,y,z)*num_verts
+        
+        auto mergev = [&](int ai, int bi) {
+            if (ai == bi) return; // no merge needed
+            
+            // find the great grandparent of b
+            int btop = bi;
+            while (gvp[btop] != -1) {
+                btop = gvp[btop];
+            }
+            
+            // set the parent of everything in a to the gp of b
+            int atraverse = ai;
+            while (atraverse != -1) {
+                int nexta = gvp[atraverse];
+                if (atraverse == btop) { // they were already merged ...
+                    return;
+                }
+                gvp[atraverse] = btop;
+                atraverse = nexta;
+            }
+        };
+        
+        auto addVToExisting = [&](int newCell, int newLocalIndex, int oldCell, int oldLocalIndex, glm::vec3 newVertLocForSanity) {
+            int pairi = findPair(clg[oldCell], oldLocalIndex);
+            assert(pairi > -1);
+            
+            int alreadyMatchedPairi = findPair(clg[newCell], newLocalIndex);
+            if (alreadyMatchedPairi == -1) {
+                clg[newCell].push_back(pair<int,int>(newLocalIndex, clg[oldCell][pairi].second));
+            } else {
+                mergev(clg[newCell][alreadyMatchedPairi].second, clg[oldCell][pairi].second);
+            }
+            
+            // TODO: sanity check that newVertLocForSanity is 'very close' to the vector gv value
+//            auto oldPos = tovec(gv, clg[oldCell][pairi].second);
+//            cout << "merge sanity: " << newCell << " " << newLocalIndex << " " << oldCell << " " << oldLocalIndex << " -> " << glm::distance2(oldPos, newVertLocForSanity) << endl;
+        };
+        auto addVNew = [&](int newCell, int newLocalIndex, const vector<double> &localv) {
+            gv.push_back(localv[newLocalIndex*3]);
+            gv.push_back(localv[newLocalIndex*3+1]);
+            gv.push_back(localv[newLocalIndex*3+2]);
+            clg[newCell].push_back(pair<int,int>(newLocalIndex, (int)gvp.size()));
+            gvp.push_back(-1);
+            assert(gvp.size()*3 == gv.size());
+        };
+        
+        // TODO: call whatever fn to make sure that gl_computed has all the caches and such actually computed
+        // OR just refuse to run if stuff is not computed??
+        
+        // process:
+        //  1. iterate through cells to build clg and gvp
+        for (size_t ci=0, cn=cells.size(); ci<cn; ci++) {
+            CellCache *cache = gl_computed.get_cache(ci);
+            if (!cache) continue;
+            
+            vector<int> &lf = cache->faces; // local cell faces
+            vector<int> &ln = cache->neighbors; // local cell neighbors
+            vector<double> &lv = cache->vertices; // local cell vertices
+            
+            // A. For each face of cell, add face to mapping and correspond verts for any cells we already processed earlier
+            for (size_t lfi=0, lni=0; lni < ln.size(); lni++, lfi+=lf[lfi]+1) {
+                if (ln[lni] < 0) { // skip if there's no neighbor
+                    continue;
+                }
+                int nlfi = getOrAddCNF(ci, ln[lni], lfi);
+
+                if (nlfi == -1) {
+                    continue; // no matching face found; nothing to merge
+                }
+
+                CellCache *ncache = gl_computed.get_cache(ln[lni]);
+                assert(ncache); // we shouldn't have gotten an nlfi value other than -1 unless nbr cache exists
+                
+                vector<int> &nlf = ncache->faces;
+                vector<double> &nlv = ncache->vertices;
+
+                int faceSize = lf[lfi];
+                glm::vec3 localv = tovec(lv, lf[lfi+1]);
+                if (faceSize != nlf[nlfi]) {
+                    // TODO: see how often this happens and decide what workaround is merited, if any.
+                    cerr << "WARNING: inconsistent vertex counts in matching faces; skipping face merge for safety" << endl;
+                    continue;
+                }
+
+                // we've found a face of the same size in the neighbor cell that corresponds to our face
+
+                // match our local face's first vertex to one nbr face's vertices
+                int closestPointIndex = -1;
+                double closestPointD2 = 0;
+                for (int i=0; i<faceSize; i++) {
+                    auto nlocalv = tovec(nlv, nlf[nlfi+1+i]);
+                    double d2 = glm::distance2(localv, nlocalv);
+                    if (closestPointIndex == -1 || d2 < closestPointD2) {
+                        closestPointIndex = i;
+                        closestPointD2 = d2;
+                    }
+                }
+                assert (closestPointIndex > -1); // must be true unless a face had zero verts ...
+
+                // correspond all the vertices across the two faces (by traversing them in opposite orders)
+                //  and merge the corresponded vertices
+                for (int j=lfi+1, ii=0; ii<faceSize; j++, ii++) {
+                    int oppind = (closestPointIndex-ii + faceSize) % faceSize;
+                    addVToExisting(ci, lf[j], ln[lni], nlf[nlfi+1+oppind], tovec(lv, lf[j]));
+                }
+            }
+            
+            // B. For each vert in cell that *didn't* have corresponding faces; add its vertices as new ones
+            //       ... as long as it a real vertex that is used by any face at all
+            //              (there's some garbage data in the verts vec that we need to just ignore ...)
+            for (size_t lfi=0, lni=0; lfi<lf.size(); lfi+=lf[lfi]+1, lni++) {
+                for (int lfi_offset=0; lfi_offset<lf[lfi]; lfi_offset++) {
+                    int lvi = lf[lfi+lfi_offset+1];
+                    if (findPair(clg[ci], lvi) == -1) {
+                        addVNew(ci, lvi, lv);
+                    }
+                }
+            }
+        }
+        
+        vector<int> gv2fv(gv.size()/3, -1);
+        vector<double> &fv = m.vertices; // final vertex array
+        
+        auto getFinalIndex = [&](int gvi) {
+            int parenti = gvi;
+            while (gvp[parenti] != -1) {
+                parenti = gvp[parenti];
+            }
+            if (gv2fv[parenti] == -1) {
+                gv2fv[parenti] = fv.size() / 3;
+                fv.push_back(gv[parenti*3]);
+                fv.push_back(gv[parenti*3+1]);
+                fv.push_back(gv[parenti*3+2]);
+            }
+            return gv2fv[parenti];
+        };
+        
+        vector<int> &t = m.triangles; //  final tri array
+        auto addTri = [&](int cell, int vs[3]) {
+            t.push_back(getFinalIndex(clg[cell][findPair(clg[cell], vs[0])].second));
+            t.push_back(getFinalIndex(clg[cell][findPair(clg[cell], vs[1])].second));
+            t.push_back(getFinalIndex(clg[cell][findPair(clg[cell], vs[2])].second));
+        };
+        
+        
+        //  3. iterate through cells to build global triangle array w/ indices into final vertex array
+        for (size_t ci=0; ci<cells.size(); ci++) {
+            if (cells[ci].type == 0) continue;
+            CellCache *cache = gl_computed.get_cache(ci);
+            if (!cache) continue;
+            
+            vector<int> &lf = cache->faces; // local cell faces
+            vector<int> &ln = cache->neighbors; // local cell neighbors
+            
+            for (int lfi=0, lni=0; lni < (int)ln.size(); lfi+=lf[lfi]+1, lni++) {
+                int gni = ln[lni]; // global neighbor cell index
+                int nbrType = gni < 0 ? 0 : cells[gni].type;
+                
+                // ignored ADD_ALL_FACES_ALL_THE_TIME flag here; if we want to support that, do it earlier
+                if (nbrType == 0) {
+                    // make a fan of triangles to cover the face
+                    int faceSize = lf[lfi];
+                    int vs[3] = {lf[lfi+1], 0, lf[lfi+2]};
+                    for (int lfj=lfi+3; lfj<lfi+faceSize+1; lfj++) {
+                        vs[1] = lf[lfj];
+                        addTri(ci, vs); // TODO: also set color palette info
+                        vs[2] = vs[1];
+                    }
+                }
+            }
+        }
+        
+        return m;
     }
-
-    /* TODO: 
-
--for each face of each voronoi cell, match to the corresponding face of the neighboring cell
--(old code didn't do this: SAFETY CHECK -- ensure that the face actually has the same number of points)
--for a starting vertex in one face, find the closest vertex on the neighbor cell's corresponding face by distance (just iterate through all the verts on the corresponding face and take the closest) (SAFETY CHECK -- ensure it's actually very close)
--now go through all the vertices on corresponding face and match them up -- they should be in opposite order on the two faces. use a union-find style merge to glom them into single ids
-	-NOTE this should work because voro already gives you a nice index buffer format for the vertices+faces in a given cell! It's just across neighbors that you need to make them consistent.
-
-    void exportAsIndexMesh(const val &indexBufferArray, const val &vertexBufferArray) { // TODO: is the const correct here?  it's following the ref ...
-    	
-		vector<a union find data type thingy -- probably just a position vec and a parent index> mergedVerts;
-		vector<vector whatever> mappingFromCellAndLocalVertIndexToGlobalMergedVertIndex;
-
-    	for each cell {
-    		if nothing of this cell is drawn, skip it
-
-    		for each face {
-				get the corresponding face of the neighboring cell through this face (if it exists)
-				correspond the vertices, and merge them
-					--> populate a mapping from cell_index, vertex_index to merged_global_vertex_index
-    		}
-			
-    	}
-
-    	copyToVector(indexBufferArray, triangles_index_std_vector);
-    	copyToVector(vertexBufferArray, vertices_std_vector);
-
-    }
-	You should consider resizing the vector (by calling resize) befor passing it to the function, because it's size won't be set automatically, which might harm some of the vector functionality (functions like size, begin, end, etc.)
-    */
 
 
 protected:
@@ -1097,7 +1269,7 @@ void GLBufferManager::add_cell_tris(Voro &src, int cell, CellToTris &c2t) { // a
 
         if (nbr_type == 0 || ADD_ALL_FACES_ALL_THE_TIME) {
             // make a fan of triangles to cover the face
-            int vicount = (i+c.faces[i]+1)-(i+1);
+            int vicount = c.faces[i];
             int vs[3] = {c.faces[i+1], 0, c.faces[i+2]};
             for (int j = i+3; j < i+c.faces[i]+1; j++) { // facev
                 vs[1] = c.faces[j];
@@ -1284,10 +1456,10 @@ EMSCRIPTEN_BINDINGS(voro) {
         .element(&glm::vec3::z)
         ;
     register_vector<int>("VectorInt");
-	register_vector<float>("VectorFloat");
+	register_vector<double>("VectorDouble");
     class_<SimpleTriMesh>("SimpleTriMesh")
 	    .property("vertices", &SimpleTriMesh::vertices)
-	    .property("faces", &SimpleTriMesh::faces)
+	    .property("triangles", &SimpleTriMesh::triangles)
 	    .property("palette", &SimpleTriMesh::palette)
 	    ;
     value_object<Cell>("Cell")
@@ -1339,6 +1511,7 @@ EMSCRIPTEN_BINDINGS(voro) {
     .function("stable_id", &Voro::stable_id)
     .function("set_stable_id", &Voro::set_stable_id)
     .function("index_from_id", &Voro::index_from_id)
+    .function("export_index_mesh", &Voro::export_index_mesh)
 //    .property("min", &Voro::b_min)
 //    .property("max", &Voro::b_max)
     ;
