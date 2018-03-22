@@ -521,10 +521,21 @@ var VoroSettings = function() {
     };
 
     this.filename = 'filename';
-    this.exportAsSTL = function() {
-        var binstl = v3.get_binary_stl_buffer();
-        var blob = new Blob([binstl], {type: 'application/octet-binary'});
-        saveAs(blob, this.filename + ".stl");
+    this.exportAs = function(format) {
+        var blob;
+        if (format === ".STL") {
+            var binstl = v3.get_binary_stl_buffer();
+            blob = new Blob([binstl], {type: 'application/octet-binary'});
+        } else if (format === ".OBJ") {
+            // TODO: obj export
+            // var asciiobj = v3.get_ etc
+            // blob = new Blob([asciiobj], {type: 'application/text'});
+        } else if (format === ".PLY") {
+            // TODO: ply export
+            // var binply = v3.get_ etc
+            // blob = new Blob([binply], {type: 'application/octet-binary'});
+        }
+        saveAs(blob, this.filename + format);
     };
     this.downloadRaw = function() {
         var bin = v3.get_binary_raw_buffer();

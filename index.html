@@ -258,6 +258,11 @@
               <div class="form-inline">
                 <label>Filename:</label>
                 <input type="text" class="form-control" id="file" value="untitled" name="file">
+                <label for="fileformat">File Format:</label><select class="form-control" id="fileformat" name="file format">
+                    <option>.PLY</option>
+                    <option>.OBJ</option>
+                    <option>.STL</option>
+                </select>
               </div>
               </form>
               </div>
@@ -265,7 +270,7 @@
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="doExport();">Export</button>
               </div>
-              <script>function doExport() { settings.filename = getFormVals('#exportForm').file; settings.exportAsSTL(); }</script>
+              <script>function doExport() { settings.filename = getFormVals('#exportForm').file; settings.exportAs($('#fileformat').val()); }</script>
             </div>
           </div>
         </div>
@@ -582,7 +587,7 @@
                 <li><a role="button" href="#generateModal" data-toggle="modal" data-target="#generateModal">New ...</a></li>
                 <li><a role="button" onclick="settings.uploadRaw();">Load ...</a></li>
                 <li><a role="button" href="#saveModal" data-toggle="modal" data-target="#saveModal">Save ...</a></li>
-                <li><a role="button" href="#exportModal" data-toggle="modal" data-target="#exportModal">Export STL ...</a></li>
+                <li><a role="button" href="#exportModal" data-toggle="modal" data-target="#exportModal">Export Mesh ...</a></li>
                 <li><a role="button" onclick="loadShareURL();">Share ...</a></li>
               </ul>
             </div><div class="dropdown" style="display: inline-block; padding: 0px;">
