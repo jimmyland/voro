@@ -1013,6 +1013,48 @@ var Voro3 = function () {
         }
         return buffer;
     };
+    
+    this.get_text_obj = function(mtlFileName) {
+        var i, palettei;
+        var mesh = this.voro.export_index_mesh();
+        var objText = "";
+        if (this.voro.has_colors()) {
+            objText += "mtllib " + mtlFileName + "\n";
+        }
+        for (i=0; i<mesh.vertices.size(); i+=3) {
+            objText += "v " + mesh.vertices.get(i) + " " + mesh.vertices.get(i+1) + " " + mesh.vertices.get(i+2) + "\n";
+        }
+        var objSegs = {};
+        for (i=0, palettei=0; i<mesh.faces.size(); i+=mesh.faces.get(i)+1, palettei++) {
+            var faceSize = mesh.faces.get(i);
+            var objLine = "f";
+            for (var i_off=0; i_off<faceSize; i_off++) {
+                objLine += " " + (mesh.faces.get(i+1+i_off)+1);
+            }
+            objLine += "\n";
+            var mtl = mesh.palette.get(palettei);
+            if (!(mtl in objSegs)) {
+                objSegs[mtl] = "";
+                if (this.voro.has_colors()) {
+                    objSegs[mtl] += "usemtl pal" + mtl + "\n";
+                }
+            }
+            objSegs[mtl] += objLine;
+        }
+        for (var key in objSegs) {
+            objText += objSegs[key];
+        }
+        return objText;
+    };
+    
+    this.get_text_mtl = function() {
+        var mtlText = "";
+        for (var i=0; i<this.palette.length; i++) {
+            mtlText += "newmtl pal" + (i+1) + "\n";
+            mtlText += "Kd " + this.palette[i][0] + " " + this.palette[i][1] + " " + this.palette[i][2] + "\n\n";
+        }
+        return mtlText;
+    };
 
     // custom binary file format
     // v1: [int32 file_type_id_number=1619149277] [int32 ver=2] (ver 2 adds symmetry info)

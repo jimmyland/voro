@@ -450,13 +450,11 @@ var VoroSettings = function() {
         render();
     };
     this.symmetrify = function() {
-        var fmap = v3.symmetries;
         v3.enable_symmetry(this.symmetry_type, this.symmetry_param);
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
     this.symmetrify_from_form = function(vals) {
-        var fmap = v3.symmetries;
         var sym_param = vals.sym_param;
         if (vals.symmetry_mode === "Mirror") {
             sym_param = vals.sym_param_mirror;
@@ -504,10 +502,23 @@ var VoroSettings = function() {
     };
 
     this.filename = 'filename';
-    this.exportAsSTL = function() {
-        var binstl = v3.get_binary_stl_buffer();
-        var blob = new Blob([binstl], {type: 'application/octet-binary'});
-        saveAs(blob, this.filename + ".stl");
+    this.mtlFilename = 'voro.mtl';
+    this.exportAs = function(format) {
+        var blob;
+        if (format === ".STL") {
+            var binstl = v3.get_binary_stl_buffer();
+            blob = new Blob([binstl], {type: 'application/octet-binary'});
+        } else if (format === ".OBJ") {
+            var textobj = v3.get_text_obj(this.mtlFilename);
+            blob = new Blob([textobj], {type: 'application/text'});
+        }
+        saveAs(blob, this.filename + format);
+    };
+    this.exportMTL = function() {
+        var textmtl = v3.get_text_mtl();
+        var blob = new Blob([textmtl], {type: 'application/text'});
+        var mtlFilename = this.mtlFilename;
+        saveAs(blob, mtlFilename);
     };
     this.downloadRaw = function() {
         var bin = v3.get_binary_raw_buffer();
