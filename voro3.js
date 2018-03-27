@@ -1014,22 +1014,46 @@ var Voro3 = function () {
         return buffer;
     };
     
-    this.get_text_obj = function() {
+    this.get_text_obj = function(mtlFileName) {
         var mesh = this.voro.export_index_mesh();
         var vertices = mesh.vertices;
         var objText = "";
+        if (this.voro.has_colors()) {
+            objText += "mtllib " + mtlFileName + "\n";  // TODO: provide a way to download this mtl file
+        }
         for (var i=0; i<mesh.vertices.size(); i+=3) {
             objText += "v " + mesh.vertices.get(i) + " " + mesh.vertices.get(i+1) + " " + mesh.vertices.get(i+2) + "\n";
         }
-        for (var i=0; i<mesh.faces.size(); i+=mesh.faces.get(i)+1) {
+        var objSegs = {};
+        for (var i=0, palettei=0; i<mesh.faces.size(); i+=mesh.faces.get(i)+1, palettei++) {
             var faceSize = mesh.faces.get(i);
-            objText += "f";
+            var objLine = "f";
             for (var i_off=0; i_off<faceSize; i_off++) {
-                objText += " " + (mesh.faces.get(i+1+i_off)+1);
+                objLine += " " + (mesh.faces.get(i+1+i_off)+1);
             }
-            objText += "\n";
+            objLine += "\n";
+            var mtl = mesh.palette.get(palettei);
+            if (!(mtl in objSegs)) {
+                objSegs[mtl] = "";
+                if (this.voro.has_colors()) {
+                    objSegs[mtl] += "usemtl pal" + mtl + "\n";
+                }
+            }
+            objSegs[mtl] += objLine;
+        }
+        for (var key in objSegs) {
+            objText += objSegs[key];
         }
         return objText;
+    }
+    
+    this.get_text_mtl = function() {
+        var mtlText = "";
+        for (var i=0; i<this.palette.length; i++) {
+            mtlText += "newmtl pal" + (i+1) + "\n";
+            mtlText += "Kd " + this.palette[i][0] + " " + this.palette[i][1] + " " + this.palette[i][2] + "\n\n";
+        }
+        return mtlText;
     }
 
     // custom binary file format

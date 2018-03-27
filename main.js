@@ -504,20 +504,23 @@ var VoroSettings = function() {
     };
 
     this.filename = 'filename';
+    this.mtlFilename = 'voro.mtl';
     this.exportAs = function(format) {
         var blob;
         if (format === ".STL") {
             var binstl = v3.get_binary_stl_buffer();
             blob = new Blob([binstl], {type: 'application/octet-binary'});
         } else if (format === ".OBJ") {
-            var textobj = v3.get_text_obj();
+            var textobj = v3.get_text_obj(this.mtlFilename);
             blob = new Blob([textobj], {type: 'application/text'});
-        } else if (format === ".PLY") {
-            // TODO: ply export
-            // var binply = v3.get_ etc
-            // blob = new Blob([binply], {type: 'application/octet-binary'});
         }
         saveAs(blob, this.filename + format);
+    };
+    this.exportMTL = function(filename) {
+        var textmtl = v3.get_text_mtl();
+        var blob = new Blob([textmtl], {type: 'application/text'});
+        var mtlFilename = this.mtlFilename;
+        saveAs(blob, mtlFilename);
     };
     this.downloadRaw = function() {
         var bin = v3.get_binary_raw_buffer();

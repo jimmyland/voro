@@ -930,7 +930,7 @@ struct Voro {
     }
 
 
-    SimpleIndexMesh export_index_mesh() { // TODO: also export color information (via palette of simplemesh?)
+    SimpleIndexMesh export_index_mesh() {
         SimpleIndexMesh m;
         
         double coincidentVertTolerance = 1e-7;
@@ -1143,6 +1143,7 @@ struct Voro {
                 if (nbrType == 0) {
                     int faceSize = lf[lfi];
                     faces.push_back(faceSize);
+                    m.palette.push_back(cells[ci].type);
                     for (int lfi_off=0; lfi_off<faceSize; lfi_off++) {
                         // note the index to lf is going backwards from lfi+faceSize *down* to lfi+1
                         //  because voro has faces wound backwards from normal ...
