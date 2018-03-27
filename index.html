@@ -270,13 +270,17 @@
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="doExport();">Export</button>
               </div>
-              <script>function doExport() { settings.filename = getFormVals('#exportForm').file; settings.exportAs($('#fileformat').val()); }
-                  $(document).ready(function(){ // show the custom mirror param slider on mirror mode
-                                    $('#fileformat').on('change', function() {
-                                                        $("#download_mtl_but").toggle(this.value === '.OBJ');
-                                                        });
-                                    });</script>
-              
+              <script>
+                  function doExport() {
+                      settings.filename = getFormVals('#exportForm').file; settings.exportAs($('#fileformat').val());
+                  }
+                  $(document).ready(function(){ // show the mtl download button only for obj download
+                      $("#download_mtl_but").toggle($('#fileformat').val() === '.OBJ');
+                      $('#fileformat').on('change', function() {
+                          $("#download_mtl_but").toggle(this.value === '.OBJ');
+                      });
+                  });
+              </script>
             </div>
           </div>
         </div>
