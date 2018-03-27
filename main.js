@@ -450,13 +450,11 @@ var VoroSettings = function() {
         render();
     };
     this.symmetrify = function() {
-        var fmap = v3.symmetries;
         v3.enable_symmetry(this.symmetry_type, this.symmetry_param);
         xf_manager.reset();
         addToUndoQIfNeeded();
     };
     this.symmetrify_from_form = function(vals) {
-        var fmap = v3.symmetries;
         var sym_param = vals.sym_param;
         if (vals.symmetry_mode === "Mirror") {
             sym_param = vals.sym_param_mirror;
@@ -516,7 +514,7 @@ var VoroSettings = function() {
         }
         saveAs(blob, this.filename + format);
     };
-    this.exportMTL = function(filename) {
+    this.exportMTL = function() {
         var textmtl = v3.get_text_mtl();
         var blob = new Blob([textmtl], {type: 'application/text'});
         var mtlFilename = this.mtlFilename;
