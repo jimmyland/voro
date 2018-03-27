@@ -397,7 +397,6 @@ struct GLBufferManager {
     
     void clear() {
         vertices.clear();
-        //normals.clear();
         cell_inds.clear();
         wire_vertices.clear();
         cell_sites.clear();
@@ -414,8 +413,8 @@ struct GLBufferManager {
 };
 
 // simple index mesh struct, to be used for export to an index mesh format
-struct SimpleTriMesh {
-	std::vector<int> triangles;
+struct SimpleIndexMesh {
+    std::vector<int> faces; // voro-style face list: [size1, v1, v2, v3, ..., vSize, size2, etc]
 	std::vector<double> vertices;
 	std::vector<int> palette; // optional, indicates pallete index per triangle
 };
@@ -931,8 +930,10 @@ struct Voro {
     }
 
 
-    SimpleTriMesh export_index_mesh() { // TODO: also export color information (via palette of simplemesh?)
-        SimpleTriMesh m; // TODO: consider a more general format, not just tri mesh!
+    SimpleIndexMesh export_index_mesh() { // TODO: also export color information (via palette of simplemesh?)
+        SimpleIndexMesh m;
+        
+        double coincidentVertTolerance = 1e-7;
         
         vector<vector<pair<int,int>>> cnf; // cnf==CellNeighborFace: cnf[cell_index] = unordered vector of pair<neighbor cell index, index of face in cell that goes to that neighbor>
         vector<vector<pair<int,int>>> clg; // clg==CellLocalGlobal: clg[cell_index] = unordered vector of pair<local_vertex_index, global_vertex_index>
@@ -968,6 +969,7 @@ struct Voro {
         
         auto mergev = [&](int ai, int bi) {
             if (ai == bi) return; // no merge needed
+            assert(glm::distance2(tovec(gv, ai), tovec(gv, bi)) < coincidentVertTolerance);
             
             // find the great grandparent of b
             int btop = bi;
@@ -987,7 +989,7 @@ struct Voro {
             }
         };
         
-        auto addVToExisting = [&](int newCell, int newLocalIndex, int oldCell, int oldLocalIndex, glm::vec3 newVertLocForSanity) {
+        auto addVToExisting = [&](int newCell, int newLocalIndex, int oldCell, int oldLocalIndex) {
             int pairi = findPair(clg[oldCell], oldLocalIndex);
             assert(pairi > -1);
             
@@ -997,11 +999,8 @@ struct Voro {
             } else {
                 mergev(clg[newCell][alreadyMatchedPairi].second, clg[oldCell][pairi].second);
             }
-            
-            // TODO: sanity check that newVertLocForSanity is 'very close' to the vector gv value
-//            auto oldPos = tovec(gv, clg[oldCell][pairi].second);
-//            cout << "merge sanity: " << newCell << " " << newLocalIndex << " " << oldCell << " " << oldLocalIndex << " -> " << glm::distance2(oldPos, newVertLocForSanity) << endl;
         };
+        
         auto addVNew = [&](int newCell, int newLocalIndex, const vector<double> &localv) {
             gv.push_back(localv[newLocalIndex*3]);
             gv.push_back(localv[newLocalIndex*3+1]);
@@ -1045,22 +1044,45 @@ struct Voro {
                 glm::vec3 localv = tovec(lv, lf[lfi+1]);
                 if (faceSize != nlf[nlfi]) {
                     // TODO: see how often this happens and decide what workaround is merited, if any.
-                    cerr << "WARNING: inconsistent vertex counts in matching faces; skipping face merge for safety" << endl;
+                    cout << "inconsistent vertex counts in matching faces -- output mesh may not be watertight" << endl;
                     continue;
                 }
 
                 // we've found a face of the same size in the neighbor cell that corresponds to our face
-
                 // match our local face's first vertex to one nbr face's vertices
                 int closestPointIndex = -1;
                 double closestPointD2 = 0;
-                for (int i=0; i<faceSize; i++) {
-                    auto nlocalv = tovec(nlv, nlf[nlfi+1+i]);
-                    double d2 = glm::distance2(localv, nlocalv);
-                    if (closestPointIndex == -1 || d2 < closestPointD2) {
-                        closestPointIndex = i;
-                        closestPointD2 = d2;
+                int lastBest = -1;
+                bool validMatch = false;
+                // match verts in a do/while so we can rematch in rare cases where the first match is invalid
+                //  -- this happens rarely, usually on (near-)degenerate faces due to rounding error
+                do {
+                    closestPointD2 = 0;
+                    closestPointIndex = -1;
+                    for (int i=lastBest+1; i<faceSize; i++) {
+                        auto nlocalv = tovec(nlv, nlf[nlfi+1+i]);
+                        double d2 = glm::distance2(localv, nlocalv);
+                        if (closestPointIndex == -1 || d2 < closestPointD2) {
+                            closestPointIndex = i;
+                            closestPointD2 = d2;
+                        }
                     }
+                    lastBest = closestPointIndex;
+                    
+                    validMatch = true;
+                    for (int j=lfi+1, ii=0; ii<faceSize; j++, ii++) {
+                        int oppind = (closestPointIndex-ii + faceSize) % faceSize;
+                        auto vloc = tovec(lv, lf[j]), vnbr = tovec(nlv, nlf[nlfi+1+oppind]);
+                        if (glm::distance2(vloc, vnbr) > coincidentVertTolerance) {
+                            validMatch = false;
+                            break;
+                        }
+                    }
+                } while (!validMatch && lastBest+1<faceSize);
+                
+                if (!validMatch) {
+                    cout << "couldn't connect vertices for a face -- output mesh may not be watertight!" << endl;
+                    continue;
                 }
                 assert (closestPointIndex > -1); // must be true unless a face had zero verts ...
 
@@ -1068,7 +1090,7 @@ struct Voro {
                 //  and merge the corresponded vertices
                 for (int j=lfi+1, ii=0; ii<faceSize; j++, ii++) {
                     int oppind = (closestPointIndex-ii + faceSize) % faceSize;
-                    addVToExisting(ci, lf[j], ln[lni], nlf[nlfi+1+oppind], tovec(lv, lf[j]));
+                    addVToExisting(ci, lf[j], ln[lni], nlf[nlfi+1+oppind]);
                 }
             }
             
@@ -1102,15 +1124,9 @@ struct Voro {
             return gv2fv[parenti];
         };
         
-        vector<int> &t = m.triangles; //  final tri array
-        auto addTri = [&](int cell, int vs[3]) {
-            t.push_back(getFinalIndex(clg[cell][findPair(clg[cell], vs[0])].second));
-            t.push_back(getFinalIndex(clg[cell][findPair(clg[cell], vs[1])].second));
-            t.push_back(getFinalIndex(clg[cell][findPair(clg[cell], vs[2])].second));
-        };
+        vector<int> &faces = m.faces; //  final face array
         
-        
-        //  3. iterate through cells to build global triangle array w/ indices into final vertex array
+        //  3. iterate through cells to build global face array w/ indices into final vertex array
         for (size_t ci=0; ci<cells.size(); ci++) {
             if (cells[ci].type == 0) continue;
             CellCache *cache = gl_computed.get_cache(ci);
@@ -1125,13 +1141,15 @@ struct Voro {
                 
                 // ignored ADD_ALL_FACES_ALL_THE_TIME flag here; if we want to support that, do it earlier
                 if (nbrType == 0) {
-                    // make a fan of triangles to cover the face
                     int faceSize = lf[lfi];
-                    int vs[3] = {lf[lfi+1], 0, lf[lfi+2]};
-                    for (int lfj=lfi+3; lfj<lfi+faceSize+1; lfj++) {
-                        vs[1] = lf[lfj];
-                        addTri(ci, vs); // TODO: also set color palette info
-                        vs[2] = vs[1];
+                    faces.push_back(faceSize);
+                    for (int lfi_off=0; lfi_off<faceSize; lfi_off++) {
+                        // note the index to lf is going backwards from lfi+faceSize *down* to lfi+1
+                        //  because voro has faces wound backwards from normal ...
+                        int clg_pair_index = findPair(clg[ci], lf[lfi+faceSize-lfi_off]);
+                        int gvi = clg[ci][clg_pair_index].second;
+                        int fi = getFinalIndex(gvi);
+                        faces.push_back(fi);
                     }
                 }
             }
@@ -1457,10 +1475,10 @@ EMSCRIPTEN_BINDINGS(voro) {
         ;
     register_vector<int>("VectorInt");
 	register_vector<double>("VectorDouble");
-    class_<SimpleTriMesh>("SimpleTriMesh")
-	    .property("vertices", &SimpleTriMesh::vertices)
-	    .property("triangles", &SimpleTriMesh::triangles)
-	    .property("palette", &SimpleTriMesh::palette)
+    class_<SimpleIndexMesh>("SimpleIndexMesh")
+	    .property("vertices", &SimpleIndexMesh::vertices)
+	    .property("faces", &SimpleIndexMesh::faces)
+	    .property("palette", &SimpleIndexMesh::palette)
 	    ;
     value_object<Cell>("Cell")
         .field("pos", &Cell::pos)

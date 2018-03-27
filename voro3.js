@@ -1013,6 +1013,24 @@ var Voro3 = function () {
         }
         return buffer;
     };
+    
+    this.get_text_obj = function() {
+        var mesh = this.voro.export_index_mesh();
+        var vertices = mesh.vertices;
+        var objText = "";
+        for (var i=0; i<mesh.vertices.size(); i+=3) {
+            objText += "v " + mesh.vertices.get(i) + " " + mesh.vertices.get(i+1) + " " + mesh.vertices.get(i+2) + "\n";
+        }
+        for (var i=0; i<mesh.faces.size(); i+=mesh.faces.get(i)+1) {
+            var faceSize = mesh.faces.get(i);
+            objText += "f";
+            for (var i_off=0; i_off<faceSize; i_off++) {
+                objText += " " + (mesh.faces.get(i+1+i_off)+1);
+            }
+            objText += "\n";
+        }
+        return objText;
+    }
 
     // custom binary file format
     // v1: [int32 file_type_id_number=1619149277] [int32 ver=2] (ver 2 adds symmetry info)

@@ -164,23 +164,6 @@ var XFManager = function (scene, camera, domEl, v3, override_other_controls) {
             this.deselect();
         }
         
-        if (event.keyCode == 'D'.charCodeAt()) { // Debugging test key
-            var mesh = this.v3.voro.export_index_mesh();
-            var vertices = mesh.vertices;
-            console.log("vertices.size() = " + vertices.size());
-            console.log("vertices[0] = " + vertices.get(0));
-            console.log("triangles.size() = " + mesh.triangles.size());
-            var objOfMesh = "";
-            for (var i=0; i<mesh.vertices.size(); i+=3) {
-                objOfMesh += "v " + mesh.vertices.get(i) + " " + mesh.vertices.get(i+1) + " " + mesh.vertices.get(i+2) + "\n";
-            }
-            for (var i=0; i<mesh.triangles.size(); i+=3) {
-                objOfMesh += "f " + (mesh.triangles.get(i)+1) + " " + (mesh.triangles.get(i+1)+1) + " " + (mesh.triangles.get(i+2)+1) + "\n";
-            }
-            var blob = new Blob([objOfMesh], {type: 'application/text'});
-            saveAs(blob, "testExport.obj");
-        }
-        
         if (this.controls.visible) {
             if (event.keyCode === 'W'.charCodeAt()) {
                 this.controls.setMode("translate");
@@ -527,9 +510,8 @@ var VoroSettings = function() {
             var binstl = v3.get_binary_stl_buffer();
             blob = new Blob([binstl], {type: 'application/octet-binary'});
         } else if (format === ".OBJ") {
-            // TODO: obj export
-            // var asciiobj = v3.get_ etc
-            // blob = new Blob([asciiobj], {type: 'application/text'});
+            var textobj = v3.get_text_obj();
+            blob = new Blob([textobj], {type: 'application/text'});
         } else if (format === ".PLY") {
             // TODO: ply export
             // var binply = v3.get_ etc
