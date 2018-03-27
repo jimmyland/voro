@@ -415,8 +415,8 @@ struct GLBufferManager {
 // simple index mesh struct, to be used for export to an index mesh format
 struct SimpleIndexMesh {
     std::vector<int> faces; // voro-style face list: [size1, v1, v2, v3, ..., vSize, size2, etc]
+    std::vector<int> palette; // palette index per face
 	std::vector<double> vertices;
-	std::vector<int> palette; // optional, indicates pallete index per triangle
 };
 
 
@@ -929,7 +929,7 @@ struct Voro {
         }
     }
 
-
+    // exports from gl_computed's cached cells; won't work if there is no cache yet
     SimpleIndexMesh export_index_mesh() {
         SimpleIndexMesh m;
         
@@ -955,7 +955,7 @@ struct Voro {
                 return cnf[cell][pairi].second;
             }
             
-            // face not found; add to neigbor a back ref to this cell's face index
+            // face not found; add to neighbor a back ref to this cell's face index
             cnf[neighborIndex].push_back(pair<int,int>(cell, localFaceIndex));
             return -1;
         };
@@ -1010,9 +1010,6 @@ struct Voro {
             assert(gvp.size()*3 == gv.size());
         };
         
-        // TODO: call whatever fn to make sure that gl_computed has all the caches and such actually computed
-        // OR just refuse to run if stuff is not computed??
-        
         // process:
         //  1. iterate through cells to build clg and gvp
         for (size_t ci=0, cn=cells.size(); ci<cn; ci++) {
@@ -1043,7 +1040,6 @@ struct Voro {
                 int faceSize = lf[lfi];
                 glm::vec3 localv = tovec(lv, lf[lfi+1]);
                 if (faceSize != nlf[nlfi]) {
-                    // TODO: see how often this happens and decide what workaround is merited, if any.
                     cout << "inconsistent vertex counts in matching faces -- output mesh may not be watertight" << endl;
                     continue;
                 }

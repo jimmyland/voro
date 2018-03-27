@@ -1019,7 +1019,7 @@ var Voro3 = function () {
         var mesh = this.voro.export_index_mesh();
         var objText = "";
         if (this.voro.has_colors()) {
-            objText += "mtllib " + mtlFileName + "\n";  // TODO: provide a way to download this mtl file
+            objText += "mtllib " + mtlFileName + "\n";
         }
         for (i=0; i<mesh.vertices.size(); i+=3) {
             objText += "v " + mesh.vertices.get(i) + " " + mesh.vertices.get(i+1) + " " + mesh.vertices.get(i+2) + "\n";
