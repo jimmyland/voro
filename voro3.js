@@ -1165,9 +1165,11 @@ var Voro3 = function () {
         if (sym) {
             view.setInt32(sym_start+0, this.symmetries[this.active_sym_name].id, true);
             var symInfo = sym.serialize();
-            assert(symInfo.params.length === 1);
-            view.setInt32(sym_start+4, 1, true);
-            view.setFloat32(sym_start+8, symInfo.params[0], true);
+            assert(symInfo.params.length <= 1);
+            view.setInt32(sym_start+4, symInfo.params.length, true);
+            for (i=0; i<symInfo.params.length; i++) {
+                view.setFloat32(sym_start+4+4*i, symInfo.params[i], true);
+            }
         } else {
             view.setInt32(sym_start+0, 0, true);
         }
@@ -1237,8 +1239,10 @@ var Voro3 = function () {
             if (sym !== 0) {
                 sym_name = this.get_symmetry_by_perma_id(sym);
                 var nparams = view.getInt32(cur_pos, true); cur_pos += 4;
-                assert (nparams===1);
-                sym_param = view.getFloat32(cur_pos, true); cur_pos += 4;
+                assert(nparams <= 1);
+                if (nparams === 1) {
+                    sym_param = view.getFloat32(cur_pos, true); cur_pos += 4;
+                }
             }
         }
 
