@@ -1167,6 +1167,10 @@ var Voro3 = function () {
             var symInfo = sym.serialize();
             assert(symInfo.params.length <= 1);
             view.setInt32(sym_start+4, symInfo.params.length, true);
+            // TODO: this for loop should actually be writing to sym_start+8+4*i;
+            //  it currently overwrites the params.length if there are any params!
+            //  but it's not a huge problem because there's only one or zero params ever
+            //  so I'm leaving it as is for now.  Will need to fix if more complex/parameterized symmetry is added
             for (i=0; i<symInfo.params.length; i++) {
                 view.setFloat32(sym_start+4+4*i, symInfo.params[i], true);
             }
@@ -1238,11 +1242,14 @@ var Voro3 = function () {
             var sym = view.getInt32(cur_pos, true); cur_pos += 4;
             if (sym !== 0) {
                 sym_name = this.get_symmetry_by_perma_id(sym);
-                var nparams = view.getInt32(cur_pos, true); cur_pos += 4;
-                assert(nparams <= 1);
-                if (nparams === 1) {
+                // TODO: nparams is generally overwritten due to a bug in the write function
+                // (see note in the above get_binary_raw_buffer function)
+                //var nparams = view.getInt32(cur_pos, true); cur_pos += 4;
+                //assert(nparams <= 1);
+                //if (nparams === 1) {
+                    // note: even if there were no params it's safe to do this because js will ignore the extra argument
                     sym_param = view.getFloat32(cur_pos, true); cur_pos += 4;
-                }
+                //}
             }
         }
 
